@@ -12,15 +12,19 @@ export interface ShortcutConfig {
   closeTab: string;
 }
 
+const isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform) ||
+  ((navigator as any).userAgentData?.platform === 'macOS');
+const mod = isMac ? 'Cmd' : 'Ctrl';
+
 export const defaultShortcuts: ShortcutConfig = {
-  sendRequest: 'Ctrl+Enter',
-  saveRequest: 'Ctrl+S',
-  importCurl: 'Ctrl+Shift+I',
-  exportCurl: 'Ctrl+Shift+E',
-  focusUrl: 'Ctrl+L',
-  toggleSettings: 'Ctrl+,',
-  newTab: 'Ctrl+T',
-  closeTab: 'Ctrl+W',
+  sendRequest: `${mod}+Enter`,
+  saveRequest: `${mod}+S`,
+  importCurl: `${mod}+Shift+I`,
+  exportCurl: `${mod}+Shift+E`,
+  focusUrl: `${mod}+L`,
+  toggleSettings: `${mod}+,`,
+  newTab: `${mod}+T`,
+  closeTab: `${mod}+W`,
 };
 
 export interface AppSettings {
@@ -37,10 +41,29 @@ export const defaultSettings: AppSettings = {
   responseHeight: 300,
 };
 
+function migrateShortcuts(shortcuts: ShortcutConfig): ShortcutConfig {
+  // Migrate Ctrl/Cmd to platform-appropriate modifier
+  const currentMod = isMac ? 'Cmd' : 'Ctrl';
+  const oldMod = isMac ? 'Ctrl' : 'Cmd';
+  const migrated: ShortcutConfig = { ...shortcuts };
+  for (const key of Object.keys(shortcuts) as (keyof ShortcutConfig)[]) {
+    if (shortcuts[key].startsWith(oldMod + '+')) {
+      migrated[key] = shortcuts[key].replace(oldMod + '+', currentMod + '+');
+    }
+  }
+  return migrated;
+}
+
 function loadSettings(): AppSettings {
   try {
     const stored = localStorage.getItem('APILite-settings');
-    if (stored) return JSON.parse(stored);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (parsed.shortcuts) {
+        parsed.shortcuts = migrateShortcuts(parsed.shortcuts);
+      }
+      return parsed;
+    }
   } catch { /* ignore */ }
   return { ...defaultSettings };
 }
@@ -150,13 +173,20 @@ export function initKeyboardShortcuts() {
       window.dispatchEvent(new CustomEvent('shortcut:close-tab'));
       return;
     }
+
+    // ESC to close settings
+    if (e.key === 'Escape' && useSettingsStore.getState().settingsOpen) {
+      e.preventDefault();
+      useSettingsStore.getState().setSettingsOpen(false);
+      return;
+    }
   });
 }
 
 function buildCombo(e: KeyboardEvent): string {
   const parts: string[] = [];
   if (e.ctrlKey) parts.push('Ctrl');
-  if (e.metaKey) parts.push('Meta');
+  if (e.metaKey) parts.push('Cmd');
   if (e.shiftKey) parts.push('Shift');
   if (e.altKey) parts.push('Alt');
 
