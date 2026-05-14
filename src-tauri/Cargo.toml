@@ -1,5 +1,5 @@
 [package]
-name = "postlite"
+name = "APILite"
 version = "0.1.0"
 edition = "2021"
 

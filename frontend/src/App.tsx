@@ -33,7 +33,7 @@ export default function App() {
   return (
     <>
       <div className="app-header">
-        <img src="/logo.png" alt="Postlite" style={{ height: 28, borderRadius: 6 }} />
+        <img src="/logo.png" alt="APILite" style={{ height: 28, borderRadius: 6 }} />
         <button className="btn btn-icon" onClick={() => setSidebarOpen(!sidebarOpen)} title="Toggle Collections">☰</button>
         <button className="btn btn-icon" onClick={() => setSettingsOpen(!settingsOpen)} title="Settings (Ctrl+,)">⚙</button>
       </div>

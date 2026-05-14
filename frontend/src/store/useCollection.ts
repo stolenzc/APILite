@@ -11,7 +11,7 @@ const defaultRequest: HttpRequest = {
   body: '',
 };
 
-const STORAGE_KEY = 'postlite-collections';
+const STORAGE_KEY = 'APILite-collections';
 
 function loadCollections(): CollectionNode[] {
   try {

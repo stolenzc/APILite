@@ -1,5 +1,5 @@
 {
-  "name": "postlite",
+  "name": "APILite",
   "private": true,
   "workspaces": ["frontend"],
   "scripts": {

@@ -1,10 +1,10 @@
-# Postlite
+# APILite
 
-Postlite is a lightweight desktop HTTP client built with Tauri (Rust) and React. It provides a Postman-like interface for making, testing, and managing API requests.
+APILite is a lightweight desktop HTTP client built with Tauri (Rust) and React. It provides a Postman-like interface for making, testing, and managing API requests.
 
 ## Table of Contents
 
-- [Postlite](#postlite)
+- [APILite](#apilite)
   - [Table of Contents](#table-of-contents)
   - [Getting Started](#getting-started)
     - [Building from Source](#building-from-source)
@@ -46,7 +46,7 @@ npm run tauri dev
 ### Project Structure
 
 ```plain text
-postlite/
+APILite/
 ├── src-tauri/           # Rust backend
 │   ├── src/
 │   │   ├── main.rs          # Tauri entry point & command registration
@@ -71,7 +71,7 @@ postlite/
 
 ## Interface Overview
 
-The Postlite interface consists of three main areas:
+The APILite interface consists of three main areas:
 
 1. **Header Bar** — Contains the application name and a settings button (⚙).
 2. **Collections** — Lists all collections and folders.
@@ -105,7 +105,7 @@ The URL field accepts:
 
 ### Automatic Detection
 
-When you type a URL with a query string (e.g., `?key1=val1&key2=val2`), Postlite automatically parses and populates the **Params** table.
+When you type a URL with a query string (e.g., `?key1=val1&key2=val2`), APILite automatically parses and populates the **Params** table.
 
 ### Manual Editing
 
@@ -126,7 +126,7 @@ Switch to the **Headers** tab to configure request headers.
 
 ### Autocomplete
 
-When typing in the key field, Postlite shows suggestions from a built-in list of common HTTP headers:
+When typing in the key field, APILite shows suggestions from a built-in list of common HTTP headers:
 
 | Header          | Description                               |
 | --------------- | ----------------------------------------- |
@@ -180,7 +180,7 @@ After sending a request, the response panel displays:
 2. Paste a complete cURL command in the dialog.
 3. Click **Import**.
 
-Postlite parses the command and fills in:
+APILite parses the command and fills in:
 
 - HTTP method (`-X`)
 - URL

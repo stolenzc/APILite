@@ -35,7 +35,7 @@ export const defaultSettings: AppSettings = {
 
 function loadSettings(): AppSettings {
   try {
-    const stored = localStorage.getItem('postlite-settings');
+    const stored = localStorage.getItem('APILite-settings');
     if (stored) return JSON.parse(stored);
   } catch { /* ignore */ }
   return { ...defaultSettings };
@@ -43,7 +43,7 @@ function loadSettings(): AppSettings {
 
 function saveSettings(settings: AppSettings) {
   try {
-    localStorage.setItem('postlite-settings', JSON.stringify(settings));
+    localStorage.setItem('APILite-settings', JSON.stringify(settings));
   } catch { /* ignore */ }
 }
 

@@ -5,7 +5,7 @@ export const defaultLocale: Locale = 'en';
 const messages: Record<Locale, Record<string, string>> = {
   en: {
     // App
-    'app.name': 'Postlite',
+    'app.name': 'APILite',
     'app.collections': 'Collections',
     'app.collections.comingSoon': 'Collections coming in next update',
     'app.settings': 'Settings',
@@ -98,7 +98,7 @@ const messages: Record<Locale, Record<string, string>> = {
   },
   zh: {
     // App
-    'app.name': 'Postlite',
+    'app.name': 'APILite',
     'app.collections': '集合',
     'app.collections.comingSoon': '集合功能即将推出',
     'app.settings': '设置',

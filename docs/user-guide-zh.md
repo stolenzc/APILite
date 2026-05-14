@@ -1,10 +1,10 @@
-# Postlite
+# APILite
 
-Postlite 是一款基于 Tauri（Rust）和 React 构建的轻量级桌面 HTTP 客户端，提供类似 Postman 的界面，用于发送、测试和管理 API 请求。
+APILite 是一款基于 Tauri（Rust）和 React 构建的轻量级桌面 HTTP 客户端，提供类似 Postman 的界面，用于发送、测试和管理 API 请求。
 
 ## 目录
 
-- [Postlite](#postlite)
+- [APILite](#APILite)
   - [目录](#目录)
   - [快速开始](#快速开始)
     - [从源码构建](#从源码构建)
@@ -47,7 +47,7 @@ npm run tauri dev
 ### 项目结构
 
 ```plain text
-postlite/
+APILite/
 ├── src-tauri/           # Rust 后端
 │   ├── src/
 │   │   ├── main.rs          # Tauri 入口与命令注册
@@ -72,7 +72,7 @@ postlite/
 
 ## 界面概览
 
-Postlite 界面由以下几个主要区域组成：
+APILite 界面由以下几个主要区域组成：
 
 1. **顶栏** — 显示应用名称和设置按钮（⚙）。
 2. **集合** — 列出所有集合和文件夹。
@@ -106,7 +106,7 @@ Postlite 界面由以下几个主要区域组成：
 
 ### 自动识别
 
-当输入带查询字符串的 URL（如 `?key1=val1&key2=val2`）时，Postlite 会自动解析并填充到**参数**表格中。
+当输入带查询字符串的 URL（如 `?key1=val1&key2=val2`）时，APILite 会自动解析并填充到**参数**表格中。
 
 ### 手动编辑
 
@@ -127,7 +127,7 @@ Postlite 界面由以下几个主要区域组成：
 
 ### 自动补全
 
-在键名输入框中输入时，Postlite 会从内置的常用 HTTP 请求头列表中弹出匹配建议：
+在键名输入框中输入时，APILite 会从内置的常用 HTTP 请求头列表中弹出匹配建议：
 
 | 请求头          | 说明                     |
 | --------------- | ------------------------ |
@@ -181,7 +181,7 @@ Postlite 界面由以下几个主要区域组成：
 2. 在弹窗中粘贴完整的 cURL 命令。
 3. 点击**导入**。
 
-Postlite 会解析命令并填充：
+APILite 会解析命令并填充：
 
 - HTTP 方法（`-X`）
 - URL
