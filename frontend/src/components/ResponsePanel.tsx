@@ -1,10 +1,11 @@
-import { useStore, selectActiveTab } from '../store/useStore';
+import { useStore } from '../store/useStore';
 import { t } from '../i18n';
+import { highlightJson, isJson, formatJson } from '../utils/jsonUtils';
 
 export default function ResponsePanel() {
-  const { responseTab, setResponseTab } = useStore();
-  const activeTab = useStore(selectActiveTab);
-  const response = activeTab?.response ?? null;
+  const responseTab = useStore((s) => s.responseTab);
+  const setResponseTab = useStore((s) => s.setResponseTab);
+  const response = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.response ?? null);
 
   if (!response) {
     return (
@@ -19,18 +20,19 @@ export default function ResponsePanel() {
     : response.status >= 400 && response.status < 500 ? 'status-4xx'
     : 'status-5xx';
 
-  let formattedBody = response.body;
-  if (responseTab === 'body') {
-    try {
-      formattedBody = JSON.stringify(JSON.parse(response.body), null, 2);
-    } catch { /* not JSON */ }
-  }
+  const jsonValid = isJson(response.body);
+  const formattedBody = responseTab === 'body'
+    ? (jsonValid ? formatJson(response.body).formatted : response.body)
+    : '';
 
   return (
     <div className="response-panel">
       <div className="response-header">
         <span className={`status-badge ${statusClass}`}>{response.status} {response.statusText}</span>
         <span className="response-time">{response.durationMs}ms</span>
+        {responseTab === 'body' && jsonValid && (
+          <span className="json-status valid" style={{ fontSize: 11 }}>JSON</span>
+        )}
         <div className="response-tabs">
           <span className={`response-tab ${responseTab === 'body' ? 'active' : ''}`} onClick={() => setResponseTab('body')}>{t('response.body')}</span>
           <span className={`response-tab ${responseTab === 'headers' ? 'active' : ''}`} onClick={() => setResponseTab('headers')}>{t('response.headers')}</span>
@@ -38,7 +40,14 @@ export default function ResponsePanel() {
       </div>
       <div className="response-body">
         {responseTab === 'body' ? (
-          <pre>{formattedBody}</pre>
+          jsonValid ? (
+            <div
+              className="json-highlight"
+              dangerouslySetInnerHTML={{ __html: highlightJson(formattedBody) }}
+            />
+          ) : (
+            <pre>{formattedBody}</pre>
+          )
         ) : (
           <table className="kv-table">
             <thead><tr><th>{t('kv.key')}</th><th>{t('kv.value')}</th></tr></thead>

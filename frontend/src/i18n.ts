@@ -38,6 +38,7 @@ const messages: Record<Locale, Record<string, string>> = {
 
     // Body
     'body.type.none': 'None',
+    'body.json.placeholder': 'Enter JSON body...',
     'body.type.raw': 'Raw',
     'body.type.json': 'JSON',
     'body.type.xml': 'XML',
@@ -47,6 +48,8 @@ const messages: Record<Locale, Record<string, string>> = {
     'body.type.form-data': 'Form Data',
     'body.type.urlencoded': 'x-www-form-urlencoded',
     'body.type.binary': 'Binary',
+    'body.noBody': 'No body',
+    'body.binary': 'Binary body: select a file via the request form. (Coming soon)',
     'body.placeholder.json': '{\n  "key": "value"\n}',
     'body.placeholder.xml': '<?xml version="1.0" encoding="UTF-8"?>\n<root>\n  <key>value</key>\n</root>',
     'body.placeholder.text': 'Enter text content...',
@@ -55,6 +58,10 @@ const messages: Record<Locale, Record<string, string>> = {
     'body.formHint': 'Form-data and x-www-form-urlencoded body types are supported via the Params table.',
     'body.urlencodedHint': 'Encode key-value pairs in the request body.',
     'body.useParamsLink': 'Use Params tab',
+    'body.json.format': 'Format',
+    'body.json.minify': 'Minify',
+    'body.json.valid': 'JSON valid',
+    'body.json.invalid': 'JSON invalid',
 
     // Response
     'response.body': 'Body',
@@ -136,6 +143,7 @@ const messages: Record<Locale, Record<string, string>> = {
 
     // Body
     'body.type.none': '无',
+    'body.json.placeholder': '输入 JSON 请求体...',
     'body.type.raw': '原始',
     'body.type.json': 'JSON',
     'body.type.xml': 'XML',
@@ -145,6 +153,8 @@ const messages: Record<Locale, Record<string, string>> = {
     'body.type.form-data': '表单数据',
     'body.type.urlencoded': 'x-www-form-urlencoded',
     'body.type.binary': '二进制',
+    'body.noBody': '无请求体',
+    'body.binary': '二进制请求体：通过请求表单选择文件（即将推出）',
     'body.placeholder.json': '{\n  "key": "value"\n}',
     'body.placeholder.xml': '<?xml version="1.0" encoding="UTF-8"?>\n<root>\n  <key>value</key>\n</root>',
     'body.placeholder.text': '输入文本内容...',
@@ -153,6 +163,10 @@ const messages: Record<Locale, Record<string, string>> = {
     'body.formHint': '表单数据和 x-www-form-urlencoded 格式可通过参数表格添加。',
     'body.urlencodedHint': '在请求体中编码键值对。',
     'body.useParamsLink': '使用参数表格',
+    'body.json.format': '格式化',
+    'body.json.minify': '压缩',
+    'body.json.valid': 'JSON 有效',
+    'body.json.invalid': 'JSON 无效',
 
     // Response
     'response.body': '响应体',

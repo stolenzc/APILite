@@ -733,6 +733,83 @@ body {
   min-height: 0;
 }
 
+.body-toolbar-btn {
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.body-toolbar-btn:hover:not(:disabled) {
+  color: var(--text-primary);
+  border-color: var(--accent);
+}
+
+.body-toolbar-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.json-status {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  margin-left: auto;
+}
+
+.json-status.valid {
+  color: var(--success);
+  background: rgba(0, 200, 83, 0.1);
+}
+
+.json-status.invalid {
+  color: var(--error);
+  background: rgba(255, 23, 68, 0.1);
+}
+
+/* JSON syntax highlighting */
+.json-highlight {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  white-space: pre;
+  overflow: auto;
+  padding: 12px;
+  line-height: 1.5;
+}
+
+.json-highlight .json-key { color: #e06c75; }
+.json-highlight .json-string { color: #98c379; }
+.json-highlight .json-number { color: #d19a66; }
+.json-highlight .json-bool { color: #56b6c2; }
+.json-highlight .json-punct { color: var(--text-muted); }
+
+.json-textarea {
+  word-wrap: break-word;
+}
+
+/* Body Editor scrollbars */
+.json-highlight::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.json-highlight::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+.json-highlight::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+.json-highlight::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
 .body-type-tabs {
   display: flex;
   gap: 0;
@@ -760,43 +837,16 @@ body {
   border-bottom-color: var(--accent);
 }
 
-.raw-content-tabs {
-  display: flex;
-  gap: 0;
-  background: var(--bg-primary);
-  border-bottom: 1px solid var(--border-color);
-  padding: 0 16px;
-}
-
-.raw-content-tab {
-  padding: 6px 12px;
-  font-size: 11px;
-  color: var(--text-muted);
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  transition: color 0.15s, border-color 0.15s;
-}
-
-.raw-content-tab:hover {
-  color: var(--text-secondary);
-}
-
-.raw-content-tab.active {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
-}
-
-.body-type-select {
-  padding: 0 16px 8px;
-}
-
-.body-type-select select {
+.raw-type-select {
   background: var(--bg-input);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
   border-radius: 4px;
-  padding: 6px 10px;
-  font-size: 12px;
+  padding: 3px 8px;
+  font-size: 11px;
+  margin-left: 6px;
+  cursor: pointer;
+  outline: none;
 }
 
 /* Response Panel */

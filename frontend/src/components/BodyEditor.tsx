@@ -1,6 +1,8 @@
+import { useRef, useState, useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import type { BodyType, RawContentType } from '../types';
 import { t } from '../i18n';
+import { formatJson, isJson } from '../utils/jsonUtils';
 
 const BODY_TYPES: { value: BodyType; label: string }[] = [
   { value: 'none', label: 'body.type.none' },
@@ -35,19 +37,130 @@ const PLACEHOLDER_KEYS: Record<RawContentType, string> = {
 };
 
 function NoneBody() {
-  return <div style={{ padding: '24px 16px', color: 'var(--text-muted)', fontSize: 13 }}>No body</div>;
+  return <div style={{ padding: '24px 16px', color: 'var(--text-muted)', fontSize: 13 }}>{t('body.noBody')}</div>;
 }
 
 function BinaryBody() {
   return (
     <div style={{ padding: '24px 16px', color: 'var(--text-muted)', fontSize: 13 }}>
-      Binary body: select a file via the request form. (Coming soon)
+      {t('body.binary')}
     </div>
   );
 }
 
-function RawContentEditor() {
-  const rawContentType = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.rawContentType ?? 'json');
+function JsonBody() {
+  const body = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.body ?? '');
+  const setBody = useStore((s) => s.setBody);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Tab' && !e.ctrlKey && !e.metaKey) {
+      e.preventDefault();
+      const ta = textareaRef.current;
+      if (!ta) return;
+      const start = ta.selectionStart;
+      const end = ta.selectionEnd;
+      const before = body.substring(0, start);
+      const after = body.substring(end);
+      if (e.shiftKey) {
+        const lineStart = before.lastIndexOf('\n') + 1;
+        const linePrefix = before.substring(lineStart);
+        const removed = linePrefix.replace(/^ {1,2}/, '');
+        setBody(before.substring(0, lineStart) + removed + after);
+        const newPos = start - (linePrefix.length - removed.length);
+        setTimeout(() => { ta.selectionStart = ta.selectionEnd = newPos; }, 0);
+      } else {
+        setBody(before + '  ' + after);
+        setTimeout(() => { ta.selectionStart = ta.selectionEnd = start + 2; }, 0);
+      }
+    }
+
+    if (e.key === 'Enter') {
+      const ta = textareaRef.current;
+      if (!ta) return;
+      const start = ta.selectionStart;
+      const lineStart = body.lastIndexOf('\n', start - 1) + 1;
+      const linePrefix = body.substring(lineStart, start).match(/^(\s*)/)?.[1] ?? '';
+
+      const charBefore = body[start - 1];
+      const charAfter = body[start];
+      if ((charBefore === '{' || charBefore === '[') && (charAfter === '}' || charAfter === ']')) {
+        e.preventDefault();
+        const indent = linePrefix + '  ';
+        const insert = '\n' + indent + '\n' + linePrefix;
+        setBody(body.substring(0, start) + insert + body.substring(start));
+        setTimeout(() => {
+          ta.selectionStart = ta.selectionEnd = start + 1 + indent.length;
+        }, 0);
+      } else if (charBefore === '{' || charBefore === '[') {
+        e.preventDefault();
+        const indent = linePrefix + '  ';
+        const insert = '\n' + indent;
+        setBody(body.substring(0, start) + insert + body.substring(start));
+        setTimeout(() => { ta.selectionStart = ta.selectionEnd = start + insert.length; }, 0);
+      } else if (charBefore === ',') {
+        e.preventDefault();
+        const insert = '\n' + linePrefix;
+        setBody(body.substring(0, start) + insert + body.substring(start));
+        setTimeout(() => { ta.selectionStart = ta.selectionEnd = start + insert.length; }, 0);
+      } else if (linePrefix) {
+        e.preventDefault();
+        const insert = '\n' + linePrefix;
+        setBody(body.substring(0, start) + insert + body.substring(start));
+        setTimeout(() => { ta.selectionStart = ta.selectionEnd = start + insert.length; }, 0);
+      }
+    }
+
+    const autoClosePairs: [string, string][] = [['{', '}'], ['[', ']'], ['"', '"']];
+    if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      const ta = textareaRef.current;
+      if (!ta) return;
+      const start = ta.selectionStart;
+      const charAfter = body[start];
+      for (const [open, close] of autoClosePairs) {
+        if (e.key === open) {
+          if (charAfter === close) {
+            e.preventDefault();
+            setTimeout(() => { ta.selectionStart = ta.selectionEnd = start + 1; }, 0);
+            return;
+          } else if (open === '"') {
+            const charBefore = body[start - 1];
+            const shouldClose = !charBefore || /[\s{[\(,:]/.test(charBefore);
+            if (shouldClose) {
+              e.preventDefault();
+              const insert = '""';
+              setBody(body.substring(0, start) + insert + body.substring(start));
+              setTimeout(() => { ta.selectionStart = ta.selectionEnd = start + 1; }, 0);
+            }
+          } else {
+            e.preventDefault();
+            const insert = open + close;
+            setBody(body.substring(0, start) + insert + body.substring(start));
+            setTimeout(() => { ta.selectionStart = ta.selectionEnd = start + 1; }, 0);
+          }
+          return;
+        }
+      }
+    }
+  };
+
+  return (
+    <textarea
+      ref={textareaRef}
+      className="body-editor body-editor-flex json-textarea"
+      value={body}
+      onChange={e => setBody(e.target.value)}
+      onKeyDown={handleKeyDown}
+      placeholder={t('body.json.placeholder')}
+      spellCheck={false}
+      autoCapitalize="off"
+      autoComplete="off"
+      autoCorrect="off"
+    />
+  );
+}
+
+function RawContentEditor({ rawContentType }: { rawContentType: RawContentType }) {
   const body = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.body ?? '');
   const setBody = useStore((s) => s.setBody);
 
@@ -105,12 +218,30 @@ function UrlencodedBody() {
 export default function BodyEditor() {
   const bodyType = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.bodyType ?? 'none');
   const rawContentType = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.rawContentType ?? 'json');
+  const body = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.body ?? '');
   const setBodyType = useStore((s) => s.setBodyType);
   const setRawContentType = useStore((s) => s.setRawContentType);
+  const setBody = useStore((s) => s.setBody);
+
+  const jsonValid = body.length > 0 && isJson(body);
+
+  const handleFormat = () => {
+    if (!body) return;
+    const { formatted, valid } = formatJson(body);
+    if (valid) setBody(formatted);
+  };
+
+  const handleMinify = () => {
+    if (!body) return;
+    const { formatted, valid } = formatJson(body);
+    if (valid) setBody(formatted.replace(/\n\s*/g, ''));
+  };
+
+  const isJsonBody = bodyType === 'raw' && rawContentType === 'json';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Primary tabs */}
+      {/* Body type tabs */}
       <div className="body-type-tabs" style={{ flexShrink: 0 }}>
         {BODY_TYPES.map(type => (
           <span
@@ -122,32 +253,39 @@ export default function BodyEditor() {
           </span>
         ))}
         {bodyType === 'raw' && (
-          <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 8, lineHeight: '28px' }}>
-            Content-Type: {CONTENT_TYPE_MAP[rawContentType]}
+          <select
+            className="raw-type-select"
+            value={rawContentType}
+            onChange={e => setRawContentType(e.target.value as RawContentType)}
+          >
+            {RAW_CONTENT_TYPES.map(type => (
+              <option key={type.value} value={type.value}>{t(type.label)}</option>
+            ))}
+          </select>
+        )}
+        {isJsonBody && body.length > 0 && (
+          <span className={`json-status ${jsonValid ? 'valid' : 'invalid'}`}>
+            {jsonValid ? t('body.json.valid') : t('body.json.invalid')}
           </span>
         )}
+        {isJsonBody && (
+          <button className="body-toolbar-btn" onClick={handleFormat} disabled={!body}>
+            {t('body.json.format')}
+          </button>
+        )}
+        {isJsonBody && (
+          <button className="body-toolbar-btn" onClick={handleMinify} disabled={!body}>
+            {t('body.json.minify')}
+          </button>
+        )}
       </div>
-
-      {/* Secondary tabs for raw */}
-      {bodyType === 'raw' && (
-        <div className="raw-content-tabs" style={{ flexShrink: 0 }}>
-          {RAW_CONTENT_TYPES.map(type => (
-            <span
-              key={type.value}
-              className={`raw-content-tab ${rawContentType === type.value ? 'active' : ''}`}
-              onClick={() => setRawContentType(type.value)}
-            >
-              {t(type.label)}
-            </span>
-          ))}
-        </div>
-      )}
 
       {/* Content area */}
       <div style={{ flex: 1, overflow: 'auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
         {bodyType === 'none' && <NoneBody />}
         {bodyType === 'binary' && <BinaryBody />}
-        {bodyType === 'raw' && <RawContentEditor />}
+        {bodyType === 'raw' && rawContentType === 'json' && <JsonBody />}
+        {bodyType === 'raw' && rawContentType !== 'json' && <RawContentEditor rawContentType={rawContentType} />}
         {bodyType === 'form-data' && <FormBody />}
         {bodyType === 'x-www-form-urlencoded' && <UrlencodedBody />}
       </div>
