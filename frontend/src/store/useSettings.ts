@@ -8,6 +8,8 @@ export interface ShortcutConfig {
   exportCurl: string;
   focusUrl: string;
   toggleSettings: string;
+  newTab: string;
+  closeTab: string;
 }
 
 export const defaultShortcuts: ShortcutConfig = {
@@ -17,6 +19,8 @@ export const defaultShortcuts: ShortcutConfig = {
   exportCurl: 'Ctrl+Shift+E',
   focusUrl: 'Ctrl+L',
   toggleSettings: 'Ctrl+,',
+  newTab: 'Ctrl+T',
+  closeTab: 'Ctrl+W',
 };
 
 export interface AppSettings {
@@ -130,6 +134,20 @@ export function initKeyboardShortcuts() {
     if (combo === shortcuts.toggleSettings) {
       e.preventDefault();
       useSettingsStore.getState().setSettingsOpen(!useSettingsStore.getState().settingsOpen);
+      return;
+    }
+
+    if (combo === shortcuts.newTab) {
+      e.preventDefault();
+      e.stopPropagation();
+      window.dispatchEvent(new CustomEvent('shortcut:new-tab'));
+      return;
+    }
+
+    if (combo === shortcuts.closeTab) {
+      e.preventDefault();
+      e.stopPropagation();
+      window.dispatchEvent(new CustomEvent('shortcut:close-tab'));
       return;
     }
   });

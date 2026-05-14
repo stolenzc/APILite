@@ -10,6 +10,8 @@ const SHORTCUT_LABELS: Record<keyof ShortcutConfig, string> = {
   exportCurl: 'shortcut.exportCurl',
   focusUrl: 'shortcut.focusUrl',
   toggleSettings: 'shortcut.toggleSettings',
+  newTab: 'shortcut.newTab',
+  closeTab: 'shortcut.closeTab',
 };
 
 export default function SettingsPanel() {

@@ -77,6 +77,8 @@ const messages: Record<Locale, Record<string, string>> = {
     'shortcut.exportCurl': 'Export cURL',
     'shortcut.focusUrl': 'Focus URL Bar',
     'shortcut.toggleSettings': 'Open Settings',
+    'shortcut.newTab': 'New Tab',
+    'shortcut.closeTab': 'Close Tab',
 
     // Collection
     'collection.title': 'Collections',
@@ -170,6 +172,8 @@ const messages: Record<Locale, Record<string, string>> = {
     'shortcut.exportCurl': '导出 cURL',
     'shortcut.focusUrl': '聚焦地址栏',
     'shortcut.toggleSettings': '打开设置',
+    'shortcut.newTab': '新建标签',
+    'shortcut.closeTab': '关闭标签',
 
     // Collection
     'collection.title': '集合',

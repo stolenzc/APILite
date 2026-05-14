@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useStore } from '../store/useStore';
+import { useStore, selectActiveTab } from '../store/useStore';
 import { invoke } from '@tauri-apps/api/core';
 import type { HttpMethod, KeyValue } from '../types';
 import { t } from '../i18n';
@@ -7,7 +7,10 @@ import { t } from '../i18n';
 const METHODS: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
 
 export default function UrlBar() {
-  const { request, setMethod, setUrl, syncParamsFromUrl, syncUrlFromParams, updateParam, loading, setLoading, setResponse, addHistory, setBodyType, setBody } = useStore();
+  const { setMethod, setUrl, syncParamsFromUrl, syncUrlFromParams, updateParam, setLoading, setResponse, addHistory, setBodyType, setBody } = useStore();
+  const activeTab = useStore(selectActiveTab);
+  const request = activeTab?.request!;
+  const loading = activeTab?.loading ?? false;
   const [curlModal, setCurlModal] = useState<{ type: 'export' | 'import'; content: string } | null>(null);
 
   const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {

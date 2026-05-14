@@ -1,8 +1,10 @@
-import { useStore } from '../store/useStore';
+import { useStore, selectActiveTab } from '../store/useStore';
 import { t } from '../i18n';
 
 export default function ResponsePanel() {
-  const { response, responseTab, setResponseTab } = useStore();
+  const { responseTab, setResponseTab } = useStore();
+  const activeTab = useStore(selectActiveTab);
+  const response = activeTab?.response ?? null;
 
   if (!response) {
     return (
@@ -41,7 +43,7 @@ export default function ResponsePanel() {
           <table className="kv-table">
             <thead><tr><th>{t('kv.key')}</th><th>{t('kv.value')}</th></tr></thead>
             <tbody>
-              {Object.entries(response.headers).map(([k, v]: [string, string]) => (
+              {Object.entries(response.headers).map(([k, v]) => (
                 <tr key={k}><td>{k}</td><td>{v}</td></tr>
               ))}
             </tbody>

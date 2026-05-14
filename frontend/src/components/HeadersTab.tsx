@@ -1,17 +1,19 @@
 import { useState, useRef, useEffect } from 'react';
-import { useStore } from '../store/useStore';
+import { useStore, selectActiveTab } from '../store/useStore';
 import type { KeyValue } from '../types';
 import { matchHeaders } from '../constants';
 import { t } from '../i18n';
 
 export default function HeadersTab() {
-  const { request, updateHeader, addHeader, removeHeader } = useStore();
+  const { updateHeader, addHeader, removeHeader } = useStore();
+  const activeTab = useStore(selectActiveTab);
+  const headers = activeTab?.request.headers ?? [];
   const [activeDropdown, setActiveDropdown] = useState<number | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const suggestions = activeDropdown !== null
-    ? matchHeaders(request.headers[activeDropdown]?.key)
+    ? matchHeaders(headers[activeDropdown]?.key ?? '')
     : [];
 
   const handleSelect = (index: number, key: string) => {
@@ -58,7 +60,7 @@ export default function HeadersTab() {
           </tr>
         </thead>
         <tbody>
-          {request.headers.map((h: KeyValue, i: number) => (
+          {headers.map((h: KeyValue, i: number) => (
             <tr key={i}>
               <td><input type="checkbox" checked={h.enabled} onChange={e => updateHeader(i, 'enabled' as never, e.target.checked as never)} /></td>
               <td className="autocomplete-wrapper">

@@ -1,9 +1,11 @@
-import { useStore } from '../store/useStore';
+import { useStore, selectActiveTab } from '../store/useStore';
 import type { KeyValue } from '../types';
 import { t } from '../i18n';
 
 export default function ParamsTab() {
-  const { request, updateParam, addParam, removeParam, syncUrlFromParams } = useStore();
+  const { updateParam, addParam, removeParam, syncUrlFromParams } = useStore();
+  const activeTab = useStore(selectActiveTab);
+  if (!activeTab) return null;
 
   const handleChange = (index: number, field: 'key' | 'value', val: string) => {
     updateParam(index, field, val);
@@ -25,7 +27,7 @@ export default function ParamsTab() {
           </tr>
         </thead>
         <tbody>
-          {request.params.map((p: KeyValue, i: number) => (
+          {activeTab.request.params.map((p: KeyValue, i: number) => (
             <tr key={i}>
               <td><input type="checkbox" checked={p.enabled} onChange={e => updateParam(i, 'enabled' as never, e.target.checked as never)} onBlur={handleBlur} /></td>
               <td><input type="text" placeholder={t('kv.key')} value={p.key} onChange={e => handleChange(i, 'key', e.target.value)} onBlur={handleBlur} /></td>

@@ -1,4 +1,4 @@
-import { useStore } from '../store/useStore';
+import { useStore, selectActiveTab } from '../store/useStore';
 import { t } from '../i18n';
 
 const BODY_TYPES = [
@@ -29,7 +29,10 @@ const PLACEHOLDER_KEYS: Record<string, string> = {
 };
 
 export default function BodyEditor() {
-  const { request, setBodyType, setBody, setActiveTab } = useStore();
+  const { setBodyType, setBody, setActiveTab } = useStore();
+  const activeTab = useStore(selectActiveTab);
+  if (!activeTab) return null;
+  const request = activeTab.request;
 
   if (request.bodyType === 'none') return null;
 

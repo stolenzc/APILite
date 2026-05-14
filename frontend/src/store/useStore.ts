@@ -14,15 +14,27 @@ const defaultRequest: HttpRequest = {
   body: '',
 };
 
-interface AppState {
+export interface RequestTab {
+  id: string;
+  name: string;
   request: HttpRequest;
   response: HttpResponse | null;
   loading: boolean;
-  history: HistoryEntry[];
+}
+
+interface AppState {
+  tabs: RequestTab[];
+  activeTabId: string | null;
   activeTab: 'params' | 'headers' | 'body';
   responseTab: 'body' | 'headers';
+  history: HistoryEntry[];
 
-  // Request actions
+  // Tab management
+  createTab: () => void;
+  closeTab: (id: string) => void;
+  switchTab: (id: string) => void;
+
+  // Request actions (operate on active tab)
   setMethod: (method: HttpRequest['method']) => void;
   setUrl: (url: string) => void;
   syncParamsFromUrl: () => void;
@@ -47,9 +59,11 @@ interface AppState {
   clearHistory: () => void;
   loadFromHistory: (entry: HistoryEntry) => void;
 
+  // Load request into active tab
+  loadRequest: (req: HttpRequest, name?: string) => void;
+
   // Reset
   resetRequest: () => void;
-  loadRequest: (req: HttpRequest) => void;
 }
 
 function urlWithParams(url: string, params: KeyValue[]): string {
@@ -71,73 +85,129 @@ function parseParamsFromUrl(url: string): KeyValue[] {
   return params;
 }
 
+function newEmptyTab(): RequestTab {
+  return {
+    id: nanoid(),
+    name: 'New Tab',
+    request: { ...defaultRequest },
+    response: null,
+    loading: false,
+  };
+}
+
+function updateActiveTab(state: AppState, update: Partial<RequestTab>): AppState {
+  if (!state.activeTabId) return state;
+  return {
+    ...state,
+    tabs: state.tabs.map(t => t.id === state.activeTabId ? { ...t, ...update } : t),
+  };
+}
+
+function activeRequest(state: AppState): HttpRequest | null {
+  const tab = state.tabs.find(t => t.id === state.activeTabId);
+  return tab?.request ?? null;
+}
+
+const initialTab = newEmptyTab();
+
 export const useStore = create<AppState>((set, get) => ({
-  request: { ...defaultRequest },
-  response: null,
-  loading: false,
-  history: [],
+  tabs: [initialTab],
+  activeTabId: initialTab.id,
   activeTab: 'params',
   responseTab: 'body',
+  history: [],
 
-  setMethod: (method) => set(state => ({ request: { ...state.request, method } })),
+  createTab: () => set(state => {
+    const tab = newEmptyTab();
+    return { tabs: [...state.tabs, tab], activeTabId: tab.id };
+  }),
+
+  closeTab: (id) => set(state => {
+    const idx = state.tabs.findIndex(t => t.id === id);
+    if (idx === -1) return state;
+    const tabs = state.tabs.filter(t => t.id !== id);
+    if (tabs.length === 0) {
+      // Always keep at least one tab
+      const tab = newEmptyTab();
+      return { tabs: [tab], activeTabId: tab.id };
+    }
+    let activeTabId = state.activeTabId;
+    if (state.activeTabId === id) {
+      // Switch to nearest neighbor
+      const nextIdx = Math.min(idx, tabs.length - 1);
+      activeTabId = tabs[nextIdx].id;
+    }
+    return { tabs, activeTabId };
+  }),
+
+  switchTab: (id) => set({ activeTabId: id }),
+
+  setMethod: (method) => set(state => updateActiveTab(state, { request: { ...activeRequest(state)!, method } })),
 
   setUrl: (url) => set(state => {
+    const req = activeRequest(state)!;
     const params = parseParamsFromUrl(url);
-    return {
+    return updateActiveTab(state, {
       request: {
-        ...state.request,
+        ...req,
         url,
-        params: params.length > 0 ? params : state.request.params,
+        params: params.length > 0 ? params : req.params,
       },
-    };
+    });
   }),
 
   syncParamsFromUrl: () => set(state => {
-    const params = parseParamsFromUrl(state.request.url);
-    return { request: { ...state.request, params } };
+    const req = activeRequest(state)!;
+    const params = parseParamsFromUrl(req.url);
+    return updateActiveTab(state, { request: { ...req, params } });
   }),
 
-  syncUrlFromParams: () => set(state => ({
-    request: { ...state.request, url: urlWithParams(state.request.url, state.request.params) },
-  })),
+  syncUrlFromParams: () => set(state => {
+    const req = activeRequest(state)!;
+    return updateActiveTab(state, { request: { ...req, url: urlWithParams(req.url, req.params) } });
+  }),
 
   updateParam: (index, field, val) => set(state => {
-    const params = [...state.request.params];
+    const req = activeRequest(state)!;
+    const params = [...req.params];
     params[index] = { ...params[index], [field]: val };
-    return { request: { ...state.request, params } };
+    return updateActiveTab(state, { request: { ...req, params } });
   }),
 
-  addParam: () => set(state => ({
-    request: { ...state.request, params: [...state.request.params, { key: '', value: '', enabled: true }] },
-  })),
+  addParam: () => set(state => {
+    const req = activeRequest(state)!;
+    return updateActiveTab(state, { request: { ...req, params: [...req.params, { key: '', value: '', enabled: true }] } });
+  }),
 
   removeParam: (index) => set(state => {
-    const params = state.request.params.filter((_p: KeyValue, i: number) => i !== index);
-    return { request: { ...state.request, params } };
+    const req = activeRequest(state)!;
+    return updateActiveTab(state, { request: { ...req, params: req.params.filter((_p: KeyValue, i: number) => i !== index) } });
   }),
 
   updateHeader: (index, field, val) => set(state => {
-    const headers = [...state.request.headers];
+    const req = activeRequest(state)!;
+    const headers = [...req.headers];
     headers[index] = { ...headers[index], [field]: val };
-    return { request: { ...state.request, headers } };
+    return updateActiveTab(state, { request: { ...req, headers } });
   }),
 
-  addHeader: () => set(state => ({
-    request: { ...state.request, headers: [...state.request.headers, { key: '', value: '', enabled: true }] },
-  })),
+  addHeader: () => set(state => {
+    const req = activeRequest(state)!;
+    return updateActiveTab(state, { request: { ...req, headers: [...req.headers, { key: '', value: '', enabled: true }] } });
+  }),
 
   removeHeader: (index) => set(state => {
-    const headers = state.request.headers.filter((_h: KeyValue, i: number) => i !== index);
-    return { request: { ...state.request, headers } };
+    const req = activeRequest(state)!;
+    return updateActiveTab(state, { request: { ...req, headers: req.headers.filter((_h: KeyValue, i: number) => i !== index) } });
   }),
 
-  setBodyType: (bodyType) => set(state => ({ request: { ...state.request, bodyType } })),
-  setBody: (body) => set(state => ({ request: { ...state.request, body } })),
+  setBodyType: (bodyType) => set(state => updateActiveTab(state, { request: { ...activeRequest(state)!, bodyType } })),
+  setBody: (body) => set(state => updateActiveTab(state, { request: { ...activeRequest(state)!, body } })),
   setActiveTab: (activeTab) => set({ activeTab }),
   setResponseTab: (responseTab) => set({ responseTab }),
 
-  setResponse: (response) => set({ response }),
-  setLoading: (loading) => set({ loading }),
+  setResponse: (response) => set(state => updateActiveTab(state, { response })),
+  setLoading: (loading) => set(state => updateActiveTab(state, { loading })),
 
   addHistory: (entry) => set(state => ({
     history: [{ ...entry, id: nanoid(), time: new Date().toLocaleTimeString() }, ...state.history].slice(0, 50),
@@ -145,20 +215,35 @@ export const useStore = create<AppState>((set, get) => ({
 
   clearHistory: () => set({ history: [] }),
 
-  loadFromHistory: (entry) => set(state => ({
-    request: { ...entry.request },
-    response: state.response,
-  })),
-
-  resetRequest: () => set({ request: { ...defaultRequest } }),
-  loadRequest: (req) => set({
-    request: {
-      method: req.method,
-      url: req.url,
-      params: req.params.map(p => ({ ...p })),
-      headers: req.headers.map(h => ({ ...h })),
-      bodyType: req.bodyType,
-      body: req.body,
-    },
+  loadFromHistory: (entry) => set(state => {
+    if (!state.activeTabId) return state;
+    return updateActiveTab(state, {
+      request: { ...entry.request },
+      response: null,
+      name: entry.url.split('?')[0].split('/').pop() || 'Request',
+    });
   }),
+
+  loadRequest: (req, name) => set(state => {
+    const tabName = name ?? (req.url ? req.url.split('?')[0].split('/').pop() : 'Request');
+    return updateActiveTab(state, {
+      name: tabName,
+      request: {
+        method: req.method,
+        url: req.url,
+        params: req.params.map(p => ({ ...p })),
+        headers: req.headers.map(h => ({ ...h })),
+        bodyType: req.bodyType,
+        body: req.body,
+      },
+      response: null,
+    });
+  }),
+
+  resetRequest: () => set(state => updateActiveTab(state, { request: { ...defaultRequest }, name: 'New Tab' })),
 }));
+
+// Selector: get the active tab
+export function selectActiveTab(state: AppState): RequestTab | undefined {
+  return state.tabs.find(t => t.id === state.activeTabId);
+}
