@@ -1,35 +1,44 @@
-# APILite
+<p align="center">
+  <img src=".github/assets/logo.png" width="128" height="128" alt="APILite">
+</p>
+
+<h1 align="center">APILite</h1>
+
+<p align="center">
+  <a href="README.zh.md">简体中文</a>
+</p>
 
 APILite is a lightweight desktop HTTP client built with Tauri (Rust) and React. It provides a Postman-like interface for making, testing, and managing API requests.
 
 ## Table of Contents
 
-- [APILite](#apilite)
-  - [Table of Contents](#table-of-contents)
-  - [Getting Started](#getting-started)
-    - [Building from Source](#building-from-source)
-    - [Project Structure](#project-structure)
-  - [Interface Overview](#interface-overview)
-  - [Making Requests](#making-requests)
-    - [Sending a Request](#sending-a-request)
-    - [URL Input](#url-input)
-  - [Query Parameters](#query-parameters)
-    - [Automatic Detection](#automatic-detection)
-    - [Manual Editing](#manual-editing)
-  - [Request Headers](#request-headers)
-    - [Autocomplete](#autocomplete)
-  - [Request Body](#request-body)
-  - [Response Panel](#response-panel)
-  - [cURL Import \& Export](#curl-import--export)
-    - [Import cURL](#import-curl)
-    - [Export cURL](#export-curl)
-  - [Request History](#request-history)
-  - [Settings](#settings)
-    - [Language](#language)
-    - [Theme](#theme)
-    - [Keyboard Shortcuts](#keyboard-shortcuts)
+- [Table of Contents](#table-of-contents)
+- [Getting Started](#getting-started)
+  - [Building from Source](#building-from-source)
+  - [Project Structure](#project-structure)
+- [Interface Overview](#interface-overview)
+- [Making Requests](#making-requests)
+  - [Sending a Request](#sending-a-request)
+  - [URL Input](#url-input)
+- [Query Parameters](#query-parameters)
+  - [Automatic Detection](#automatic-detection)
+  - [Manual Editing](#manual-editing)
+- [Request Headers](#request-headers)
+  - [Autocomplete](#autocomplete)
+- [Request Body](#request-body)
+- [Response Panel](#response-panel)
+- [cURL Import \& Export](#curl-import--export)
+  - [Import cURL](#import-curl)
+  - [Export cURL](#export-curl)
+- [Request History](#request-history)
+- [Settings](#settings)
+  - [Language](#language)
+  - [Theme](#theme)
+  - [Keyboard Shortcuts](#keyboard-shortcuts)
 
 ---
+
+中文文档
 
 ## Getting Started
 
