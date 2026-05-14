@@ -61,6 +61,11 @@ pub async fn send(req: SendRequest) -> Result<SendResponse, String> {
                         .header("Content-Type", "text/plain")
                         .body(body.clone());
                 }
+                "javascript" => {
+                    builder = builder
+                        .header("Content-Type", "application/javascript")
+                        .body(body.clone());
+                }
                 "raw" => {
                     builder = builder.body(body.clone());
                 }

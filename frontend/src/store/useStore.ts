@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { nanoid } from 'nanoid';
 import type { HttpRequest, HttpResponse, HistoryEntry, KeyValue } from '../types';
+import type { RawContentType } from '../types';
 
 const defaultParams: KeyValue[] = [];
 const defaultHeaders: KeyValue[] = [];
@@ -11,6 +12,7 @@ const defaultRequest: HttpRequest = {
   params: [...defaultParams],
   headers: [...defaultHeaders],
   bodyType: 'none',
+  rawContentType: 'json',
   body: '',
 };
 
@@ -46,6 +48,7 @@ interface AppState {
   addHeader: () => void;
   removeHeader: (index: number) => void;
   setBodyType: (bodyType: HttpRequest['bodyType']) => void;
+  setRawContentType: (rawContentType: RawContentType) => void;
   setBody: (body: string) => void;
   setActiveTab: (tab: AppState['activeTab']) => void;
   setResponseTab: (tab: AppState['responseTab']) => void;
@@ -202,6 +205,7 @@ export const useStore = create<AppState>((set, get) => ({
   }),
 
   setBodyType: (bodyType) => set(state => updateActiveTab(state, { request: { ...activeRequest(state)!, bodyType } })),
+  setRawContentType: (rawContentType) => set(state => updateActiveTab(state, { request: { ...activeRequest(state)!, rawContentType } })),
   setBody: (body) => set(state => updateActiveTab(state, { request: { ...activeRequest(state)!, body } })),
   setActiveTab: (activeTab) => set({ activeTab }),
   setResponseTab: (responseTab) => set({ responseTab }),
@@ -234,6 +238,7 @@ export const useStore = create<AppState>((set, get) => ({
         params: req.params.map(p => ({ ...p })),
         headers: req.headers.map(h => ({ ...h })),
         bodyType: req.bodyType,
+        rawContentType: req.rawContentType,
         body: req.body,
       },
       response: null,

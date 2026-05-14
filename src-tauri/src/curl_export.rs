@@ -37,6 +37,15 @@ pub fn to_curl(req: ExportRequest) -> String {
         "xml" if !req.headers.contains_key("Content-Type") => {
             parts.push("-H 'Content-Type: application/xml'".to_string());
         }
+        "html" if !req.headers.contains_key("Content-Type") => {
+            parts.push("-H 'Content-Type: text/html'".to_string());
+        }
+        "text" if !req.headers.contains_key("Content-Type") => {
+            parts.push("-H 'Content-Type: text/plain'".to_string());
+        }
+        "javascript" if !req.headers.contains_key("Content-Type") => {
+            parts.push("-H 'Content-Type: application/javascript'".to_string());
+        }
         _ => {}
     }
 

@@ -718,7 +718,6 @@ body {
 /* Body Editor */
 .body-editor {
   width: 100%;
-  height: 200px;
   background: var(--bg-input);
   color: var(--text-primary);
   border: none;
@@ -727,6 +726,64 @@ body {
   font-family: var(--font-mono);
   resize: none;
   outline: none;
+}
+
+.body-editor-flex {
+  flex: 1;
+  min-height: 0;
+}
+
+.body-type-tabs {
+  display: flex;
+  gap: 0;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  padding: 0 16px;
+  align-items: center;
+}
+
+.body-type-tab {
+  padding: 8px 14px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.body-type-tab:hover {
+  color: var(--text-primary);
+}
+
+.body-type-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.raw-content-tabs {
+  display: flex;
+  gap: 0;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-color);
+  padding: 0 16px;
+}
+
+.raw-content-tab {
+  padding: 6px 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.raw-content-tab:hover {
+  color: var(--text-secondary);
+}
+
+.raw-content-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
 }
 
 .body-type-select {

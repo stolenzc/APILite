@@ -8,6 +8,7 @@ const defaultRequest: HttpRequest = {
   params: [],
   headers: [],
   bodyType: 'none',
+  rawContentType: 'json',
   body: '',
 };
 

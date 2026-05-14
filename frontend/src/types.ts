@@ -6,7 +6,9 @@ export interface KeyValue {
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';
 
-export type BodyType = 'none' | 'raw' | 'json' | 'xml' | 'text' | 'html' | 'form-data' | 'x-www-form-urlencoded';
+export type BodyType = 'none' | 'form-data' | 'x-www-form-urlencoded' | 'raw' | 'binary';
+
+export type RawContentType = 'json' | 'xml' | 'text' | 'javascript' | 'html';
 
 export interface HttpRequest {
   method: HttpMethod;
@@ -14,6 +16,7 @@ export interface HttpRequest {
   params: KeyValue[];
   headers: KeyValue[];
   bodyType: BodyType;
+  rawContentType: RawContentType;
   body: string;
 }
 

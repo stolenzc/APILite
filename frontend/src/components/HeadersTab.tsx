@@ -1,13 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
-import { useStore, selectActiveTab } from '../store/useStore';
+import { useStore } from '../store/useStore';
 import type { KeyValue } from '../types';
 import { matchHeaders } from '../constants';
 import { t } from '../i18n';
 
 export default function HeadersTab() {
   const { updateHeader, addHeader, removeHeader } = useStore();
-  const activeTab = useStore(selectActiveTab);
-  const headers = activeTab?.request.headers ?? [];
+  const headers = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.headers ?? []);
   const [activeDropdown, setActiveDropdown] = useState<number | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
