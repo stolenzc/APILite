@@ -34,6 +34,7 @@ export interface AppSettings {
   responseHeight: number;
   historyHeight: number;
   historyCollapsed: boolean;
+  collectionDir: string;
 }
 
 export const defaultSettings: AppSettings = {
@@ -43,6 +44,7 @@ export const defaultSettings: AppSettings = {
   responseHeight: 300,
   historyHeight: 250,
   historyCollapsed: true,
+  collectionDir: '',
 };
 
 function migrateShortcuts(shortcuts: ShortcutConfig): ShortcutConfig {
@@ -89,6 +91,7 @@ interface SettingsState extends AppSettings {
   setResponseHeight: (height: number) => void;
   setHistoryHeight: (height: number) => void;
   setHistoryCollapsed: (collapsed: boolean) => void;
+  setCollectionDir: (dir: string) => void;
 }
 
 export const useSettingsStore = create<SettingsState>((set) => {
@@ -148,6 +151,12 @@ export const useSettingsStore = create<SettingsState>((set) => {
       saveSettings(next);
       return next;
     }),
+
+    setCollectionDir: (collectionDir) => set(state => {
+      const next = { ...state, collectionDir };
+      saveSettings(next);
+      return next;
+    }),
   };
 });
 
@@ -161,6 +170,12 @@ export function initKeyboardShortcuts() {
       e.preventDefault();
       const sendBtn = document.querySelector('.btn-send') as HTMLElement | null;
       sendBtn?.click();
+      return;
+    }
+
+    if (combo === shortcuts.saveRequest) {
+      e.preventDefault();
+      window.dispatchEvent(new CustomEvent('shortcut:save-request'));
       return;
     }
 

@@ -1,3 +1,4 @@
+import { open } from '@tauri-apps/plugin-dialog';
 import { useSettingsStore } from '../store/useSettings';
 import { themes } from '../themes';
 import { t, getAvailableLocales, getLocale } from '../i18n';
@@ -20,6 +21,7 @@ export default function SettingsPanel() {
     theme, setTheme,
     locale, setLocale,
     shortcuts, updateShortcut, resetShortcuts, resetSettings,
+    collectionDir, setCollectionDir,
   } = useSettingsStore();
 
   if (!settingsOpen) return null;
@@ -63,6 +65,48 @@ export default function SettingsPanel() {
                 {t(`theme.${key}`)}
               </div>
             ))}
+          </div>
+        </div>
+
+        <div className="settings-section">
+          <h4>{t('settings.collection')}</h4>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <span style={{
+              flex: 1,
+              fontSize: 12,
+              color: collectionDir ? 'var(--text-primary)' : 'var(--text-muted)',
+              background: 'var(--bg-input)',
+              border: '1px solid var(--border-color)',
+              borderRadius: 4,
+              padding: '6px 10px',
+              fontFamily: 'var(--font-mono)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}>
+              {collectionDir || t('settings.collection.notSet')}
+            </span>
+            <button
+              className="btn btn-secondary"
+              style={{ fontSize: 12, padding: '6px 12px', whiteSpace: 'nowrap' }}
+              onClick={async () => {
+                const selected = await open({ directory: true });
+                if (selected) {
+                  setCollectionDir(selected);
+                }
+              }}
+            >
+              {t('settings.collection.select')}
+            </button>
+            {collectionDir && (
+              <button
+                className="btn btn-secondary"
+                style={{ fontSize: 12, padding: '6px 12px' }}
+                onClick={() => setCollectionDir('')}
+              >
+                {t('settings.collection.clear')}
+              </button>
+            )}
           </div>
         </div>
 

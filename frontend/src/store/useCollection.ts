@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { nanoid } from 'nanoid';
+import { invoke } from '@tauri-apps/api/core';
 import type { CollectionNode, CollectionFolder, CollectionRequest, HttpRequest, HttpMethod, KeyValue, BodyType } from '../types';
+import { useSettingsStore } from './useSettings';
 
 const defaultRequest: HttpRequest = {
   method: 'GET',
@@ -11,22 +13,6 @@ const defaultRequest: HttpRequest = {
   rawContentType: 'json',
   body: '',
 };
-
-const STORAGE_KEY = 'APILite-collections';
-
-function loadCollections(): CollectionNode[] {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) return JSON.parse(stored);
-  } catch { /* ignore */ }
-  return [];
-}
-
-function saveCollections(nodes: CollectionNode[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(nodes));
-  } catch { /* ignore */ }
-}
 
 // Utility: find node by id in tree, return path
 function findNode(nodes: CollectionNode[], id: string): { node: CollectionNode | null; parent: CollectionFolder | null; path: CollectionNode[] } {
@@ -74,10 +60,23 @@ function getAncestorIds(nodes: CollectionNode[], targetId: string, ancestors: st
   return [];
 }
 
+// Persist to file system via Tauri
+async function persistCollections(dir: string, collections: CollectionNode[]) {
+  if (!dir) return;
+  try {
+    await invoke('save_collections', { dir, data: JSON.stringify(collections, null, 2) });
+  } catch (err) {
+    console.error('Failed to save collections:', err);
+  }
+}
+
 interface CollectionStore {
   collections: CollectionNode[];
   activeNodeId: string | null;
   contextMenu: { nodeId: string; x: number; y: number } | null;
+
+  // Init
+  initCollections: (dir: string) => Promise<void>;
 
   // CRUD
   addFolder: (parentId: string | null) => void;
@@ -100,9 +99,23 @@ interface CollectionStore {
 }
 
 export const useCollectionStore = create<CollectionStore>((set, get) => ({
-  collections: loadCollections(),
+  collections: [],
   activeNodeId: null,
   contextMenu: null,
+
+  initCollections: async (dir: string) => {
+    if (!dir) {
+      set({ collections: [] });
+      return;
+    }
+    try {
+      const data: string = await invoke('load_collections', { dir });
+      set({ collections: JSON.parse(data) });
+    } catch (err) {
+      console.error('Failed to load collections:', err);
+      set({ collections: [] });
+    }
+  },
 
   addFolder: (parentId) => set(state => {
     const folder: CollectionFolder = {
@@ -118,7 +131,7 @@ export const useCollectionStore = create<CollectionStore>((set, get) => ({
     } else {
       collections = [...collections, folder];
     }
-    saveCollections(collections);
+    persistCollections(useSettingsStore.getState().collectionDir, collections);
     return { collections };
   }),
 
@@ -138,19 +151,19 @@ export const useCollectionStore = create<CollectionStore>((set, get) => ({
     } else {
       collections = [...collections, node];
     }
-    saveCollections(collections);
+    persistCollections(useSettingsStore.getState().collectionDir, collections);
     return { collections };
   }),
 
   renameNode: (id, name) => set(state => {
     const collections = updateNode([...state.collections], id, { name });
-    saveCollections(collections);
+    persistCollections(useSettingsStore.getState().collectionDir, collections);
     return { collections };
   }),
 
   deleteNode: (id) => set(state => {
     const collections = removeNode([...state.collections], id);
-    saveCollections(collections);
+    persistCollections(useSettingsStore.getState().collectionDir, collections);
     return { collections, activeNodeId: state.activeNodeId === id ? null : state.activeNodeId };
   }),
 
@@ -158,7 +171,7 @@ export const useCollectionStore = create<CollectionStore>((set, get) => ({
     const node = findNode(state.collections, id).node;
     if (!node || node.type !== 'folder') return state;
     const collections = updateNode([...state.collections], id, { collapsed: !node.collapsed });
-    saveCollections(collections);
+    persistCollections(useSettingsStore.getState().collectionDir, collections);
     return { collections };
   }),
 
@@ -177,7 +190,7 @@ export const useCollectionStore = create<CollectionStore>((set, get) => ({
       const idx = collections.findIndex(c => c.id === id);
       collections.splice(idx + 1, 0, cloned);
     }
-    saveCollections(collections);
+    persistCollections(useSettingsStore.getState().collectionDir, collections);
     return { collections };
   }),
 
@@ -195,16 +208,13 @@ export const useCollectionStore = create<CollectionStore>((set, get) => ({
   moveNode: (sourceId, targetFolderId) => set(state => {
     const { node, path } = findNode(state.collections, sourceId);
     if (!node || node.type === 'folder') return state;
-    // Don't move into own descendants
     if (getAncestorIds(state.collections, sourceId).includes(targetFolderId)) return state;
-    // Remove from current location
     let collections = removeNode([...state.collections], sourceId);
-    // Add to target folder
     const target = findNode(collections, targetFolderId).node;
     if (target && target.type === 'folder') {
       collections = updateNode(collections, targetFolderId, { children: [...(target as CollectionFolder).children, node] });
     }
-    saveCollections(collections);
+    persistCollections(useSettingsStore.getState().collectionDir, collections);
     return { collections };
   }),
 }));

@@ -3,6 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { useStore } from './store/useStore';
 import { useSettingsStore, initKeyboardShortcuts } from './store/useSettings';
+import { useCollectionStore } from './store/useCollection';
 import { applyTheme } from './themes';
 import { setLocale, getLocale } from './i18n';
 import UrlBar from './components/UrlBar';
@@ -15,13 +16,49 @@ import SettingsPanel from './components/SettingsPanel';
 import ResizableSplitter from './components/ResizableSplitter';
 import CollectionSidebar from './components/CollectionSidebar';
 import TabBar from './components/TabBar';
+import SaveRequestModal from './components/SaveRequestModal';
 
 export default function App() {
   const { activeTab, setActiveTab, createTab, closeTab, tabs, activeTabId } = useStore();
-  const { theme, locale, settingsOpen, setSettingsOpen, responseHeight } = useSettingsStore();
+  const { theme, locale, settingsOpen, setSettingsOpen, responseHeight, collectionDir, setCollectionDir } = useSettingsStore();
+  const initCollections = useCollectionStore(s => s.initCollections);
+
+  // Load collections from file system on startup and when dir changes
+  useEffect(() => {
+    if (collectionDir) {
+      initCollections(collectionDir);
+    } else {
+      // Resolve and set default collection directory
+      invoke<string>('get_default_collection_dir').then(dir => {
+        setCollectionDir(dir);
+      }).catch(err => {
+        console.error('Failed to get default collection dir:', err);
+      });
+    }
+  }, [collectionDir, initCollections, setCollectionDir]);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [toast, setToast] = useState('');
+  const [saveModalOpen, setSaveModalOpen] = useState(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleSaveRequest = (folderId: string | null, name: string) => {
+    const activeTab = useStore.getState().tabs.find(t => t.id === useStore.getState().activeTabId);
+    if (!activeTab) return;
+    const req = activeTab.request;
+    useCollectionStore.getState().addRequest(folderId, name, {
+      method: req.method,
+      url: req.url,
+      params: req.params.map(p => ({ ...p })),
+      headers: req.headers.map(h => ({ ...h })),
+      bodyType: req.bodyType,
+      rawContentType: req.rawContentType,
+      body: req.body,
+    });
+    setSaveModalOpen(false);
+    setToast('Saved!');
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(''), 1500);
+  };
 
   useEffect(() => {
     applyTheme(theme);
@@ -48,6 +85,9 @@ export default function App() {
 
     // JS keyboard shortcuts (works in browser dev mode)
     window.addEventListener('shortcut:new-tab', () => createTabRef.current());
+    window.addEventListener('shortcut:save-request', () => {
+      setSaveModalOpen(true);
+    });
     window.addEventListener('shortcut:close-tab', () => {
       if (activeTabIdRef.current && tabsRef.current.length > 1) {
         closeTabRef.current(activeTabIdRef.current);
@@ -116,6 +156,13 @@ export default function App() {
         </div>
       </div>
       <SettingsPanel />
+      {saveModalOpen && (
+        <SaveRequestModal
+          onClose={() => setSaveModalOpen(false)}
+          onSave={handleSaveRequest}
+          defaultName={tabs.find(t => t.id === activeTabId)?.name ?? 'New Request'}
+        />
+      )}
       {toast && (
         <div style={{
           position: 'fixed',
