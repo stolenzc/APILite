@@ -49,6 +49,7 @@ interface AppState {
 
   // Reset
   resetRequest: () => void;
+  loadRequest: (req: HttpRequest) => void;
 }
 
 function urlWithParams(url: string, params: KeyValue[]): string {
@@ -150,4 +151,14 @@ export const useStore = create<AppState>((set, get) => ({
   })),
 
   resetRequest: () => set({ request: { ...defaultRequest } }),
+  loadRequest: (req) => set({
+    request: {
+      method: req.method,
+      url: req.url,
+      params: req.params.map(p => ({ ...p })),
+      headers: req.headers.map(h => ({ ...h })),
+      bodyType: req.bodyType,
+      body: req.body,
+    },
+  }),
 }));

@@ -11,10 +11,12 @@ import ResponsePanel from './components/ResponsePanel';
 import HistoryPanel from './components/HistoryPanel';
 import SettingsPanel from './components/SettingsPanel';
 import ResizableSplitter from './components/ResizableSplitter';
+import CollectionSidebar from './components/CollectionSidebar';
 
 export default function App() {
   const { activeTab, setActiveTab } = useStore();
   const { theme, locale, settingsOpen, setSettingsOpen, responseHeight } = useSettingsStore();
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   useEffect(() => {
     applyTheme(theme);
@@ -32,9 +34,11 @@ export default function App() {
     <>
       <div className="app-header">
         <img src="/logo.png" alt="Postlite" style={{ height: 28, borderRadius: 6 }} />
+        <button className="btn btn-icon" onClick={() => setSidebarOpen(!sidebarOpen)} title="Toggle Collections">☰</button>
         <button className="btn btn-icon" onClick={() => setSettingsOpen(!settingsOpen)} title="Settings (Ctrl+,)">⚙</button>
       </div>
       <div className="main-content">
+        {sidebarOpen && <CollectionSidebar />}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {/* Top area: fills remaining space above splitter */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>

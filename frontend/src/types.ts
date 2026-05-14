@@ -25,6 +25,23 @@ export interface HttpResponse {
   durationMs: number;
 }
 
+export interface CollectionFolder {
+  id: string;
+  name: string;
+  type: 'folder';
+  children: CollectionNode[];
+  collapsed: boolean;
+}
+
+export interface CollectionRequest {
+  id: string;
+  name: string;
+  type: 'request';
+  request: HttpRequest;
+}
+
+export type CollectionNode = CollectionFolder | CollectionRequest;
+
 export interface HistoryEntry {
   id: string;
   time: string;

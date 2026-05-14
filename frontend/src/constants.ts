@@ -29,6 +29,16 @@ export const COMMON_HEADERS: HeaderSuggestion[] = [
   { key: 'X-Requested-With', description: 'Ajax request indicator (XMLHttpRequest)' },
 ];
 
+export const methodColors: Record<string, string> = {
+  GET: 'var(--get)',
+  POST: 'var(--post)',
+  PUT: 'var(--put)',
+  DELETE: 'var(--delete)',
+  PATCH: 'var(--patch)',
+  HEAD: 'var(--head)',
+  OPTIONS: 'var(--options)',
+};
+
 export function matchHeaders(query: string): HeaderSuggestion[] {
   if (!query) return COMMON_HEADERS;
   const q = query.toLowerCase();

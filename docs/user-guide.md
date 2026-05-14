@@ -1,20 +1,33 @@
-# Postlite User Guide
+# Postlite
 
 Postlite is a lightweight desktop HTTP client built with Tauri (Rust) and React. It provides a Postman-like interface for making, testing, and managing API requests.
 
 ## Table of Contents
 
-- [Getting Started](#getting-started)
-- [Interface Overview](#interface-overview)
-- [Making Requests](#making-requests)
-- [Query Parameters](#query-parameters)
-- [Request Headers](#request-headers)
-- [Request Body](#request-body)
-- [Response Panel](#response-panel)
-- [cURL Import & Export](#curl-import--export)
-- [Request History](#request-history)
-- [Settings](#settings)
-- [Keyboard Shortcuts](#keyboard-shortcuts)
+- [Postlite](#postlite)
+  - [Table of Contents](#table-of-contents)
+  - [Getting Started](#getting-started)
+    - [Building from Source](#building-from-source)
+    - [Project Structure](#project-structure)
+  - [Interface Overview](#interface-overview)
+  - [Making Requests](#making-requests)
+    - [Sending a Request](#sending-a-request)
+    - [URL Input](#url-input)
+  - [Query Parameters](#query-parameters)
+    - [Automatic Detection](#automatic-detection)
+    - [Manual Editing](#manual-editing)
+  - [Request Headers](#request-headers)
+    - [Autocomplete](#autocomplete)
+  - [Request Body](#request-body)
+  - [Response Panel](#response-panel)
+  - [cURL Import \& Export](#curl-import--export)
+    - [Import cURL](#import-curl)
+    - [Export cURL](#export-curl)
+  - [Request History](#request-history)
+  - [Settings](#settings)
+    - [Language](#language)
+    - [Theme](#theme)
+    - [Keyboard Shortcuts](#keyboard-shortcuts)
 
 ---
 
@@ -32,7 +45,7 @@ npm run tauri dev
 
 ### Project Structure
 
-```
+```plain text
 postlite/
 ├── src-tauri/           # Rust backend
 │   ├── src/
@@ -61,10 +74,11 @@ postlite/
 The Postlite interface consists of three main areas:
 
 1. **Header Bar** — Contains the application name and a settings button (⚙).
-2. **URL Bar** — HTTP method selector, URL input, cURL import/export buttons, and the Send button.
-3. **Request Editor** — Tabbed panel with Params, Headers, and Body tabs.
-4. **Response Panel** — Shows the response status code, duration, body, and headers.
-5. **History Panel** — Lists recent requests for quick re-use.
+2. **Collections** — Lists all collections and folders.
+3. **URL Bar** — HTTP method selector, URL input, cURL import/export buttons, and the Send button.
+4. **Request Editor** — Tabbed panel with Params, Headers, and Body tabs.
+5. **Response Panel** — Shows the response status code, duration, body, and headers.
+6. **History Panel** — Lists recent requests for quick re-use.
 
 ---
 
@@ -80,6 +94,7 @@ The Postlite interface consists of three main areas:
 ### URL Input
 
 The URL field accepts:
+
 - A standard HTTP/HTTPS URL (e.g., `https://httpbin.org/get`)
 - A URL with query parameters (e.g., `https://httpbin.org/get?foo=bar&baz=qux`)
 - A cURL command (detected when pasting text starting with `curl`)
@@ -95,6 +110,7 @@ When you type a URL with a query string (e.g., `?key1=val1&key2=val2`), Postlite
 ### Manual Editing
 
 Switch to the **Params** tab to:
+
 - **Add** a parameter by clicking "+ Add Parameter"
 - **Edit** a parameter by typing in the key/value cells
 - **Remove** a parameter by clicking the × button
@@ -112,15 +128,15 @@ Switch to the **Headers** tab to configure request headers.
 
 When typing in the key field, Postlite shows suggestions from a built-in list of common HTTP headers:
 
-| Header | Description |
-|--------|-------------|
-| `Accept` | Media type the client can understand |
-| `Content-Type` | Media type of the request body |
+| Header          | Description                               |
+| --------------- | ----------------------------------------- |
+| `Accept`        | Media type the client can understand      |
+| `Content-Type`  | Media type of the request body            |
 | `Authorization` | Authentication credentials (Bearer token) |
-| `User-Agent` | Client software identification |
-| `Cookie` | Stored HTTP cookies |
-| `Origin` | Origin of the request (CORS) |
-| `X-Api-Key` | API key for authentication |
+| `User-Agent`    | Client software identification            |
+| `Cookie`        | Stored HTTP cookies                       |
+| `Origin`        | Origin of the request (CORS)              |
+| `X-Api-Key`     | API key for authentication                |
 
 Navigate suggestions with arrow keys and press Enter to select.
 
@@ -130,16 +146,16 @@ Navigate suggestions with arrow keys and press Enter to select.
 
 Switch to the **Body** tab to configure the request body. Supported formats:
 
-| Format | Content-Type | Description |
-|--------|-------------|-------------|
-| **None** | — | No request body |
-| **Raw** | — | Raw text, no content-type set |
-| **JSON** | `application/json` | JSON-formatted data |
-| **XML** | `application/xml` | XML-formatted data |
-| **Text** | `text/plain` | Plain text |
-| **HTML** | `text/html` | HTML content |
-| **Form Data** | `multipart/form-data` | File upload / form fields |
-| **x-www-form-urlencoded** | `application/x-www-form-urlencoded` | URL-encoded key-value pairs |
+| Format                    | Content-Type                        | Description                   |
+| ------------------------- | ----------------------------------- | ----------------------------- |
+| **None**                  | —                                   | No request body               |
+| **Raw**                   | —                                   | Raw text, no content-type set |
+| **JSON**                  | `application/json`                  | JSON-formatted data           |
+| **XML**                   | `application/xml`                   | XML-formatted data            |
+| **Text**                  | `text/plain`                        | Plain text                    |
+| **HTML**                  | `text/html`                         | HTML content                  |
+| **Form Data**             | `multipart/form-data`               | File upload / form fields     |
+| **x-www-form-urlencoded** | `application/x-www-form-urlencoded` | URL-encoded key-value pairs   |
 
 Each format type provides an appropriate placeholder template to get started.
 
@@ -165,6 +181,7 @@ After sending a request, the response panel displays:
 3. Click **Import**.
 
 Postlite parses the command and fills in:
+
 - HTTP method (`-X`)
 - URL
 - Headers (`-H`)
@@ -177,6 +194,7 @@ Postlite parses the command and fills in:
 3. View and copy the generated cURL command.
 
 The export automatically includes:
+
 - Method (`-X`) for non-GET requests
 - URL with all parameters
 - Headers (`-H`)
@@ -210,29 +228,25 @@ Choose between **English** and **中文 (Chinese)**. The interface text updates 
 
 Select from five built-in themes:
 
-| Theme | Description |
-|-------|-------------|
-| **Dark** | Default dark theme with deep blue tones |
-| **Light** | Clean white and light gray theme |
-| **Nord** | Arctic-inspired cool blue palette |
-| **Solarized Dark** | Classic solarized dark color scheme |
-| **Monokai** | Editor-inspired dark theme with vibrant accents |
+| Theme              | Description                                     |
+| ------------------ | ----------------------------------------------- |
+| **Dark**           | Default dark theme with deep blue tones         |
+| **Light**          | Clean white and light gray theme                |
+| **Nord**           | Arctic-inspired cool blue palette               |
+| **Solarized Dark** | Classic solarized dark color scheme             |
+| **Monokai**        | Editor-inspired dark theme with vibrant accents |
 
 ### Keyboard Shortcuts
 
 Configure custom keyboard shortcuts for common actions. Click "Reset Shortcuts" to restore defaults, or "Reset All" to clear all settings.
 
----
-
-## Keyboard Shortcuts
-
-| Action | Default Shortcut |
-|--------|-----------------|
-| Send Request | `Ctrl+Enter` |
-| Focus URL Bar | `Ctrl+L` |
-| Open Settings | `Ctrl+,` |
-| Import cURL | `Ctrl+Shift+I` (configured) |
-| Export cURL | `Ctrl+Shift+E` (configured) |
-| Save Request | `Ctrl+S` (configured) |
+| Action        | Default Shortcut            |
+| ------------- | --------------------------- |
+| Send Request  | `Ctrl+Enter`                |
+| Focus URL Bar | `Ctrl+L`                    |
+| Open Settings | `Ctrl+,`                    |
+| Import cURL   | `Ctrl+Shift+I` (configured) |
+| Export cURL   | `Ctrl+Shift+E` (configured) |
+| Save Request  | `Ctrl+S` (configured)       |
 
 All shortcuts can be customized in Settings.

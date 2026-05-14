@@ -78,6 +78,17 @@ const messages: Record<Locale, Record<string, string>> = {
     'shortcut.focusUrl': 'Focus URL Bar',
     'shortcut.toggleSettings': 'Open Settings',
 
+    // Collection
+    'collection.title': 'Collections',
+    'collection.addFolder': 'New Folder',
+    'collection.addRequest': 'New Request',
+    'collection.rename': 'Rename',
+    'collection.duplicate': 'Duplicate',
+    'collection.delete': 'Delete',
+    'collection.empty': 'No collections yet',
+    'collection.rename.placeholder': 'Enter name...',
+    'collection.rename.confirm': 'Confirm',
+
     // Theme names
     'theme.dark': 'Dark',
     'theme.light': 'Light',
@@ -159,6 +170,17 @@ const messages: Record<Locale, Record<string, string>> = {
     'shortcut.exportCurl': '导出 cURL',
     'shortcut.focusUrl': '聚焦地址栏',
     'shortcut.toggleSettings': '打开设置',
+
+    // Collection
+    'collection.title': '集合',
+    'collection.addFolder': '新建文件夹',
+    'collection.addRequest': '新建请求',
+    'collection.rename': '重命名',
+    'collection.duplicate': '复制',
+    'collection.delete': '删除',
+    'collection.empty': '暂无集合',
+    'collection.rename.placeholder': '输入名称...',
+    'collection.rename.confirm': '确认',
 
     // Theme names
     'theme.dark': '暗色',
