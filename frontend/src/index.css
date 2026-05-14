@@ -926,9 +926,9 @@ body {
 
 /* History Panel */
 .history-panel {
+  position: relative;
   border-top: 1px solid var(--border-color);
-  max-height: 180px;
-  overflow-y: auto;
+  overflow: hidden;
   background: var(--bg-secondary);
 }
 
@@ -941,6 +941,23 @@ body {
   position: sticky;
   top: 0;
   background: var(--bg-secondary);
+  z-index: 1;
+}
+
+.history-drag-handle {
+  height: 4px;
+  cursor: ns-resize;
+  background: transparent;
+  transition: background 0.15s;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+}
+
+.history-drag-handle:hover {
+  background: var(--accent);
 }
 
 .history-header span {

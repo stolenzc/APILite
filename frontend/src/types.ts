@@ -52,4 +52,5 @@ export interface HistoryEntry {
   url: string;
   status: number;
   request: HttpRequest;
+  response: HttpResponse | null;
 }

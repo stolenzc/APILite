@@ -223,7 +223,7 @@ export const useStore = create<AppState>((set, get) => ({
     if (!state.activeTabId) return state;
     return updateActiveTab(state, {
       request: { ...entry.request },
-      response: null,
+      response: entry.response ? { ...entry.response } : null,
       name: entry.url.split('?')[0].split('/').pop() || 'Request',
     });
   }),

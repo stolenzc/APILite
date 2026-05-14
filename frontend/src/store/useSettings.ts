@@ -32,6 +32,8 @@ export interface AppSettings {
   locale: Locale;
   shortcuts: ShortcutConfig;
   responseHeight: number;
+  historyHeight: number;
+  historyCollapsed: boolean;
 }
 
 export const defaultSettings: AppSettings = {
@@ -39,6 +41,8 @@ export const defaultSettings: AppSettings = {
   locale: 'en',
   shortcuts: { ...defaultShortcuts },
   responseHeight: 300,
+  historyHeight: 250,
+  historyCollapsed: true,
 };
 
 function migrateShortcuts(shortcuts: ShortcutConfig): ShortcutConfig {
@@ -83,6 +87,8 @@ interface SettingsState extends AppSettings {
   resetShortcuts: () => void;
   resetSettings: () => void;
   setResponseHeight: (height: number) => void;
+  setHistoryHeight: (height: number) => void;
+  setHistoryCollapsed: (collapsed: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState>((set) => {
@@ -127,6 +133,18 @@ export const useSettingsStore = create<SettingsState>((set) => {
 
     setResponseHeight: (responseHeight) => set(state => {
       const next = { ...state, responseHeight };
+      saveSettings(next);
+      return next;
+    }),
+
+    setHistoryHeight: (historyHeight) => set(state => {
+      const next = { ...state, historyHeight };
+      saveSettings(next);
+      return next;
+    }),
+
+    setHistoryCollapsed: (historyCollapsed) => set(state => {
+      const next = { ...state, historyCollapsed };
       saveSettings(next);
       return next;
     }),

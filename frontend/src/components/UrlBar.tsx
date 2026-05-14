@@ -64,6 +64,13 @@ export default function UrlBar() {
           rawContentType,
           body: requestBody,
         },
+        response: {
+          status: res.status,
+          statusText: res.status_text,
+          headers: res.headers,
+          body: res.body,
+          durationMs: res.duration_ms,
+        },
       });
     } catch (err) {
       setResponse({
