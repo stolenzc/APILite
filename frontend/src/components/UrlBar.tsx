@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useStore } from '../store/useStore';
+import { useSettingsStore } from '../store/useSettings';
 import { invoke } from '@tauri-apps/api/core';
-import type { HttpMethod, KeyValue, BodyType } from '../types';
+import type { HttpMethod, KeyValue } from '../types';
 import { t } from '../i18n';
 
 const METHODS: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
@@ -29,8 +30,15 @@ export default function UrlBar() {
     syncUrlFromParams();
     setLoading(true);
 
+    const autoProtocol = useSettingsStore.getState().autoCompleteProtocol;
+    let finalUrl = urlWithParams(requestUrl, requestParams);
+    if (autoProtocol) {
+      finalUrl = ensureProtocol(finalUrl);
+      // Write the completed URL back to the input
+      if (finalUrl !== requestUrl) setUrl(finalUrl);
+    }
+
     try {
-      const finalUrl = urlWithParams(requestUrl, requestParams);
       // For 'raw' type, send the actual content type (json/xml/etc) to Rust
       const effectiveBodyType = requestBodyType === 'raw' ? rawContentType : requestBodyType;
       const bodyContent = (requestBodyType === 'none' || requestBodyType === 'form-data' || requestBodyType === 'x-www-form-urlencoded') && !requestBody ? null : requestBody;
@@ -108,11 +116,14 @@ export default function UrlBar() {
 
   const handleExportCurl = async () => {
     syncUrlFromParams();
+    const autoProtocol = useSettingsStore.getState().autoCompleteProtocol;
     try {
       const effectiveBodyType = requestBodyType === 'raw' ? rawContentType : requestBodyType;
+      let url = urlWithParams(requestUrl, requestParams);
+      if (autoProtocol) url = ensureProtocol(url);
       const curl: string = await invoke('to_curl', {
         method: requestMethod,
-        url: urlWithParams(requestUrl, requestParams),
+        url,
         headers: kvToMap(requestHeaders),
         bodyType: effectiveBodyType,
         body: requestBodyType === 'none' ? null : requestBody,
@@ -189,4 +200,11 @@ function urlWithParams(url: string, params: KeyValue[]): string {
   if (active.length === 0) return baseUrl;
   const qs = active.map(p => `${encodeURIComponent(p.key)}=${encodeURIComponent(p.value)}`).join('&');
   return `${baseUrl}?${qs}`;
+}
+
+function ensureProtocol(url: string): string {
+  if (!/^[a-zA-Z][a-zA-Z\d+\-.]*:\/\//.test(url)) {
+    return 'http://' + url;
+  }
+  return url;
 }

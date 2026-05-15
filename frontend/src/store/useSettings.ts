@@ -35,6 +35,7 @@ export interface AppSettings {
   historyHeight: number;
   historyCollapsed: boolean;
   collectionDir: string;
+  autoCompleteProtocol: boolean;
 }
 
 export const defaultSettings: AppSettings = {
@@ -45,6 +46,7 @@ export const defaultSettings: AppSettings = {
   historyHeight: 250,
   historyCollapsed: true,
   collectionDir: '',
+  autoCompleteProtocol: true,
 };
 
 function migrateShortcuts(shortcuts: ShortcutConfig): ShortcutConfig {
@@ -92,6 +94,7 @@ interface SettingsState extends AppSettings {
   setHistoryHeight: (height: number) => void;
   setHistoryCollapsed: (collapsed: boolean) => void;
   setCollectionDir: (dir: string) => void;
+  setAutoCompleteProtocol: (auto: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState>((set) => {
@@ -154,6 +157,12 @@ export const useSettingsStore = create<SettingsState>((set) => {
 
     setCollectionDir: (collectionDir) => set(state => {
       const next = { ...state, collectionDir };
+      saveSettings(next);
+      return next;
+    }),
+
+    setAutoCompleteProtocol: (autoCompleteProtocol) => set(state => {
+      const next = { ...state, autoCompleteProtocol };
       saveSettings(next);
       return next;
     }),

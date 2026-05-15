@@ -22,6 +22,7 @@ export default function SettingsPanel() {
     locale, setLocale,
     shortcuts, updateShortcut, resetShortcuts, resetSettings,
     collectionDir, setCollectionDir,
+    autoCompleteProtocol, setAutoCompleteProtocol,
   } = useSettingsStore();
 
   if (!settingsOpen) return null;
@@ -107,6 +108,26 @@ export default function SettingsPanel() {
                 {t('settings.collection.clear')}
               </button>
             )}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: 13,
+                color: 'var(--text-primary)',
+                cursor: 'pointer',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={autoCompleteProtocol}
+                onChange={e => setAutoCompleteProtocol(e.target.checked)}
+                style={{ accentColor: 'var(--accent)', cursor: 'pointer' }}
+              />
+              {t('settings.autoProtocol')}
+            </label>
           </div>
         </div>
 
