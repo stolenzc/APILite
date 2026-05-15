@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useCollectionStore } from '../store/useCollection';
+import { nanoid } from 'nanoid';
+import { useCollectionStore, getCollectionPath } from '../store/useCollection';
 import { useStore } from '../store/useStore';
 import type { CollectionNode, CollectionFolder } from '../types';
 import { t } from '../i18n';
@@ -24,7 +25,7 @@ function TreeNode({ node, depth = 0 }: { node: CollectionNode; depth?: number })
     deleteNode, cloneNode, addFolder, addRequest, renameNode, loadRequest,
     moveNode,
   } = useCollectionStore();
-  const { loadRequest: loadRequestIntoStore } = useStore();
+  const { openTabFromCollection } = useStore();
 
   const isFolder = node.type === 'folder';
   const isActive = activeNodeId === node.id;
@@ -48,9 +49,12 @@ function TreeNode({ node, depth = 0 }: { node: CollectionNode; depth?: number })
     } else {
       setActiveNode(node.id);
       const req = loadRequest(node.id);
-      if (req) loadRequestIntoStore(req);
+      if (req) {
+        const path = getCollectionPath(useCollectionStore.getState().collections, node.id);
+        openTabFromCollection(req, node.name, path, node.id);
+      }
     }
-  }, [isFolder, node.id, toggleCollapse, setActiveNode, loadRequest, loadRequestIntoStore]);
+  }, [isFolder, node.id, node.name, toggleCollapse, setActiveNode, loadRequest, openTabFromCollection]);
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -189,7 +193,14 @@ function TreeNode({ node, depth = 0 }: { node: CollectionNode; depth?: number })
         )}
         {hovered && !renaming && (
           <span className="tree-actions">
-            <button title={t('collection.addRequest')} onClick={e => { e.stopPropagation(); addRequest(node.id); }}>+R</button>
+            <button title={t('collection.addRequest')} onClick={e => {
+              e.stopPropagation();
+              const id = nanoid();
+              addRequest(node.id, 'New Request', undefined, id);
+              const req = useCollectionStore.getState().loadRequest(id)!;
+              const path = getCollectionPath(useCollectionStore.getState().collections, id);
+              openTabFromCollection(req, 'New Request', path, id);
+            }}>+R</button>
             {isFolder && <button title={t('collection.addFolder')} onClick={e => { e.stopPropagation(); addFolder(node.id); }}>+F</button>}
           </span>
         )}
@@ -208,6 +219,7 @@ function TreeNode({ node, depth = 0 }: { node: CollectionNode; depth?: number })
 
 function ContextMenu({ nodeId, isFolder, onStartRename }: { nodeId: string; isFolder: boolean; onStartRename: () => void }) {
   const { closeContextMenu, deleteNode, cloneNode, addFolder, addRequest } = useCollectionStore();
+  const { openTabFromCollection } = useStore();
   const menuRef = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
 
@@ -256,7 +268,14 @@ function ContextMenu({ nodeId, isFolder, onStartRename }: { nodeId: string; isFo
           <div className="context-menu-item" onClick={() => action(() => addFolder(nodeId))}>
             {t('collection.addFolder')}
           </div>
-          <div className="context-menu-item" onClick={() => action(() => addRequest(nodeId))}>
+          <div className="context-menu-item" onClick={() => {
+            const id = nanoid();
+            closeContextMenu();
+            addRequest(nodeId, 'New Request', undefined, id);
+            const req = useCollectionStore.getState().loadRequest(id)!;
+            const path = getCollectionPath(useCollectionStore.getState().collections, id);
+            openTabFromCollection(req, 'New Request', path, id);
+          }}>
             {t('collection.addRequest')}
           </div>
         </>
@@ -267,6 +286,7 @@ function ContextMenu({ nodeId, isFolder, onStartRename }: { nodeId: string; isFo
 
 export default function CollectionSidebar() {
   const { collections, addFolder, addRequest } = useCollectionStore();
+  const { openTabFromCollection } = useStore();
 
   return (
     <div className="sidebar">
@@ -274,7 +294,12 @@ export default function CollectionSidebar() {
         <span>{t('collection.title')}</span>
         <div className="sidebar-actions">
           <button title={t('collection.addFolder')} onClick={() => addFolder(null)}>+F</button>
-          <button title={t('collection.addRequest')} onClick={() => addRequest(null)}>+R</button>
+          <button title={t('collection.addRequest')} onClick={() => {
+            const id = nanoid();
+            addRequest(null, 'New Request', undefined, id);
+            const req = useCollectionStore.getState().loadRequest(id)!;
+            openTabFromCollection(req, 'New Request', 'New Request', id);
+          }}>+R</button>
         </div>
       </div>
       <div className="sidebar-body">

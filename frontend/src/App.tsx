@@ -39,6 +39,16 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [toast, setToast] = useState('');
   const [saveModalOpen, setSaveModalOpen] = useState(false);
+
+  // Close save modal on Escape
+  useEffect(() => {
+    if (!saveModalOpen) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSaveModalOpen(false);
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [saveModalOpen]);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleSaveRequest = (folderId: string | null, name: string) => {
@@ -54,6 +64,7 @@ export default function App() {
       rawContentType: req.rawContentType,
       body: req.body,
     });
+    useStore.getState().clearUnsaved();
     setSaveModalOpen(false);
     setToast('Saved!');
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -86,7 +97,25 @@ export default function App() {
     // JS keyboard shortcuts (works in browser dev mode)
     window.addEventListener('shortcut:new-tab', () => createTabRef.current());
     window.addEventListener('shortcut:save-request', () => {
-      setSaveModalOpen(true);
+      const activeTab = useStore.getState().tabs.find(t => t.id === useStore.getState().activeTabId);
+      if (activeTab?.collectionId) {
+        const req = activeTab.request;
+        useCollectionStore.getState().updateRequest(activeTab.collectionId, activeTab.name, {
+          method: req.method,
+          url: req.url,
+          params: req.params.map(p => ({ ...p })),
+          headers: req.headers.map(h => ({ ...h })),
+          bodyType: req.bodyType,
+          rawContentType: req.rawContentType,
+          body: req.body,
+        });
+        useStore.getState().clearUnsaved();
+        setToast('Saved!');
+        if (toastTimer.current) clearTimeout(toastTimer.current);
+        toastTimer.current = setTimeout(() => setToast(''), 1500);
+      } else {
+        setSaveModalOpen(true);
+      }
     });
     window.addEventListener('shortcut:close-tab', () => {
       if (activeTabIdRef.current && tabsRef.current.length > 1) {

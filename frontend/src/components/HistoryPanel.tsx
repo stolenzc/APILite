@@ -14,7 +14,7 @@ const METHOD_COLORS: Record<string, string> = {
 };
 
 export default function HistoryPanel() {
-  const { history, clearHistory, loadFromHistory } = useStore();
+  const { history, clearHistory, openTabFromHistory } = useStore();
   const { historyCollapsed, setHistoryCollapsed, historyHeight, setHistoryHeight } = useSettingsStore();
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -68,7 +68,7 @@ export default function HistoryPanel() {
       {!historyCollapsed && (
         <ul className="history-list" style={{ overflowY: 'auto', height: 'calc(100% - 24px)' }}>
           {history.map(entry => (
-            <li key={entry.id} className="history-item" onClick={() => loadFromHistory(entry)}>
+            <li key={entry.id} className="history-item" onClick={() => openTabFromHistory(entry)}>
               <span className="history-time">{entry.time}</span>
               <span className="history-method" style={{ color: METHOD_COLORS[entry.method] || 'var(--text-primary)' }}>{entry.method}</span>
               <span className="history-url">{entry.url}</span>

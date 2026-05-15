@@ -26,6 +26,12 @@ function findNode(nodes: CollectionNode[], id: string): { node: CollectionNode |
   return { node: null, parent: null, path: [] };
 }
 
+// Build breadcrumb path like "Folder > Sub > Request"
+export function getCollectionPath(nodes: CollectionNode[], id: string): string {
+  const { path } = findNode(nodes, id);
+  return path.map(n => n.name).join(' > ');
+}
+
 // Utility: remove node by id from tree
 function removeNode(nodes: CollectionNode[], id: string): CollectionNode[] {
   return nodes.filter(n => n.id !== id).map(n =>
@@ -80,8 +86,9 @@ interface CollectionStore {
 
   // CRUD
   addFolder: (parentId: string | null) => void;
-  addRequest: (parentId: string | null, name?: string, request?: HttpRequest) => void;
+  addRequest: (parentId: string | null, name?: string, request?: HttpRequest, id?: string) => void;
   renameNode: (id: string, name: string) => void;
+  updateRequest: (id: string, name: string, request: HttpRequest) => void;
   deleteNode: (id: string) => void;
   toggleCollapse: (id: string) => void;
   cloneNode: (id: string) => void;
@@ -136,9 +143,10 @@ export const useCollectionStore = create<CollectionStore>((set, get) => ({
     return { collections };
   }),
 
-  addRequest: (parentId, name = 'New Request', request = { ...defaultRequest }) => set(state => {
+  addRequest: (parentId, name = 'New Request', request = { ...defaultRequest }, id?: string) => set(state => {
+    const nodeId = id ?? nanoid();
     const node: CollectionRequest = {
-      id: nanoid(),
+      id: nodeId,
       name,
       type: 'request',
       request: { ...request, params: [...request.params], headers: [...request.headers] },
@@ -158,6 +166,23 @@ export const useCollectionStore = create<CollectionStore>((set, get) => ({
 
   renameNode: (id, name) => set(state => {
     const collections = updateNode([...state.collections], id, { name });
+    persistCollections(useSettingsStore.getState().collectionDir, collections);
+    return { collections };
+  }),
+
+  updateRequest: (id, name, request) => set(state => {
+    const collections = updateNode([...state.collections], id, {
+      name,
+      request: {
+        method: request.method,
+        url: request.url,
+        params: request.params.map(p => ({ ...p })),
+        headers: request.headers.map(h => ({ ...h })),
+        bodyType: request.bodyType,
+        rawContentType: request.rawContentType,
+        body: request.body,
+      },
+    });
     persistCollections(useSettingsStore.getState().collectionDir, collections);
     return { collections };
   }),

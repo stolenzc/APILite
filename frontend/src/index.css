@@ -262,6 +262,28 @@ body {
   border-bottom: 2px solid var(--accent);
 }
 
+/* History tabs get a muted blue tint */
+.tab-item.history {
+  background: rgba(97, 175, 255, 0.06);
+}
+.tab-item.history.active {
+  background: rgba(97, 175, 255, 0.12);
+  border-bottom-color: rgba(97, 175, 255, 0.5);
+}
+.tab-item.history .tab-url {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+/* Collection tabs get a warm green tint */
+.tab-item.collection {
+  background: rgba(73, 204, 144, 0.04);
+}
+.tab-item.collection.active {
+  background: rgba(73, 204, 144, 0.1);
+  border-bottom-color: rgba(73, 204, 144, 0.5);
+}
+
 .tab-method {
   font-size: 10px;
   font-weight: 700;
@@ -290,6 +312,14 @@ body {
   line-height: 1;
   flex-shrink: 0;
   border-radius: 2px;
+}
+
+.tab-unsaved {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--error, #ff1744);
+  flex-shrink: 0;
 }
 
 .tab-close:hover {
