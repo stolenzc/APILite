@@ -18,7 +18,42 @@ pub struct SendResponse {
     pub status_text: String,
     pub headers: HashMap<String, String>,
     pub body: String,
+    pub raw: String,
     pub duration_ms: u64,
+}
+
+fn version_string(version: reqwest::Version) -> &'static str {
+    match version {
+        reqwest::Version::HTTP_09 => "HTTP/0.9",
+        reqwest::Version::HTTP_10 => "HTTP/1.0",
+        reqwest::Version::HTTP_11 => "HTTP/1.1",
+        reqwest::Version::HTTP_2 => "HTTP/2",
+        reqwest::Version::HTTP_3 => "HTTP/3",
+        _ => "HTTP/1.1",
+    }
+}
+
+fn format_raw_http(
+    version: reqwest::Version,
+    status: u16,
+    status_text: &str,
+    headers: &HashMap<String, String>,
+    body: &str,
+) -> String {
+    let version_str = version_string(version);
+    let status_line = if status_text.is_empty() {
+        format!("{} {}\r\n", version_str, status)
+    } else {
+        format!("{} {} {}\r\n", version_str, status, status_text)
+    };
+
+    let mut raw = status_line;
+    for (name, value) in headers {
+        raw.push_str(&format!("{}: {}\r\n", name, value));
+    }
+    raw.push_str("\r\n");
+    raw.push_str(body);
+    raw
 }
 
 pub async fn send(req: SendRequest) -> Result<SendResponse, String> {
@@ -96,6 +131,7 @@ pub async fn send(req: SendRequest) -> Result<SendResponse, String> {
 
     let status = resp.status().as_u16();
     let status_text = resp.status().canonical_reason().unwrap_or("").to_string();
+    let http_version = resp.version();
 
     let mut resp_headers = HashMap::new();
     for (name, value) in resp.headers() {
@@ -106,12 +142,14 @@ pub async fn send(req: SendRequest) -> Result<SendResponse, String> {
     }
 
     let body = resp.text().await.map_err(|e| e.to_string())?;
+    let raw = format_raw_http(http_version, status, &status_text, &resp_headers, &body);
 
     Ok(SendResponse {
         status,
         status_text,
         headers: resp_headers,
         body,
+        raw,
         duration_ms: duration,
     })
 }

@@ -1,6 +1,7 @@
 import { useStore } from '../store/useStore';
 import { t } from '../i18n';
 import { highlightJson, isJson, formatJson } from '../utils/jsonUtils';
+import { getRawHttpResponse } from '../utils/httpUtils';
 
 export default function ResponsePanel() {
   const responseTab = useStore((s) => s.responseTab);
@@ -24,18 +25,22 @@ export default function ResponsePanel() {
   const formattedBody = responseTab === 'body'
     ? (jsonValid ? formatJson(response.body).formatted : response.body)
     : '';
+  const rawHttp = getRawHttpResponse(response);
 
   return (
     <div className="response-panel">
       <div className="response-header">
-        <span className={`status-badge ${statusClass}`}>{response.status} {response.statusText}</span>
-        <span className="response-time">{response.durationMs}ms</span>
-        {responseTab === 'body' && jsonValid && (
-          <span className="json-status valid" style={{ fontSize: 11 }}>JSON</span>
-        )}
         <div className="response-tabs">
           <span className={`response-tab ${responseTab === 'body' ? 'active' : ''}`} onClick={() => setResponseTab('body')}>{t('response.body')}</span>
           <span className={`response-tab ${responseTab === 'headers' ? 'active' : ''}`} onClick={() => setResponseTab('headers')}>{t('response.headers')}</span>
+          <span className={`response-tab ${responseTab === 'raw' ? 'active' : ''}`} onClick={() => setResponseTab('raw')}>{t('response.raw')}</span>
+        </div>
+        <div className="response-header-meta">
+          <span className={`status-badge ${statusClass}`}>{response.status} {response.statusText}</span>
+          <span className="response-time">{response.durationMs}ms</span>
+          {responseTab === 'body' && jsonValid && (
+            <span className="json-status valid" style={{ fontSize: 11 }}>JSON</span>
+          )}
         </div>
       </div>
       <div className="response-body">
@@ -48,7 +53,7 @@ export default function ResponsePanel() {
           ) : (
             <pre>{formattedBody}</pre>
           )
-        ) : (
+        ) : responseTab === 'headers' ? (
           <table className="kv-table">
             <thead><tr><th>{t('kv.key')}</th><th>{t('kv.value')}</th></tr></thead>
             <tbody>
@@ -57,6 +62,8 @@ export default function ResponsePanel() {
               ))}
             </tbody>
           </table>
+        ) : (
+          <pre className="response-raw">{rawHttp}</pre>
         )}
       </div>
     </div>

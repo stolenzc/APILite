@@ -25,6 +25,7 @@ export interface HttpResponse {
   statusText: string;
   headers: Record<string, string>;
   body: string;
+  raw?: string;
   durationMs: number;
 }
 

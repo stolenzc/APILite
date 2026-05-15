@@ -34,7 +34,7 @@ interface AppState {
   tabs: RequestTab[];
   activeTabId: string | null;
   activeTab: 'params' | 'headers' | 'body';
-  responseTab: 'body' | 'headers';
+  responseTab: 'body' | 'headers' | 'raw';
   history: HistoryEntry[];
 
   // Tab management

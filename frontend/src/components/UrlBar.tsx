@@ -4,6 +4,7 @@ import { useSettingsStore } from '../store/useSettings';
 import { invoke } from '@tauri-apps/api/core';
 import type { HttpMethod, KeyValue } from '../types';
 import { t } from '../i18n';
+import { formatRawHttpResponse } from '../utils/httpUtils';
 
 const METHODS: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
 
@@ -43,7 +44,7 @@ export default function UrlBar() {
       const effectiveBodyType = requestBodyType === 'raw' ? rawContentType : requestBodyType;
       const bodyContent = (requestBodyType === 'none' || requestBodyType === 'form-data' || requestBodyType === 'x-www-form-urlencoded') && !requestBody ? null : requestBody;
 
-      const res: { status: number; status_text: string; headers: Record<string, string>; body: string; duration_ms: number } = await invoke('send_request', {
+      const res: { status: number; status_text: string; headers: Record<string, string>; body: string; raw: string; duration_ms: number } = await invoke('send_request', {
         method: requestMethod,
         url: finalUrl,
         headers: kvToMap(requestHeaders),
@@ -56,6 +57,7 @@ export default function UrlBar() {
         statusText: res.status_text,
         headers: res.headers,
         body: res.body,
+        raw: res.raw,
         durationMs: res.duration_ms,
       });
 
@@ -77,16 +79,21 @@ export default function UrlBar() {
           statusText: res.status_text,
           headers: res.headers,
           body: res.body,
+          raw: res.raw,
           durationMs: res.duration_ms,
         },
       });
     } catch (err) {
-      setResponse({
+      const errorResponse = {
         status: 0,
         statusText: 'Error',
-        headers: {},
+        headers: {} as Record<string, string>,
         body: String(err),
         durationMs: 0,
+      };
+      setResponse({
+        ...errorResponse,
+        raw: formatRawHttpResponse(errorResponse),
       });
     } finally {
       setLoading(false);

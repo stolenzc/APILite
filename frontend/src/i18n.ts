@@ -72,6 +72,7 @@ const messages: Record<Locale, Record<string, string>> = {
     // Response
     'response.body': 'Body',
     'response.headers': 'Headers',
+    'response.raw': 'Raw',
 
     // History
     'history.label': 'History',
@@ -188,6 +189,7 @@ const messages: Record<Locale, Record<string, string>> = {
     // Response
     'response.body': '响应体',
     'response.headers': '响应头',
+    'response.raw': '原始 HTTP',
 
     // History
     'history.label': '历史记录',

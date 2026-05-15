@@ -1,8 +1,13 @@
 import { useRef, useState, useEffect } from 'react';
 import { useStore } from '../store/useStore';
+import { matchesShortcut, useSettingsStore } from '../store/useSettings';
 import type { BodyType, RawContentType } from '../types';
 import { t } from '../i18n';
 import { formatJson, isJson } from '../utils/jsonUtils';
+
+function isSendRequestShortcut(e: React.KeyboardEvent): boolean {
+  return matchesShortcut(e, useSettingsStore.getState().shortcuts.sendRequest);
+}
 
 const BODY_TYPES: { value: BodyType; label: string }[] = [
   { value: 'none', label: 'body.type.none' },
@@ -54,6 +59,11 @@ function JsonBody() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (isSendRequestShortcut(e)) {
+      e.preventDefault();
+      return;
+    }
+
     if (e.key === 'Tab' && !e.ctrlKey && !e.metaKey) {
       e.preventDefault();
       const ta = textareaRef.current;
@@ -75,7 +85,7 @@ function JsonBody() {
       }
     }
 
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.metaKey && !e.ctrlKey) {
       const ta = textareaRef.current;
       if (!ta) return;
       const start = ta.selectionStart;
@@ -166,11 +176,18 @@ function RawContentEditor({ rawContentType }: { rawContentType: RawContentType }
 
   const placeholderKey = PLACEHOLDER_KEYS[rawContentType] ?? '';
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (isSendRequestShortcut(e)) {
+      e.preventDefault();
+    }
+  };
+
   return (
     <textarea
       className="body-editor body-editor-flex"
       value={body}
       onChange={e => setBody(e.target.value)}
+      onKeyDown={handleKeyDown}
       placeholder={placeholderKey ? t(placeholderKey) : ''}
       spellCheck={false}
     />
@@ -208,6 +225,7 @@ function UrlencodedBody() {
         className="body-editor body-editor-flex"
         value={body}
         onChange={e => setBody(e.target.value)}
+        onKeyDown={e => { if (isSendRequestShortcut(e)) e.preventDefault(); }}
         placeholder="key1=value1&key2=value2"
         spellCheck={false}
       />

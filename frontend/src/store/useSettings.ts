@@ -225,7 +225,7 @@ export function initKeyboardShortcuts() {
   });
 }
 
-function buildCombo(e: KeyboardEvent): string {
+export function buildCombo(e: KeyboardEvent | React.KeyboardEvent): string {
   const parts: string[] = [];
   if (e.ctrlKey) parts.push('Ctrl');
   if (e.metaKey) parts.push('Cmd');
@@ -238,4 +238,8 @@ function buildCombo(e: KeyboardEvent): string {
   }
 
   return parts.join('+');
+}
+
+export function matchesShortcut(e: KeyboardEvent | React.KeyboardEvent, shortcut: string): boolean {
+  return buildCombo(e) === shortcut;
 }

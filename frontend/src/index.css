@@ -903,6 +903,13 @@ body {
   font-size: 12px;
 }
 
+.response-header-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
 .status-badge {
   padding: 3px 8px;
   border-radius: 3px;
@@ -922,6 +929,7 @@ body {
 .response-tabs {
   display: flex;
   gap: 0;
+  flex-shrink: 0;
 }
 
 .response-tab {
@@ -943,7 +951,8 @@ body {
   padding: 12px;
 }
 
-.response-body pre {
+.response-body pre,
+.response-body pre.response-raw {
   font-family: var(--font-mono);
   font-size: 12px;
   white-space: pre-wrap;
