@@ -408,6 +408,12 @@ body {
   color: var(--accent);
 }
 
+.tree-node.drag-over {
+  background: var(--bg-tertiary);
+  outline: 1px dashed var(--accent);
+  outline-offset: -1px;
+}
+
 .tree-icon {
   font-size: 10px;
   color: var(--text-muted);

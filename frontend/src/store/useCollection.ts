@@ -96,6 +96,7 @@ interface CollectionStore {
 
   // Move
   moveNode: (sourceId: string, targetFolderId: string) => void;
+  moveToRoot: (sourceId: string) => void;
 }
 
 export const useCollectionStore = create<CollectionStore>((set, get) => ({
@@ -206,14 +207,23 @@ export const useCollectionStore = create<CollectionStore>((set, get) => ({
   closeContextMenu: () => set({ contextMenu: null }),
 
   moveNode: (sourceId, targetFolderId) => set(state => {
-    const { node, path } = findNode(state.collections, sourceId);
-    if (!node || node.type === 'folder') return state;
-    if (getAncestorIds(state.collections, sourceId).includes(targetFolderId)) return state;
+    const { node } = findNode(state.collections, sourceId);
+    if (!node || sourceId === targetFolderId) return state;
+    // Prevent moving a folder into itself or its descendants
+    if (node.type === 'folder' && getAncestorIds(state.collections, targetFolderId).includes(sourceId)) return state;
     let collections = removeNode([...state.collections], sourceId);
     const target = findNode(collections, targetFolderId).node;
     if (target && target.type === 'folder') {
       collections = updateNode(collections, targetFolderId, { children: [...(target as CollectionFolder).children, node] });
     }
+    persistCollections(useSettingsStore.getState().collectionDir, collections);
+    return { collections };
+  }),
+
+  moveToRoot: (sourceId) => set(state => {
+    const { node } = findNode(state.collections, sourceId);
+    if (!node) return state;
+    const collections = [...removeNode([...state.collections], sourceId), node];
     persistCollections(useSettingsStore.getState().collectionDir, collections);
     return { collections };
   }),

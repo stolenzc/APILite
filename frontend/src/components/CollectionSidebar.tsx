@@ -1,15 +1,28 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useCollectionStore } from '../store/useCollection';
 import { useStore } from '../store/useStore';
-import type { CollectionNode } from '../types';
+import type { CollectionNode, CollectionFolder } from '../types';
 import { t } from '../i18n';
 import { methodColors } from '../constants';
+
+// Global drag state shared across all TreeNodes
+let dragSourceId: string | null = null;
+let dragGhostEl: HTMLElement | null = null;
+let dragListenersAttached = false;
+
+function updateGhostPos(e: MouseEvent) {
+  if (dragGhostEl) {
+    dragGhostEl.style.left = e.clientX + 12 + 'px';
+    dragGhostEl.style.top = e.clientY + 12 + 'px';
+  }
+}
 
 function TreeNode({ node, depth = 0 }: { node: CollectionNode; depth?: number }) {
   const {
     toggleCollapse, setActiveNode, activeNodeId,
     openContextMenu, closeContextMenu, contextMenu,
     deleteNode, cloneNode, addFolder, addRequest, renameNode, loadRequest,
+    moveNode,
   } = useCollectionStore();
   const { loadRequest: loadRequestIntoStore } = useStore();
 
@@ -18,7 +31,9 @@ function TreeNode({ node, depth = 0 }: { node: CollectionNode; depth?: number })
   const [renaming, setRenaming] = useState(false);
   const [editName, setEditName] = useState(node.name);
   const [hovered, setHovered] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const nodeRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (renaming && inputRef.current) {
@@ -33,9 +48,7 @@ function TreeNode({ node, depth = 0 }: { node: CollectionNode; depth?: number })
     } else {
       setActiveNode(node.id);
       const req = loadRequest(node.id);
-      if (req) {
-        loadRequestIntoStore(req);
-      }
+      if (req) loadRequestIntoStore(req);
     }
   }, [isFolder, node.id, toggleCollapse, setActiveNode, loadRequest, loadRequestIntoStore]);
 
@@ -46,9 +59,7 @@ function TreeNode({ node, depth = 0 }: { node: CollectionNode; depth?: number })
   }, [node.id, openContextMenu]);
 
   const confirmRename = useCallback(() => {
-    if (editName.trim()) {
-      renameNode(node.id, editName.trim());
-    }
+    if (editName.trim()) renameNode(node.id, editName.trim());
     setRenaming(false);
   }, [editName, node.id, renameNode]);
 
@@ -57,18 +68,102 @@ function TreeNode({ node, depth = 0 }: { node: CollectionNode; depth?: number })
     if (e.key === 'Escape') { setEditName(node.name); setRenaming(false); }
   }, [confirmRename, node.name]);
 
+  // Custom drag: start on mousedown
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'BUTTON' || target.tagName === 'INPUT') return;
+    e.preventDefault();
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+    let lastX = startX;
+    let lastY = startY;
+    let dragging = false;
+    dragSourceId = node.id;
+
+    const onMouseMove = (ev: MouseEvent) => {
+      lastX = ev.clientX;
+      lastY = ev.clientY;
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+      if (!dragging && (Math.abs(dx) > 2 || Math.abs(dy) > 2)) {
+        dragging = true;
+        const ghost = document.createElement('div');
+        ghost.textContent = node.name;
+        ghost.style.cssText = `
+          position: fixed; z-index: 9999; pointer-events: none;
+          background: var(--bg-tertiary, #0f3460); color: var(--text-primary, #e0e0e0);
+          border: 1px solid var(--accent, #e94560); border-radius: 4px;
+          padding: 4px 10px; font-size: 12px; font-family: -apple-system, sans-serif;
+          opacity: 0.9; white-space: nowrap;
+        `;
+        document.body.appendChild(ghost);
+        dragGhostEl = ghost;
+        updateGhostPos(ev);
+      }
+      if (dragging) {
+        updateGhostPos(ev);
+      }
+    };
+
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      dragListenersAttached = false;
+      if (dragging && dragGhostEl) {
+        dragGhostEl.remove();
+        dragGhostEl = null;
+        const el = document.elementFromPoint(lastX, lastY);
+        const folderNode = el?.closest('[data-folder-id]');
+        if (folderNode) {
+          const targetId = folderNode.getAttribute('data-folder-id')!;
+          if (targetId !== dragSourceId) {
+            moveNode(dragSourceId!, targetId);
+          }
+        }
+      }
+      dragSourceId = null;
+    };
+
+    if (!dragListenersAttached) {
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+      dragListenersAttached = true;
+    }
+  }, [node.id, node.name, moveNode]);
+
+  // Track drag-over for folder drop targets
+  const handleDragOver = useCallback((e: React.MouseEvent) => {
+    if (!isFolder || !dragSourceId || dragSourceId === node.id) return;
+    setDragOver(true);
+  }, [isFolder, node.id]);
+
+  const handleDragLeave = useCallback(() => {
+    setDragOver(false);
+  }, []);
+
   const ctxOpen = contextMenu?.nodeId === node.id;
 
   return (
     <div>
       <div
-        className={`tree-node ${isActive ? 'active' : ''}`}
-        style={{ paddingLeft: depth * 16 + 8 }}
+        ref={nodeRef}
+        className={`tree-node ${isActive ? 'active' : ''} ${dragOver ? 'drag-over' : ''}`}
+        style={{ paddingLeft: depth * 16 + 8, cursor: 'grab' }}
+        data-folder-id={isFolder ? node.id : undefined}
         onClick={handleClick}
         onDoubleClick={() => { setEditName(node.name); setRenaming(true); }}
         onContextMenu={handleContextMenu}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
+        onMouseEnter={(e) => {
+          setHovered(true);
+          handleDragOver(e);
+        }}
+        onMouseLeave={() => {
+          setHovered(false);
+          handleDragLeave();
+        }}
+        onMouseDown={handleMouseDown}
       >
         <span className="tree-icon">
           {isFolder ? (node.collapsed ? '▶' : '▼') : '●'}
@@ -114,12 +209,23 @@ function TreeNode({ node, depth = 0 }: { node: CollectionNode; depth?: number })
 function ContextMenu({ nodeId, isFolder, onStartRename }: { nodeId: string; isFolder: boolean; onStartRename: () => void }) {
   const { closeContextMenu, deleteNode, cloneNode, addFolder, addRequest } = useCollectionStore();
   const menuRef = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    const handler = () => closeContextMenu();
-    const timer = setTimeout(() => document.addEventListener('mousedown', handler));
-    return () => { clearTimeout(timer); document.removeEventListener('mousedown', handler); };
-  }, [closeContextMenu]);
+    const timer = setTimeout(() => setVisible(true), 50);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!visible) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        closeContextMenu();
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [visible, closeContextMenu]);
 
   const action = (fn: () => void) => { closeContextMenu(); fn(); };
 
