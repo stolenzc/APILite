@@ -98,7 +98,7 @@ The APILite interface consists of three main areas:
 1. Select an HTTP method from the dropdown (GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS).
 2. Enter the request URL in the URL input field.
 3. Optionally configure parameters, headers, or body using the tabs below.
-4. Click **Send** or press `Ctrl+Enter`.
+4. Click **Send** or press **⌘ Enter** (macOS) / **Ctrl+Enter** (Windows & Linux).
 
 ### URL Input
 
@@ -227,7 +227,7 @@ Click any history entry to reload that request's configuration into the editor. 
 
 ## Settings
 
-Open settings by clicking the ⚙ icon or pressing `Ctrl+,`.
+Open settings by clicking the ⚙ icon or pressing **⌘ ,** (macOS) / **Ctrl+,** (Windows & Linux).
 
 ### Language
 
@@ -247,15 +247,21 @@ Select from five built-in themes:
 
 ### Keyboard Shortcuts
 
-Configure custom keyboard shortcuts for common actions. Click "Reset Shortcuts" to restore defaults, or "Reset All" to clear all settings.
+Configure custom keyboard shortcuts for common actions. Click **Reset Shortcuts** to restore defaults, or **Reset All** to clear all settings.
 
-| Action        | Default Shortcut            |
-| ------------- | --------------------------- |
-| Send Request  | `Ctrl+Enter`                |
-| Focus URL Bar | `Ctrl+L`                    |
-| Open Settings | `Ctrl+,`                    |
-| Import cURL   | `Ctrl+Shift+I` (configured) |
-| Export cURL   | `Ctrl+Shift+E` (configured) |
-| Save Request  | `Ctrl+S` (configured)       |
+Defaults use **⌘ (Command)** on macOS and **Ctrl** on Windows and Linux (the app picks the platform modifier automatically). In the Tauri desktop build, the same combinations appear on the menu bar (**APILite** / **Tab**) and only apply while this app is focused.
 
-All shortcuts can be customized in Settings.
+| Action          | macOS              | Windows / Linux      |
+| --------------- | ------------------ | -------------------- |
+| Send Request    | ⌘ Enter            | Ctrl+Enter           |
+| Save Request    | ⌘ S                | Ctrl+S               |
+| Import cURL     | ⌘ ⇧ I              | Ctrl+Shift+I         |
+| Export cURL     | ⌘ ⇧ E              | Ctrl+Shift+E         |
+| Focus URL Bar   | ⌘ L                | Ctrl+L               |
+| Open Settings   | ⌘ ,                | Ctrl+,               |
+| New Tab         | ⌘ T                | Ctrl+T               |
+| Close Tab       | ⌘ W                | Ctrl+W               |
+| Previous Tab    | ⌘ ⌥ ←              | Ctrl+Alt+Left Arrow  |
+| Next Tab        | ⌘ ⌥ →              | Ctrl+Alt+Right Arrow |
+
+All shortcuts can be customized in **Settings**.
