@@ -10,6 +10,8 @@ export interface ShortcutConfig {
   toggleSettings: string;
   newTab: string;
   closeTab: string;
+  prevTab: string;
+  nextTab: string;
 }
 
 const isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform) ||
@@ -25,6 +27,8 @@ export const defaultShortcuts: ShortcutConfig = {
   toggleSettings: `${mod}+,`,
   newTab: `${mod}+T`,
   closeTab: `${mod}+W`,
+  prevTab: `${mod}+Alt+ArrowLeft`,
+  nextTab: `${mod}+Alt+ArrowRight`,
 };
 
 export interface AppSettings {
@@ -68,7 +72,7 @@ function loadSettings(): AppSettings {
     if (stored) {
       const parsed = JSON.parse(stored);
       if (parsed.shortcuts) {
-        parsed.shortcuts = migrateShortcuts(parsed.shortcuts);
+        parsed.shortcuts = migrateShortcuts({ ...defaultShortcuts, ...parsed.shortcuts });
       }
       return parsed;
     }
@@ -169,9 +173,9 @@ export const useSettingsStore = create<SettingsState>((set) => {
   };
 });
 
-// Keyboard shortcut dispatcher
-export function initKeyboardShortcuts() {
-  document.addEventListener('keydown', (e) => {
+// Keyboard shortcut dispatcher (browser dev mode; Tauri uses native menu accelerators)
+export function initKeyboardShortcuts(): () => void {
+  const handler = (e: KeyboardEvent) => {
     const shortcuts = useSettingsStore.getState().shortcuts;
     const combo = buildCombo(e);
 
@@ -216,13 +220,36 @@ export function initKeyboardShortcuts() {
       return;
     }
 
+    if (combo === shortcuts.prevTab) {
+      e.preventDefault();
+      e.stopPropagation();
+      window.dispatchEvent(new CustomEvent('shortcut:prev-tab'));
+      return;
+    }
+
+    if (combo === shortcuts.nextTab) {
+      e.preventDefault();
+      e.stopPropagation();
+      window.dispatchEvent(new CustomEvent('shortcut:next-tab'));
+      return;
+    }
+
     // ESC to close settings
     if (e.key === 'Escape' && useSettingsStore.getState().settingsOpen) {
       e.preventDefault();
       useSettingsStore.getState().setSettingsOpen(false);
       return;
     }
-  });
+  };
+
+  document.addEventListener('keydown', handler, { capture: true });
+  return () => document.removeEventListener('keydown', handler, { capture: true });
+}
+
+function normalizeKey(e: KeyboardEvent | React.KeyboardEvent): string {
+  if (e.key === ',' || e.code === 'Comma') return ',';
+  if (e.key.length === 1) return e.key.toUpperCase();
+  return e.key;
 }
 
 export function buildCombo(e: KeyboardEvent | React.KeyboardEvent): string {
@@ -232,7 +259,7 @@ export function buildCombo(e: KeyboardEvent | React.KeyboardEvent): string {
   if (e.shiftKey) parts.push('Shift');
   if (e.altKey) parts.push('Alt');
 
-  const key = e.key.length === 1 ? e.key.toUpperCase() : e.key;
+  const key = normalizeKey(e);
   if (key !== 'Control' && key !== 'Meta' && key !== 'Shift' && key !== 'Alt') {
     parts.push(key);
   }

@@ -41,6 +41,8 @@ interface AppState {
   createTab: () => void;
   closeTab: (id: string) => void;
   switchTab: (id: string) => void;
+  switchToPreviousTab: () => void;
+  switchToNextTab: () => void;
   openTabFromCollection: (req: HttpRequest, name: string, collectionPath: string, collectionId: string) => void;
   openTabFromHistory: (entry: HistoryEntry) => void;
   markUnsaved: () => void;
@@ -157,6 +159,22 @@ export const useStore = create<AppState>((set, get) => ({
   }),
 
   switchTab: (id) => set({ activeTabId: id }),
+
+  switchToPreviousTab: () => set(state => {
+    if (state.tabs.length <= 1) return state;
+    const idx = state.tabs.findIndex(t => t.id === state.activeTabId);
+    const currentIdx = idx === -1 ? 0 : idx;
+    if (currentIdx <= 0) return state;
+    return { activeTabId: state.tabs[currentIdx - 1].id };
+  }),
+
+  switchToNextTab: () => set(state => {
+    if (state.tabs.length <= 1) return state;
+    const idx = state.tabs.findIndex(t => t.id === state.activeTabId);
+    const currentIdx = idx === -1 ? 0 : idx;
+    if (currentIdx >= state.tabs.length - 1) return state;
+    return { activeTabId: state.tabs[currentIdx + 1].id };
+  }),
 
   openTabFromCollection: (req, name, collectionPath, collectionId) => set(state => {
     // If already open, switch to existing tab instead of duplicating

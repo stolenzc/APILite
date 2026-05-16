@@ -13,6 +13,8 @@ const SHORTCUT_LABELS: Record<keyof ShortcutConfig, string> = {
   toggleSettings: 'shortcut.toggleSettings',
   newTab: 'shortcut.newTab',
   closeTab: 'shortcut.closeTab',
+  prevTab: 'shortcut.prevTab',
+  nextTab: 'shortcut.nextTab',
 };
 
 export default function SettingsPanel() {

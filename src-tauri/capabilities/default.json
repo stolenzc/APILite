@@ -3,6 +3,7 @@
   "description": "Default capabilities for the app",
   "windows": ["main"],
   "permissions": [
+    "core:menu:default",
     "dialog:allow-open",
     "dialog:allow-save",
     "dialog:allow-message",

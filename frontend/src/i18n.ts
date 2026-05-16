@@ -101,6 +101,8 @@ const messages: Record<Locale, Record<string, string>> = {
     'shortcut.toggleSettings': 'Open Settings',
     'shortcut.newTab': 'New Tab',
     'shortcut.closeTab': 'Close Tab',
+    'shortcut.prevTab': 'Previous Tab',
+    'shortcut.nextTab': 'Next Tab',
 
     // Collection
     'collection.title': 'Collections',
@@ -218,6 +220,8 @@ const messages: Record<Locale, Record<string, string>> = {
     'shortcut.toggleSettings': '打开设置',
     'shortcut.newTab': '新建标签',
     'shortcut.closeTab': '关闭标签',
+    'shortcut.prevTab': '上一个标签',
+    'shortcut.nextTab': '下一个标签',
 
     // Collection
     'collection.title': '集合',

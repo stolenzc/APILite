@@ -9,6 +9,7 @@ use history::HistoryStore;
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
+use tauri::Emitter;
 
 #[tauri::command]
 fn parse_curl(command: &str) -> Result<curl_parser::ParsedCurl, String> {
@@ -96,6 +97,11 @@ fn load_collections(dir: String) -> Result<String, String> {
 }
 
 #[tauri::command]
+fn force_close_window(window: tauri::Window) {
+    let _ = window.close();
+}
+
+#[tauri::command]
 fn save_collections(dir: String, data: String) -> Result<(), String> {
     let dir_path = PathBuf::from(&dir);
     if !dir_path.exists() {
@@ -111,6 +117,12 @@ fn main() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(HistoryStore::new())
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                api.prevent_close();
+                let _ = window.emit("native-close-requested", ());
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             parse_curl,
             to_curl,
@@ -121,6 +133,7 @@ fn main() {
             get_default_collection_dir,
             load_collections,
             save_collections,
+            force_close_window,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

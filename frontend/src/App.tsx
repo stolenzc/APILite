@@ -17,9 +17,10 @@ import ResizableSplitter from './components/ResizableSplitter';
 import CollectionSidebar from './components/CollectionSidebar';
 import TabBar from './components/TabBar';
 import SaveRequestModal from './components/SaveRequestModal';
+import { isTauri, setupTauriMenu } from './tauri/setupMenu';
 
 export default function App() {
-  const { activeTab, setActiveTab, createTab, closeTab, tabs, activeTabId } = useStore();
+  const { activeTab, setActiveTab, createTab, closeTab, switchToPreviousTab, switchToNextTab, tabs, activeTabId } = useStore();
   const { theme, locale, settingsOpen, setSettingsOpen, responseHeight, collectionDir, setCollectionDir } = useSettingsStore();
   const initCollections = useCollectionStore(s => s.initCollections);
 
@@ -81,22 +82,25 @@ export default function App() {
 
   const createTabRef = useRef(createTab);
   const closeTabRef = useRef(closeTab);
+  const switchToPreviousTabRef = useRef(switchToPreviousTab);
+  const switchToNextTabRef = useRef(switchToNextTab);
   const tabsRef = useRef(tabs);
   const activeTabIdRef = useRef(activeTabId);
 
   useEffect(() => {
     createTabRef.current = createTab;
     closeTabRef.current = closeTab;
+    switchToPreviousTabRef.current = switchToPreviousTab;
+    switchToNextTabRef.current = switchToNextTab;
     tabsRef.current = tabs;
     activeTabIdRef.current = activeTabId;
-  }, [createTab, closeTab, tabs, activeTabId]);
+  }, [createTab, closeTab, switchToPreviousTab, switchToNextTab, tabs, activeTabId]);
 
   useEffect(() => {
-    initKeyboardShortcuts();
+    const removeKeyboardShortcuts = initKeyboardShortcuts();
 
-    // JS keyboard shortcuts (works in browser dev mode)
-    window.addEventListener('shortcut:new-tab', () => createTabRef.current());
-    window.addEventListener('shortcut:save-request', () => {
+    const onNewTab = () => createTabRef.current();
+    const onSaveRequest = () => {
       const activeTab = useStore.getState().tabs.find(t => t.id === useStore.getState().activeTabId);
       if (activeTab?.collectionId) {
         const req = activeTab.request;
@@ -116,41 +120,59 @@ export default function App() {
       } else {
         setSaveModalOpen(true);
       }
-    });
-    window.addEventListener('shortcut:close-tab', () => {
+    };
+    const onCloseTab = () => {
       if (activeTabIdRef.current && tabsRef.current.length > 1) {
         closeTabRef.current(activeTabIdRef.current);
       } else {
         invoke('force_close_window');
       }
-    });
+    };
+    const onToggleSettings = () => {
+      useSettingsStore.getState().setSettingsOpen(!useSettingsStore.getState().settingsOpen);
+    };
+    const onPrevTab = () => switchToPreviousTabRef.current();
+    const onNextTab = () => switchToNextTabRef.current();
 
-    // Native window close (close button, etc.)
+    window.addEventListener('shortcut:new-tab', onNewTab);
+    window.addEventListener('shortcut:save-request', onSaveRequest);
+    window.addEventListener('shortcut:close-tab', onCloseTab);
+    window.addEventListener('shortcut:prev-tab', onPrevTab);
+    window.addEventListener('shortcut:next-tab', onNextTab);
+
+    const unlisteners: Array<() => void> = [];
+
     listen('native-close-requested', () => {
       if (tabsRef.current.length > 1) {
         closeTabRef.current(activeTabIdRef.current!);
       } else {
         invoke('force_close_window');
       }
-    });
+    }).then(fn => unlisteners.push(fn));
 
-    // Global shortcut events from Tauri (Cmd+T, Cmd+W)
-    listen('menu:tab-new', () => {
-      setToast('New Tab');
-      if (toastTimer.current) clearTimeout(toastTimer.current);
-      toastTimer.current = setTimeout(() => setToast(''), 800);
-      createTabRef.current();
-    });
-    listen('menu:tab-close', () => {
-      setToast('Close Tab');
-      if (toastTimer.current) clearTimeout(toastTimer.current);
-      toastTimer.current = setTimeout(() => setToast(''), 800);
-      if (tabsRef.current.length > 1) {
-        closeTabRef.current(activeTabIdRef.current!);
-      } else {
-        invoke('force_close_window');
-      }
-    });
+    let cleanupMenu: (() => void) | undefined;
+    if (isTauri()) {
+      setupTauriMenu({
+        onNewTab,
+        onCloseTab,
+        onPrevTab,
+        onNextTab,
+        onToggleSettings,
+      })
+        .then(cleanup => { cleanupMenu = cleanup; })
+        .catch(err => console.error('Failed to setup Tauri menu:', err));
+    }
+
+    return () => {
+      removeKeyboardShortcuts();
+      window.removeEventListener('shortcut:new-tab', onNewTab);
+      window.removeEventListener('shortcut:save-request', onSaveRequest);
+      window.removeEventListener('shortcut:close-tab', onCloseTab);
+      window.removeEventListener('shortcut:prev-tab', onPrevTab);
+      window.removeEventListener('shortcut:next-tab', onNextTab);
+      unlisteners.forEach(fn => fn());
+      cleanupMenu?.();
+    };
   }, []);
 
   return (
