@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Locale, defaultLocale } from '../i18n';
+import { setLocale as applyI18nLocale, type Locale } from '../i18n';
 
 export interface ShortcutConfig {
   sendRequest: string;
@@ -103,6 +103,8 @@ interface SettingsState extends AppSettings {
 
 export const useSettingsStore = create<SettingsState>((set) => {
   const initial = loadSettings();
+  applyI18nLocale(initial.locale);
+
   return {
     ...initial,
     settingsOpen: false,
@@ -115,7 +117,8 @@ export const useSettingsStore = create<SettingsState>((set) => {
       return next;
     }),
 
-    setLocale: (locale) => set(state => {
+    setLocale: (locale) => set((state) => {
+      applyI18nLocale(locale);
       const next = { ...state, locale };
       saveSettings(next);
       return next;
@@ -138,6 +141,7 @@ export const useSettingsStore = create<SettingsState>((set) => {
 
     resetSettings: () => set(() => {
       saveSettings(defaultSettings);
+      applyI18nLocale(defaultSettings.locale);
       return { ...defaultSettings, settingsOpen: true };
     }),
 

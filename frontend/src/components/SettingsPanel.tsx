@@ -143,18 +143,9 @@ export default function SettingsPanel() {
                   <td>
                     <input
                       type="text"
+                      className="shortcut-input"
                       value={value}
                       onChange={e => updateShortcut(key as keyof ShortcutConfig, e.target.value)}
-                      style={{
-                        background: 'var(--bg-input)',
-                        color: 'var(--accent)',
-                        border: '1px solid var(--border-color)',
-                        borderRadius: 3,
-                        padding: '4px 8px',
-                        fontSize: 12,
-                        fontFamily: 'var(--font-mono)',
-                        width: 120,
-                      }}
                     />
                   </td>
                 </tr>
