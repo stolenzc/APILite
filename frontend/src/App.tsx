@@ -23,7 +23,7 @@ import { isTauri, setupTauriMenu } from './tauri/setupMenu';
 
 export default function App() {
   const { activeTab, setActiveTab, createTab, closeTab, switchToPreviousTab, switchToNextTab, tabs, activeTabId } = useStore();
-  const { theme, locale, settingsOpen, setSettingsOpen, responseHeight, collectionDir, setCollectionDir } = useSettingsStore();
+  const { theme, locale, settingsOpen, setSettingsOpen, responseHeight, collectionDir, setCollectionDir, shortcuts } = useSettingsStore();
   const initCollections = useCollectionStore(s => s.initCollections);
 
   // Load collections from file system on startup and when dir changes
@@ -181,8 +181,8 @@ export default function App() {
     <>
       <div className="app-header">
         <img src="/logo.png" alt="APILite" style={{ height: 28, borderRadius: 6 }} />
-        <button className="btn btn-icon" onClick={() => setSidebarOpen(!sidebarOpen)} title="Toggle Collections">☰</button>
-        <button className="btn btn-icon" onClick={() => setSettingsOpen(!settingsOpen)} title="Settings (Ctrl+,)">⚙</button>
+        <button className="btn btn-icon" onClick={() => setSidebarOpen(!sidebarOpen)} title={t('app.toggleCollections')}>☰</button>
+        <button className="btn btn-icon" onClick={() => setSettingsOpen(!settingsOpen)} title={`${t('app.settings')} (${shortcuts.toggleSettings})`}>⚙</button>
         <RequestEnvToolbar />
       </div>
       <TabBar />

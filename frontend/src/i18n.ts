@@ -9,6 +9,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'app.collections': 'Collections',
     'app.collections.comingSoon': 'Collections coming in next update',
     'app.settings': 'Settings',
+    'app.toggleCollections': 'Toggle collections sidebar',
     'app.response.placeholder': 'Send a request to see the response',
 
     // URL Bar
@@ -42,6 +43,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'env.modalDone': 'Done',
     'env.sidebarTitle': 'Environments',
     'env.unnamed': '(unnamed)',
+    'kv.key': 'Key',
     'kv.value': 'Value',
     'kv.addParam': '+ Add Parameter',
     'kv.addHeader': '+ Add Header',
@@ -94,15 +96,12 @@ const messages: Record<Locale, Record<string, string>> = {
     'settings.shortcuts': 'Keyboard Shortcuts',
     'settings.resetShortcuts': 'Reset Shortcuts',
     'settings.resetAll': 'Reset All',
-    'settings.collection': 'Collection Directory',
     'settings.collection.select': 'Select',
     'settings.collection.clear': 'Clear',
     'settings.collection.notSet': 'No directory selected',
     'settings.request': 'Request',
     'settings.autoProtocol': 'Auto-complete http://',
     'settings.language': 'Language',
-    'settings.language.en': 'English',
-    'settings.language.zh': '中文',
 
     // Shortcut labels
     'shortcut.sendRequest': 'Send Request',
@@ -140,6 +139,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'app.collections': '集合',
     'app.collections.comingSoon': '集合功能即将推出',
     'app.settings': '设置',
+    'app.toggleCollections': '显示或隐藏集合侧边栏',
     'app.response.placeholder': '发送请求以查看响应',
 
     // URL Bar
@@ -173,6 +173,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'env.modalDone': '完成',
     'env.sidebarTitle': '环境',
     'env.unnamed': '（未命名）',
+    'kv.key': '键',
     'kv.value': '值',
     'kv.addParam': '+ 添加参数',
     'kv.addHeader': '+ 添加请求头',
@@ -225,15 +226,12 @@ const messages: Record<Locale, Record<string, string>> = {
     'settings.shortcuts': '快捷键',
     'settings.resetShortcuts': '重置快捷键',
     'settings.resetAll': '重置全部',
-    'settings.collection': '集合目录',
     'settings.collection.select': '选择',
     'settings.collection.clear': '清除',
     'settings.collection.notSet': '未选择目录',
     'settings.request': '请求',
     'settings.autoProtocol': '自动补全 http://',
     'settings.language': '语言',
-    'settings.language.en': 'English',
-    'settings.language.zh': '中文',
 
     // Shortcut labels
     'shortcut.sendRequest': '发送请求',
