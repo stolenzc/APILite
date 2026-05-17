@@ -382,28 +382,45 @@ body {
   border: none;
 }
 
-.sidebar-header {
-  padding: 12px;
+.sidebar-section {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.sidebar-section-collections {
+  flex: 1;
   border-bottom: 1px solid var(--border-color);
 }
 
-.sidebar-header span {
-  font-size: 13px;
+.sidebar-section-environments {
+  flex-shrink: 0;
+  max-height: 40%;
+}
+
+.sidebar-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px 8px;
+  flex-shrink: 0;
+}
+
+.sidebar-section-header span {
+  font-size: 11px;
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
-.sidebar-actions {
+.sidebar-section-actions {
   display: flex;
   gap: 4px;
+  flex-shrink: 0;
 }
 
-.sidebar-actions button {
+.sidebar-section-actions button {
   background: var(--bg-input);
   border: 1px solid var(--border-color);
   color: var(--text-secondary);
@@ -411,17 +428,65 @@ body {
   padding: 2px 8px;
   font-size: 11px;
   cursor: pointer;
+  line-height: 1.2;
 }
 
-.sidebar-actions button:hover {
+.sidebar-section-actions button:hover {
   color: var(--text-primary);
   border-color: var(--accent);
 }
 
-.sidebar-body {
+.sidebar-collection-dir {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px 8px;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.sidebar-collection-dir-path {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-section-body {
   flex: 1;
   overflow-y: auto;
   padding: 4px 0;
+  min-height: 0;
+}
+
+.sidebar-env-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 6px 8px;
+}
+
+.sidebar-list-item {
+  padding: 4px 6px;
+  margin: 2px 0;
+  border-radius: 3px;
+  cursor: pointer;
+  color: var(--text-primary);
+  font-size: 12px;
+  word-break: break-word;
+}
+
+.sidebar-list-item:hover {
+  background: var(--bg-input);
+}
+
+.sidebar-list-item.active {
+  background: var(--bg-tertiary);
+  color: var(--accent);
+  font-weight: 600;
 }
 
 .sidebar-placeholder {
@@ -588,14 +653,39 @@ body {
   overflow: hidden;
 }
 
-/* URL Bar */
+/* URL bar + environment row (above request tabs) */
+.request-toolbar-group {
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+}
+
+.request-env-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.request-env-toolbar-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.request-env-manage {
+  font-size: 12px;
+  padding: 6px 12px;
+}
+
 .url-bar {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 10px 16px;
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-color);
+  background: transparent;
+  border-bottom: none;
 }
 
 .method-select {
@@ -1123,6 +1213,63 @@ body {
   max-width: 80vw;
   max-height: 80vh;
   overflow: auto;
+}
+
+.modal.modal--env-matrix {
+  min-width: min(720px, 94vw);
+  width: min(1100px, 96vw);
+  max-height: 85vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.env-matrix-scroll {
+  overflow: auto;
+  flex: 1;
+  min-height: 120px;
+  max-height: min(56vh, 520px);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+}
+
+.env-matrix-table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.env-matrix-table th,
+.env-matrix-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-color);
+  vertical-align: top;
+  text-align: left;
+}
+
+.env-matrix-table thead th {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.env-matrix-sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--bg-secondary);
+  box-shadow: 4px 0 8px -4px rgba(0, 0, 0, 0.35);
+  min-width: 200px;
+}
+
+.env-matrix-table thead .env-matrix-sticky-col {
+  background: var(--bg-tertiary);
+  z-index: 2;
+}
+
+.modal.modal--env-matrix h3 {
+  flex-shrink: 0;
 }
 
 .modal h3 {

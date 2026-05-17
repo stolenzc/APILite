@@ -5,6 +5,8 @@ import { invoke } from '@tauri-apps/api/core';
 import type { HttpMethod, KeyValue } from '../types';
 import { t } from '../i18n';
 import { formatRawHttpResponse } from '../utils/httpUtils';
+import { interpolateEnvVars, interpolateKeyValues } from '../utils/envInterpolation';
+import { useEnvironmentStore } from '../store/useEnvironmentStore';
 
 const METHODS: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
 
@@ -31,8 +33,13 @@ export default function UrlBar() {
     syncUrlFromParams();
     setLoading(true);
 
+    const vars = useEnvironmentStore.getState().getActiveVarMap();
+    const interpolatedUrl = interpolateEnvVars(requestUrl, vars);
+    const interpolatedParams = interpolateKeyValues(requestParams, vars);
+    const interpolatedHeaders = interpolateKeyValues(requestHeaders, vars);
+
     const autoProtocol = useSettingsStore.getState().autoCompleteProtocol;
-    let finalUrl = urlWithParams(requestUrl, requestParams);
+    let finalUrl = urlWithParams(interpolatedUrl, interpolatedParams);
     if (autoProtocol) {
       finalUrl = ensureProtocol(finalUrl);
       // Write the completed URL back to the input
@@ -42,12 +49,16 @@ export default function UrlBar() {
     try {
       // For 'raw' type, send the actual content type (json/xml/etc) to Rust
       const effectiveBodyType = requestBodyType === 'raw' ? rawContentType : requestBodyType;
-      const bodyContent = (requestBodyType === 'none' || requestBodyType === 'form-data' || requestBodyType === 'x-www-form-urlencoded') && !requestBody ? null : requestBody;
+      const templatedBody =
+        (requestBodyType === 'none' || requestBodyType === 'form-data' || requestBodyType === 'x-www-form-urlencoded') && !requestBody
+          ? null
+          : requestBody;
+      const bodyContent = templatedBody === null ? null : interpolateEnvVars(templatedBody, vars);
 
       const res: { status: number; status_text: string; headers: Record<string, string>; body: string; raw: string; duration_ms: number } = await invoke('send_request', {
         method: requestMethod,
         url: finalUrl,
-        headers: kvToMap(requestHeaders),
+        headers: kvToMap(interpolatedHeaders),
         bodyType: effectiveBodyType,
         body: bodyContent,
       });
@@ -126,14 +137,18 @@ export default function UrlBar() {
     const autoProtocol = useSettingsStore.getState().autoCompleteProtocol;
     try {
       const effectiveBodyType = requestBodyType === 'raw' ? rawContentType : requestBodyType;
-      let url = urlWithParams(requestUrl, requestParams);
+      const vars = useEnvironmentStore.getState().getActiveVarMap();
+      let url = urlWithParams(interpolateEnvVars(requestUrl, vars), interpolateKeyValues(requestParams, vars));
       if (autoProtocol) url = ensureProtocol(url);
+      const templatedBody =
+        requestBodyType === 'none' ? null : requestBody;
+      const bodyForCurl = templatedBody === null ? null : interpolateEnvVars(templatedBody, vars);
       const curl: string = await invoke('to_curl', {
         method: requestMethod,
         url,
-        headers: kvToMap(requestHeaders),
+        headers: kvToMap(interpolateKeyValues(requestHeaders, vars)),
         bodyType: effectiveBodyType,
-        body: requestBodyType === 'none' ? null : requestBody,
+        body: bodyForCurl,
       });
       setCurlModal({ type: 'export', content: curl });
     } catch (err) {

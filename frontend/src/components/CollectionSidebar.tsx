@@ -1,7 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { nanoid } from 'nanoid';
+import { open } from '@tauri-apps/plugin-dialog';
 import { useCollectionStore, getCollectionPath } from '../store/useCollection';
 import { useStore } from '../store/useStore';
+import { useEnvironmentStore } from '../store/useEnvironmentStore';
+import { useSettingsStore } from '../store/useSettings';
 import type { CollectionNode, CollectionFolder } from '../types';
 import { t } from '../i18n';
 import { methodColors } from '../constants';
@@ -287,29 +290,93 @@ function ContextMenu({ nodeId, isFolder, onStartRename }: { nodeId: string; isFo
 export default function CollectionSidebar() {
   const { collections, addFolder, addRequest } = useCollectionStore();
   const { openTabFromCollection } = useStore();
+  const { collectionDir, setCollectionDir } = useSettingsStore();
+  const {
+    environments,
+    activeEnvironmentId,
+    setActiveEnvironmentId,
+    setEnvModalOpen,
+    addEnvironmentColumn,
+  } = useEnvironmentStore();
+
+  const handleSelectCollectionDir = useCallback(async () => {
+    const selected = await open({ directory: true });
+    if (selected) setCollectionDir(selected);
+  }, [setCollectionDir]);
 
   return (
     <div className="sidebar">
-      <div className="sidebar-header">
-        <span>{t('collection.title')}</span>
-        <div className="sidebar-actions">
-          <button title={t('collection.addFolder')} onClick={() => addFolder(null)}>+F</button>
-          <button title={t('collection.addRequest')} onClick={() => {
-            const id = nanoid();
-            addRequest(null, 'New Request', undefined, id);
-            const req = useCollectionStore.getState().loadRequest(id)!;
-            openTabFromCollection(req, 'New Request', 'New Request', id);
-          }}>+R</button>
+      <section className="sidebar-section sidebar-section-collections">
+        <div className="sidebar-section-header">
+          <span>{t('collection.title')}</span>
+          <div className="sidebar-section-actions">
+            <button type="button" title={t('collection.addFolder')} onClick={() => addFolder(null)}>+F</button>
+            <button
+              type="button"
+              title={t('collection.addRequest')}
+              onClick={() => {
+                const id = nanoid();
+                addRequest(null, 'New Request', undefined, id);
+                const req = useCollectionStore.getState().loadRequest(id)!;
+                openTabFromCollection(req, 'New Request', 'New Request', id);
+              }}
+            >
+              +R
+            </button>
+          </div>
         </div>
-      </div>
-      <div className="sidebar-body">
-        {collections.length === 0 && (
-          <div className="sidebar-placeholder">{t('collection.empty')}</div>
-        )}
-        {collections.map(node => (
-          <TreeNode key={node.id} node={node} />
-        ))}
-      </div>
+        <div className="sidebar-collection-dir">
+          <span
+            className="sidebar-collection-dir-path"
+            title={collectionDir || t('settings.collection.notSet')}
+          >
+            {collectionDir || t('settings.collection.notSet')}
+          </span>
+          <div className="sidebar-section-actions">
+            <button type="button" title={t('settings.collection.select')} onClick={handleSelectCollectionDir}>
+              {t('settings.collection.select')}
+            </button>
+            {collectionDir && (
+              <button type="button" title={t('settings.collection.clear')} onClick={() => setCollectionDir('')}>
+                {t('settings.collection.clear')}
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="sidebar-section-body">
+          {collections.length === 0 && (
+            <div className="sidebar-placeholder">{t('collection.empty')}</div>
+          )}
+          {collections.map((node) => (
+            <TreeNode key={node.id} node={node} />
+          ))}
+        </div>
+      </section>
+
+      <section className="sidebar-section sidebar-section-environments">
+        <div className="sidebar-section-header">
+          <span>{t('env.sidebarTitle')}</span>
+          <div className="sidebar-section-actions">
+            <button type="button" title={t('env.addEnvColumn')} onClick={() => addEnvironmentColumn()}>
+              +
+            </button>
+            <button type="button" title={t('env.manage')} onClick={() => setEnvModalOpen(true)}>
+              ⋯
+            </button>
+          </div>
+        </div>
+        <ul className="sidebar-section-body sidebar-env-list">
+          {environments.map((e) => (
+            <li
+              key={e.id}
+              className={`sidebar-list-item${e.id === activeEnvironmentId ? ' active' : ''}`}
+              onClick={() => setActiveEnvironmentId(e.id)}
+            >
+              {e.name.trim() ? e.name : t('env.unnamed')}
+            </li>
+          ))}
+        </ul>
+      </section>
     </div>
   );
 }

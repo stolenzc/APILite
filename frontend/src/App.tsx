@@ -5,10 +5,12 @@ import { useStore } from './store/useStore';
 import { useSettingsStore, initKeyboardShortcuts } from './store/useSettings';
 import { useCollectionStore } from './store/useCollection';
 import { applyTheme } from './themes';
-import { setLocale, getLocale } from './i18n';
+import { setLocale, getLocale, t } from './i18n';
 import UrlBar from './components/UrlBar';
+import RequestEnvToolbar from './components/RequestEnvToolbar';
 import ParamsTab from './components/ParamsTab';
 import HeadersTab from './components/HeadersTab';
+import EnvironmentModal from './components/EnvironmentModal';
 import BodyEditor from './components/BodyEditor';
 import ResponsePanel from './components/ResponsePanel';
 import HistoryPanel from './components/HistoryPanel';
@@ -181,17 +183,20 @@ export default function App() {
         <img src="/logo.png" alt="APILite" style={{ height: 28, borderRadius: 6 }} />
         <button className="btn btn-icon" onClick={() => setSidebarOpen(!sidebarOpen)} title="Toggle Collections">☰</button>
         <button className="btn btn-icon" onClick={() => setSettingsOpen(!settingsOpen)} title="Settings (Ctrl+,)">⚙</button>
+        <RequestEnvToolbar />
       </div>
       <TabBar />
       <div className="main-content">
         {sidebarOpen && <CollectionSidebar />}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
-            <UrlBar />
+            <div className="request-toolbar-group">
+              <UrlBar />
+            </div>
             <div className="tabs">
-              <span className={`tab ${activeTab === 'params' ? 'active' : ''}`} onClick={() => setActiveTab('params')}>Params</span>
-              <span className={`tab ${activeTab === 'headers' ? 'active' : ''}`} onClick={() => setActiveTab('headers')}>Headers</span>
-              <span className={`tab ${activeTab === 'body' ? 'active' : ''}`} onClick={() => setActiveTab('body')}>Body</span>
+              <span className={`tab ${activeTab === 'params' ? 'active' : ''}`} onClick={() => setActiveTab('params')}>{t('tab.params')}</span>
+              <span className={`tab ${activeTab === 'headers' ? 'active' : ''}`} onClick={() => setActiveTab('headers')}>{t('tab.headers')}</span>
+              <span className={`tab ${activeTab === 'body' ? 'active' : ''}`} onClick={() => setActiveTab('body')}>{t('tab.body')}</span>
             </div>
             <div style={{ flex: 1, borderBottom: '1px solid var(--border-color)', overflow: 'auto', minHeight: 0 }}>
               {activeTab === 'params' && <ParamsTab />}
@@ -207,6 +212,7 @@ export default function App() {
         </div>
       </div>
       <SettingsPanel />
+      <EnvironmentModal />
       {saveModalOpen && (
         <SaveRequestModal
           onClose={() => setSaveModalOpen(false)}
