@@ -45,6 +45,8 @@ interface AppState {
   switchToNextTab: () => void;
   openTabFromCollection: (req: HttpRequest, name: string, collectionPath: string, collectionId: string) => void;
   openTabFromHistory: (entry: HistoryEntry) => void;
+  syncCollectionTabName: (collectionId: string, name: string) => void;
+  linkActiveTabToCollection: (collectionId: string, name: string, sourcePath: string) => void;
   markUnsaved: () => void;
   clearUnsaved: () => void;
 
@@ -179,7 +181,32 @@ export const useStore = create<AppState>((set, get) => ({
   openTabFromCollection: (req, name, collectionPath, collectionId) => set(state => {
     // If already open, switch to existing tab instead of duplicating
     const existing = state.tabs.find(t => t.collectionId === collectionId);
-    if (existing) return { activeTabId: existing.id };
+    if (existing) {
+      return {
+        activeTabId: existing.id,
+        tabs: state.tabs.map(t =>
+          t.id === existing.id
+            ? {
+                ...t,
+                name,
+                sourcePath: collectionPath,
+                sourceType: 'collection' as const,
+                collectionId,
+                request: {
+                  method: req.method,
+                  url: req.url,
+                  params: req.params.map(p => ({ ...p })),
+                  headers: req.headers.map(h => ({ ...h })),
+                  bodyType: req.bodyType,
+                  rawContentType: req.rawContentType,
+                  body: req.body,
+                },
+                unsaved: false,
+              }
+            : t,
+        ),
+      };
+    }
 
     const tab: RequestTab = {
       id: nanoid(),
@@ -202,6 +229,22 @@ export const useStore = create<AppState>((set, get) => ({
     };
     return { tabs: [...state.tabs, tab], activeTabId: tab.id };
   }),
+
+  syncCollectionTabName: (collectionId, name) => set(state => ({
+    tabs: state.tabs.map(t =>
+      t.collectionId === collectionId ? { ...t, name } : t,
+    ),
+  })),
+
+  linkActiveTabToCollection: (collectionId, name, sourcePath) => set(state =>
+    updateActiveTab(state, {
+      collectionId,
+      name,
+      sourcePath,
+      sourceType: 'collection',
+      unsaved: false,
+    }),
+  ),
 
   openTabFromHistory: (entry) => set(state => {
     const urlName = entry.url.split('?')[0].split('/').pop() || 'Request';

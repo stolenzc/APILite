@@ -5,6 +5,7 @@ import type { CollectionNode, CollectionFolder, CollectionRequest, HttpRequest }
 import { useSettingsStore } from './useSettings';
 import { showToast } from '../utils/toast';
 import { t } from '../i18n';
+import { useStore } from './useStore';
 
 const defaultRequest: HttpRequest = {
   method: 'GET',
@@ -151,7 +152,8 @@ interface CollectionStore {
   initCollections: (dir: string) => Promise<void>;
   addCollection: (name?: string) => boolean;
   addFolder: (parentId: string | null) => void;
-  addRequest: (parentId: string | null, name?: string, request?: HttpRequest, id?: string) => void;
+  addRequest: (parentId: string | null, name?: string, request?: HttpRequest, id?: string) => string | undefined;
+  getRequestNode: (id: string) => CollectionRequest | null;
   renameNode: (id: string, name: string) => boolean;
   updateRequest: (id: string, name: string, request: HttpRequest) => void;
   deleteNode: (id: string) => void;
@@ -242,7 +244,7 @@ export const useCollectionStore = create<CollectionStore>((set, get) => ({
   addRequest: (parentId, name = 'New Request', request = { ...defaultRequest }, id?: string) => {
     const collections = [...get().collections];
     const parentKey = parentId ?? defaultParentId(collections, get().activeNodeId);
-    if (!parentKey) return;
+    if (!parentKey) return undefined;
 
     const node: CollectionRequest = {
       id: id ?? nanoid(),
@@ -251,12 +253,18 @@ export const useCollectionStore = create<CollectionStore>((set, get) => ({
       request: { ...request, params: [...request.params], headers: [...request.headers] },
     };
     const parent = findNode(collections, parentKey).node;
-    if (parent?.type !== 'folder') return;
+    if (parent?.type !== 'folder') return undefined;
     parent.children = [...parent.children, node];
     set({ collections });
     void persistForNodeId(parentKey, collections).catch(err =>
       console.error('Failed to save request:', err),
     );
+    return node.id;
+  },
+
+  getRequestNode: (id) => {
+    const { node } = findNode(get().collections, id);
+    return node?.type === 'request' ? node : null;
   },
 
   renameNode: (id, name) => {
@@ -273,6 +281,10 @@ export const useCollectionStore = create<CollectionStore>((set, get) => ({
 
     const collections = updateNode([...get().collections], id, { name: trimmed });
     set({ collections });
+
+    if (node.type === 'request') {
+      useStore.getState().syncCollectionTabName(id, trimmed);
+    }
 
     if (collectionRoot?.fileName) {
       const dir = collectionDir();
@@ -414,14 +426,26 @@ export const useCollectionStore = create<CollectionStore>((set, get) => ({
     const target = findNode(state.collections, targetFolderId).node;
     if (!target || target.type !== 'folder') return;
 
+    const sourceRoot = findCollectionRoot(state.collections, sourceId);
+
     let collections = removeNode([...state.collections], sourceId);
     const targetLive = findNode(collections, targetFolderId).node;
     if (targetLive?.type === 'folder') {
       targetLive.children = [...targetLive.children, node];
     }
     set({ collections });
-    void persistForNodeId(sourceId, collections);
-    void persistForNodeId(targetFolderId, collections);
+
+    if (sourceRoot) {
+      const updatedSource = findNode(collections, sourceRoot.id).node;
+      if (updatedSource?.type === 'folder') {
+        void persistCollectionRoot(updatedSource).catch(err =>
+          console.error('Failed to save source collection after move:', err),
+        );
+      }
+    }
+    void persistForNodeId(targetFolderId, collections).catch(err =>
+      console.error('Failed to save target collection after move:', err),
+    );
   },
 
   moveToRoot: (sourceId) => {
@@ -429,9 +453,12 @@ export const useCollectionStore = create<CollectionStore>((set, get) => ({
     const { node, parent } = findNode(state.collections, sourceId);
     if (!node || !parent || isCollectionRoot(node)) return;
 
+    const sourceRoot = findCollectionRoot(state.collections, sourceId);
+    if (!sourceRoot) return;
+
     let collections = removeNode([...state.collections], sourceId);
-    const root = findCollectionRoot(collections, sourceId);
-    if (root) {
+    const root = findNode(collections, sourceRoot.id).node;
+    if (root?.type === 'folder') {
       root.children = [...root.children, node];
       set({ collections });
       void persistCollectionRoot(root).catch(err => console.error('Failed to move to root:', err));

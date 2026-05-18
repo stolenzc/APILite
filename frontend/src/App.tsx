@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
+import { nanoid } from 'nanoid';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { useStore } from './store/useStore';
 import { useSettingsStore, initKeyboardShortcuts } from './store/useSettings';
-import { useCollectionStore } from './store/useCollection';
+import { useCollectionStore, getCollectionPath } from './store/useCollection';
 import { applyTheme } from './themes';
 import { setLocale, getLocale, t } from './i18n';
 import UrlBar from './components/UrlBar';
@@ -67,11 +68,11 @@ export default function App() {
 
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleSaveRequest = (folderId: string | null, name: string) => {
+  const saveActiveTabToCollection = (collectionId: string, name: string) => {
     const activeTab = useStore.getState().tabs.find(t => t.id === useStore.getState().activeTabId);
-    if (!activeTab) return;
+    if (!activeTab) return false;
     const req = activeTab.request;
-    useCollectionStore.getState().addRequest(folderId, name, {
+    useCollectionStore.getState().updateRequest(collectionId, name, {
       method: req.method,
       url: req.url,
       params: req.params.map(p => ({ ...p })),
@@ -80,7 +81,32 @@ export default function App() {
       rawContentType: req.rawContentType,
       body: req.body,
     });
-    useStore.getState().clearUnsaved();
+    if (activeTab.collectionId !== collectionId) {
+      const path = getCollectionPath(useCollectionStore.getState().collections, collectionId);
+      useStore.getState().linkActiveTabToCollection(collectionId, name, path);
+    } else {
+      useStore.getState().clearUnsaved();
+    }
+    return true;
+  };
+
+  const handleSaveRequest = (folderId: string | null, name: string) => {
+    const activeTab = useStore.getState().tabs.find(t => t.id === useStore.getState().activeTabId);
+    if (!activeTab) return;
+    const req = activeTab.request;
+    const requestId = nanoid();
+    const savedId = useCollectionStore.getState().addRequest(folderId, name, {
+      method: req.method,
+      url: req.url,
+      params: req.params.map(p => ({ ...p })),
+      headers: req.headers.map(h => ({ ...h })),
+      bodyType: req.bodyType,
+      rawContentType: req.rawContentType,
+      body: req.body,
+    }, requestId);
+    if (!savedId) return;
+    const path = getCollectionPath(useCollectionStore.getState().collections, savedId);
+    useStore.getState().linkActiveTabToCollection(savedId, name, path);
     setSaveModalOpen(false);
     setToast('Saved!');
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -116,19 +142,24 @@ export default function App() {
 
     const onNewTab = () => createTabRef.current();
     const onSaveRequest = () => {
-      const activeTab = useStore.getState().tabs.find(t => t.id === useStore.getState().activeTabId);
-      if (activeTab?.collectionId) {
-        const req = activeTab.request;
-        useCollectionStore.getState().updateRequest(activeTab.collectionId, activeTab.name, {
-          method: req.method,
-          url: req.url,
-          params: req.params.map(p => ({ ...p })),
-          headers: req.headers.map(h => ({ ...h })),
-          bodyType: req.bodyType,
-          rawContentType: req.rawContentType,
-          body: req.body,
-        });
-        useStore.getState().clearUnsaved();
+      const tabState = useStore.getState();
+      const activeTab = tabState.tabs.find(t => t.id === tabState.activeTabId);
+      if (!activeTab) return;
+
+      let collectionId = activeTab.collectionId;
+      let name = activeTab.name;
+      if (!collectionId) {
+        const activeNodeId = useCollectionStore.getState().activeNodeId;
+        if (activeNodeId) {
+          const node = useCollectionStore.getState().getRequestNode(activeNodeId);
+          if (node) {
+            collectionId = node.id;
+            name = node.name;
+          }
+        }
+      }
+
+      if (collectionId && saveActiveTabToCollection(collectionId, name)) {
         setToast('Saved!');
         if (toastTimer.current) clearTimeout(toastTimer.current);
         toastTimer.current = setTimeout(() => setToast(''), 1500);
