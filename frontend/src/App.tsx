@@ -21,6 +21,7 @@ import CollectionSidebar from './components/CollectionSidebar';
 import TabBar from './components/TabBar';
 import SaveRequestModal from './components/SaveRequestModal';
 import { isTauri, setupTauriMenu } from './tauri/setupMenu';
+import { hydrateEnvironmentsFromDisk } from './store/useEnvironmentStore';
 
 export default function App() {
   const { activeTab, setActiveTab, createTab, closeTab, switchToPreviousTab, switchToNextTab, tabs, activeTabId } = useStore();
@@ -40,6 +41,12 @@ export default function App() {
       });
     }
   }, [collectionDir, initCollections, setCollectionDir]);
+
+  useEffect(() => {
+    if (!isTauri()) return;
+    void hydrateEnvironmentsFromDisk();
+  }, []);
+
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [toast, setToast] = useState('');
   const [saveModalOpen, setSaveModalOpen] = useState(false);

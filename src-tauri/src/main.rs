@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod collections;
+mod environments;
 mod curl_export;
 mod curl_parser;
 mod history;
@@ -86,6 +87,16 @@ fn get_default_collection_dir() -> Result<String, String> {
 }
 
 #[tauri::command]
+fn environments_load() -> Result<Option<String>, String> {
+    environments::load()
+}
+
+#[tauri::command]
+fn environments_save(data: String) -> Result<(), String> {
+    environments::save(&data)
+}
+
+#[tauri::command]
 fn load_collections(dir: String) -> Result<String, String> {
     collections::load_tree(&dir)
 }
@@ -138,6 +149,8 @@ fn main() {
             get_history,
             clear_history,
             get_default_collection_dir,
+            environments_load,
+            environments_save,
             load_collections,
             collections_save,
             collections_create,

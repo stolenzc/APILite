@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { nanoid } from 'nanoid';
+import { invoke } from '@tauri-apps/api/core';
+import { isTauri } from '../tauri/setupMenu';
 import { resolveVariableMap } from '../utils/envInterpolation';
 
 /** One column = one environment (e.g. Default, Staging). */
@@ -122,6 +124,39 @@ function migrateV1(parsed: { environments?: LegacyEnv[]; activeEnvironmentId?: s
   return { environments, variables, activeEnvironmentId: active, envModalOpen: false };
 }
 
+/** Parse persisted v2 JSON (localStorage or disk). */
+function parsePersistedV2(raw: string): Omit<
+  EnvironmentState,
+  | 'setEnvModalOpen'
+  | 'setActiveEnvironmentId'
+  | 'addEnvironmentColumn'
+  | 'addEnvironment'
+  | 'removeEnvironmentColumn'
+  | 'renameEnvironmentColumn'
+  | 'addVariableRow'
+  | 'removeVariableRow'
+  | 'updateVariableKey'
+  | 'updateCell'
+  | 'getActiveVarMap'
+> | null {
+  try {
+    const p = JSON.parse(raw) as PersistedV2;
+    if (p.version !== 2 || !p.environments?.length) return null;
+    const active =
+      p.activeEnvironmentId && p.environments.some((e) => e.id === p.activeEnvironmentId)
+        ? p.activeEnvironmentId
+        : p.environments[0].id;
+    return {
+      environments: p.environments,
+      variables: Array.isArray(p.variables) ? p.variables : [],
+      activeEnvironmentId: active,
+      envModalOpen: false,
+    };
+  } catch {
+    return null;
+  }
+}
+
 function load(): Omit<
   EnvironmentState,
   | 'setEnvModalOpen'
@@ -139,19 +174,8 @@ function load(): Omit<
   try {
     const raw2 = localStorage.getItem(STORAGE_V2);
     if (raw2) {
-      const p = JSON.parse(raw2) as PersistedV2;
-      if (p.version === 2 && p.environments?.length) {
-        const active =
-          p.activeEnvironmentId && p.environments.some((e) => e.id === p.activeEnvironmentId)
-            ? p.activeEnvironmentId
-            : p.environments[0].id;
-        return {
-          environments: p.environments,
-          variables: Array.isArray(p.variables) ? p.variables : [],
-          activeEnvironmentId: active,
-          envModalOpen: false,
-        };
-      }
+      const parsed = parsePersistedV2(raw2);
+      if (parsed) return parsed;
     }
     const raw1 = localStorage.getItem(STORAGE_V1);
     if (raw1) {
@@ -164,19 +188,31 @@ function load(): Omit<
   return defaultState();
 }
 
+function buildPayload(
+  state: Pick<EnvironmentState, 'environments' | 'variables' | 'activeEnvironmentId'>,
+): PersistedV2 {
+  return {
+    version: 2,
+    environments: state.environments,
+    variables: state.variables,
+    activeEnvironmentId: state.activeEnvironmentId,
+  };
+}
+
 function save(
   state: Pick<EnvironmentState, 'environments' | 'variables' | 'activeEnvironmentId'>,
 ) {
+  const payload = buildPayload(state);
+  const json = JSON.stringify(payload);
   try {
-    const payload: PersistedV2 = {
-      version: 2,
-      environments: state.environments,
-      variables: state.variables,
-      activeEnvironmentId: state.activeEnvironmentId,
-    };
-    localStorage.setItem(STORAGE_V2, JSON.stringify(payload));
+    localStorage.setItem(STORAGE_V2, json);
   } catch {
     /* ignore */
+  }
+  if (isTauri()) {
+    void invoke('environments_save', { data: json }).catch((err) =>
+      console.error('Failed to save environments to local file:', err),
+    );
   }
 }
 
@@ -290,3 +326,34 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => {
     },
   };
 });
+
+/**
+ * Tauri: load `~/.APILite/environments.json` after startup (disk overrides localStorage when present).
+ * If the file is missing, writes the current in-memory state (from localStorage / defaults) to disk.
+ */
+export async function hydrateEnvironmentsFromDisk(): Promise<void> {
+  if (!isTauri()) return;
+  try {
+    const rawOpt = await invoke<string | null>('environments_load');
+    if (rawOpt != null && rawOpt !== '') {
+      const parsed = parsePersistedV2(rawOpt);
+      if (parsed) {
+        useEnvironmentStore.setState(parsed);
+        try {
+          localStorage.setItem(STORAGE_V2, JSON.stringify(buildPayload(parsed)));
+        } catch {
+          /* ignore */
+        }
+        return;
+      }
+    }
+    const s = useEnvironmentStore.getState();
+    save({
+      environments: s.environments,
+      variables: s.variables,
+      activeEnvironmentId: s.activeEnvironmentId,
+    });
+  } catch (err) {
+    console.error('Failed to hydrate environments from disk:', err);
+  }
+}
