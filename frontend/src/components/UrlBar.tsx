@@ -2,10 +2,16 @@ import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useStore } from '../store/useStore';
 import { useSettingsStore } from '../store/useSettings';
 import { invoke } from '@tauri-apps/api/core';
-import type { HttpMethod, KeyValue } from '../types';
+import type { HttpMethod, HttpRequest, KeyValue } from '../types';
 import { t } from '../i18n';
 import { formatRawHttpResponse } from '../utils/httpUtils';
-import { interpolateEnvVars, interpolateKeyValues, parseOpenEnvPlaceholder, resolveVariableMap } from '../utils/envInterpolation';
+import {
+  hasHttpProtocol,
+  interpolateEnvVars,
+  interpolateKeyValues,
+  parseOpenEnvPlaceholder,
+  resolveVariableMap,
+} from '../utils/envInterpolation';
 import { useEnvironmentStore } from '../store/useEnvironmentStore';
 import { isCurlCommand } from '../utils/curlUtils';
 import { showToast } from '../utils/toast';
@@ -26,11 +32,6 @@ export default function UrlBar() {
   const urlInputRef = useRef<HTMLInputElement>(null);
   const requestMethod = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.method ?? 'GET');
   const requestUrl = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.url ?? '');
-  const requestParams = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.params ?? []);
-  const requestHeaders = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.headers ?? []);
-  const requestBodyType = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.bodyType ?? 'none');
-  const rawContentType = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.rawContentType ?? 'json');
-  const requestBody = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.body ?? '');
   const loading = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.loading ?? false);
   const activeTabId = useStore(s => s.activeTabId);
   const [exportCurl, setExportCurl] = useState<string | null>(null);
@@ -76,9 +77,10 @@ export default function UrlBar() {
       return;
     }
     const pf = open.partialRaw.trim().toLowerCase();
-    const list = envVarEntries.filter(({ name, value }) => {
+    const list = envVarEntries.filter(({ name, value: varValue }) => {
       if (!pf) return true;
-      return name.toLowerCase().includes(pf) || value.toLowerCase().includes(pf);
+      // Filter by variable name and resolved value (not raw address-bar template text)
+      return name.toLowerCase().includes(pf) || varValue.toLowerCase().includes(pf);
     });
     if (list.length === 0) {
       setEnvSuggest(null);
@@ -143,34 +145,43 @@ export default function UrlBar() {
     if (!requestUrl) return;
 
     syncUrlFromParams();
+
+    const reqAfterSync = (() => {
+      const s = useStore.getState();
+      const tab = s.tabs.find((t) => t.id === s.activeTabId);
+      return tab?.request ?? null;
+    })();
+    if (!reqAfterSync?.url?.trim()) return;
+
+    const autoProtocol = useSettingsStore.getState().autoCompleteProtocol;
+    if (autoProtocol && !/\{\{/.test(reqAfterSync.url)) {
+      const varsForProtocol = useEnvironmentStore.getState().getActiveVarMap();
+      const resolvedForProtocol = interpolateEnvVars(reqAfterSync.url, varsForProtocol);
+      if (!hasHttpProtocol(resolvedForProtocol)) {
+        const fixedTemplate = ensureProtocol(reqAfterSync.url);
+        if (fixedTemplate !== reqAfterSync.url) setUrl(fixedTemplate);
+      }
+    }
+
+    const req = (() => {
+      const s = useStore.getState();
+      const tab = s.tabs.find((t) => t.id === s.activeTabId);
+      return tab?.request ?? null;
+    })();
+    if (!req?.url?.trim()) return;
+
     setLoading(true);
 
     const vars = useEnvironmentStore.getState().getActiveVarMap();
-    const interpolatedUrl = interpolateEnvVars(requestUrl, vars);
-    const interpolatedParams = interpolateKeyValues(requestParams, vars);
-    const interpolatedHeaders = interpolateKeyValues(requestHeaders, vars);
-
-    const autoProtocol = useSettingsStore.getState().autoCompleteProtocol;
-    let finalUrl = urlWithParams(interpolatedUrl, interpolatedParams);
-    if (autoProtocol) {
-      finalUrl = ensureProtocol(finalUrl);
-      if (finalUrl !== requestUrl) setUrl(finalUrl);
-    }
+    const resolved = resolveOutboundRequest(req, vars, autoProtocol);
 
     try {
-      const effectiveBodyType = requestBodyType === 'raw' ? rawContentType : requestBodyType;
-      const templatedBody =
-        (requestBodyType === 'none' || requestBodyType === 'form-data' || requestBodyType === 'x-www-form-urlencoded') && !requestBody
-          ? null
-          : requestBody;
-      const bodyContent = templatedBody === null ? null : interpolateEnvVars(templatedBody, vars);
-
       const res: { status: number; status_text: string; headers: Record<string, string>; body: string; raw: string; duration_ms: number } = await invoke('send_request', {
-        method: requestMethod,
-        url: finalUrl,
-        headers: kvToMap(interpolatedHeaders),
-        bodyType: effectiveBodyType,
-        body: bodyContent,
+        method: req.method,
+        url: resolved.finalUrl,
+        headers: kvToMap(resolved.headers),
+        bodyType: resolved.effectiveBodyType,
+        body: resolved.body,
       });
 
       setResponse({
@@ -183,18 +194,10 @@ export default function UrlBar() {
       });
 
       addHistory({
-        method: requestMethod,
-        url: finalUrl,
+        method: req.method,
+        url: resolved.finalUrl,
         status: res.status,
-        request: {
-          method: requestMethod,
-          url: finalUrl,
-          params: requestParams.map(p => ({ ...p })),
-          headers: requestHeaders.map(h => ({ ...h })),
-          bodyType: requestBodyType,
-          rawContentType,
-          body: requestBody,
-        },
+        request: resolved.historyRequest,
         response: {
           status: res.status,
           statusText: res.status_text,
@@ -223,21 +226,23 @@ export default function UrlBar() {
 
   const handleExportCurl = async () => {
     syncUrlFromParams();
+    const req = (() => {
+      const s = useStore.getState();
+      const tab = s.tabs.find((t) => t.id === s.activeTabId);
+      return tab?.request ?? null;
+    })();
+    if (!req?.url?.trim()) return;
+
     const autoProtocol = useSettingsStore.getState().autoCompleteProtocol;
     try {
-      const effectiveBodyType = requestBodyType === 'raw' ? rawContentType : requestBodyType;
       const vars = useEnvironmentStore.getState().getActiveVarMap();
-      let url = urlWithParams(interpolateEnvVars(requestUrl, vars), interpolateKeyValues(requestParams, vars));
-      if (autoProtocol) url = ensureProtocol(url);
-      const templatedBody =
-        requestBodyType === 'none' ? null : requestBody;
-      const bodyForCurl = templatedBody === null ? null : interpolateEnvVars(templatedBody, vars);
+      const resolved = resolveOutboundRequest(req, vars, autoProtocol);
       const curl: string = await invoke('to_curl', {
-        method: requestMethod,
-        url,
-        headers: kvToMap(interpolateKeyValues(requestHeaders, vars)),
-        bodyType: effectiveBodyType,
-        body: bodyForCurl,
+        method: req.method,
+        url: resolved.finalUrl,
+        headers: kvToMap(resolved.headers),
+        bodyType: resolved.effectiveBodyType,
+        body: resolved.body,
       });
       setExportCurl(curl);
     } catch (err) {
@@ -349,6 +354,38 @@ export default function UrlBar() {
   );
 }
 
+/** Resolve env placeholders for outbound HTTP, cURL export, and history (not for editor UI). */
+function resolveOutboundRequest(
+  req: HttpRequest,
+  vars: Record<string, string>,
+  autoProtocol: boolean,
+) {
+  const interpolatedUrl = interpolateEnvVars(req.url, vars);
+  const params = interpolateKeyValues(req.params, vars);
+  const headers = interpolateKeyValues(req.headers, vars);
+  let finalUrl = urlWithParams(interpolatedUrl, params);
+  if (autoProtocol) finalUrl = ensureProtocol(finalUrl);
+
+  const effectiveBodyType = req.bodyType === 'raw' ? req.rawContentType : req.bodyType;
+  const templatedBody =
+    (req.bodyType === 'none' || req.bodyType === 'form-data' || req.bodyType === 'x-www-form-urlencoded') && !req.body
+      ? null
+      : req.body;
+  const body = templatedBody === null ? null : interpolateEnvVars(templatedBody, vars);
+
+  const historyRequest: HttpRequest = {
+    method: req.method,
+    url: finalUrl,
+    params: params.map((p) => ({ ...p })),
+    headers: headers.map((h) => ({ ...h })),
+    bodyType: req.bodyType,
+    rawContentType: req.rawContentType,
+    body: body ?? '',
+  };
+
+  return { finalUrl, headers, body, effectiveBodyType, historyRequest };
+}
+
 function kvToMap(kvs: KeyValue[]): Record<string, string> {
   const map: Record<string, string> = {};
   for (const kv of kvs) {
@@ -366,7 +403,7 @@ function urlWithParams(url: string, params: KeyValue[]): string {
 }
 
 function ensureProtocol(url: string): string {
-  if (!/^[a-zA-Z][a-zA-Z\d+\-.]*:\/\//.test(url)) {
+  if (!hasHttpProtocol(url)) {
     return 'http://' + url;
   }
   return url;

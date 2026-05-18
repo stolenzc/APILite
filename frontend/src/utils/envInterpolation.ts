@@ -1,6 +1,13 @@
 /** `{{varName}}` — whitespace inside braces is trimmed. */
 const PLACEHOLDER = /\{\{\s*([^}]*?)\s*\}\}/g;
 
+const HTTP_PROTOCOL_RE = /^[a-zA-Z][a-zA-Z\d+\-.]*:\/\//;
+
+/** Whether a URL string already has a scheme (use on env-resolved URLs, not raw `{{}}` templates). */
+export function hasHttpProtocol(url: string): boolean {
+  return HTTP_PROTOCOL_RE.test(url);
+}
+
 /** Cursor inside an unclosed `{{ ...` (no `}}` yet before cursor). Used for URL env autocomplete. */
 export function parseOpenEnvPlaceholder(value: string, cursor: number): {
   innerStart: number;
