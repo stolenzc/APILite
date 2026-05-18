@@ -1,6 +1,21 @@
 /** `{{varName}}` — whitespace inside braces is trimmed. */
 const PLACEHOLDER = /\{\{\s*([^}]*?)\s*\}\}/g;
 
+/** Cursor inside an unclosed `{{ ...` (no `}}` yet before cursor). Used for URL env autocomplete. */
+export function parseOpenEnvPlaceholder(value: string, cursor: number): {
+  innerStart: number;
+  innerEnd: number;
+  partialRaw: string;
+} | null {
+  const before = value.slice(0, cursor);
+  const open = before.lastIndexOf('{{');
+  if (open === -1) return null;
+  const innerStart = open + 2;
+  const innerSlice = before.slice(innerStart);
+  if (innerSlice.includes('}}')) return null;
+  return { innerStart, innerEnd: cursor, partialRaw: innerSlice };
+}
+
 export function interpolateEnvVars(input: string, vars: Record<string, string>): string {
   return input.replace(PLACEHOLDER, (_, rawName: string) => {
     const name = String(rawName).trim();
