@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useStore } from '../store/useStore';
 import { useSettingsStore } from '../store/useSettings';
 import { invoke } from '@tauri-apps/api/core';
@@ -7,11 +7,20 @@ import { t } from '../i18n';
 import { formatRawHttpResponse } from '../utils/httpUtils';
 import { interpolateEnvVars, interpolateKeyValues } from '../utils/envInterpolation';
 import { useEnvironmentStore } from '../store/useEnvironmentStore';
+import { isCurlCommand } from '../utils/curlUtils';
+import { showToast } from '../utils/toast';
 
 const METHODS: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
 
+type ParsedCurl = {
+  method: string;
+  url: string;
+  headers: [string, string][];
+  body: string | null;
+};
+
 export default function UrlBar() {
-  const { setMethod, setUrl, syncParamsFromUrl, syncUrlFromParams, updateParam, setLoading, setResponse, addHistory, setBodyType, setBody } = useStore();
+  const { setMethod, setUrl, syncParamsFromUrl, syncUrlFromParams, setLoading, setResponse, addHistory, applyParsedCurl } = useStore();
   const requestMethod = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.method ?? 'GET');
   const requestUrl = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.url ?? '');
   const requestParams = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.params ?? []);
@@ -20,11 +29,31 @@ export default function UrlBar() {
   const rawContentType = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.rawContentType ?? 'json');
   const requestBody = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.body ?? '');
   const loading = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.loading ?? false);
-  const [curlModal, setCurlModal] = useState<{ type: 'export' | 'import'; content: string } | null>(null);
+  const [exportCurl, setExportCurl] = useState<string | null>(null);
+
+  const applyCurlCommand = useCallback(async (command: string) => {
+    const trimmed = command.trim();
+    if (!isCurlCommand(trimmed)) return false;
+    try {
+      const parsed: ParsedCurl = await invoke('parse_curl', { command: trimmed });
+      applyParsedCurl(parsed);
+      return true;
+    } catch (err) {
+      showToast(`${t('url.curlParseError')}: ${err}`);
+      return false;
+    }
+  }, [applyParsedCurl]);
 
   const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUrl(e.target.value);
     syncParamsFromUrl();
+  };
+
+  const handlePaste = async (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const text = e.clipboardData.getData('text');
+    if (!isCurlCommand(text)) return;
+    e.preventDefault();
+    await applyCurlCommand(text);
   };
 
   const handleSend = async () => {
@@ -42,12 +71,10 @@ export default function UrlBar() {
     let finalUrl = urlWithParams(interpolatedUrl, interpolatedParams);
     if (autoProtocol) {
       finalUrl = ensureProtocol(finalUrl);
-      // Write the completed URL back to the input
       if (finalUrl !== requestUrl) setUrl(finalUrl);
     }
 
     try {
-      // For 'raw' type, send the actual content type (json/xml/etc) to Rust
       const effectiveBodyType = requestBodyType === 'raw' ? rawContentType : requestBodyType;
       const templatedBody =
         (requestBodyType === 'none' || requestBodyType === 'form-data' || requestBodyType === 'x-www-form-urlencoded') && !requestBody
@@ -111,27 +138,6 @@ export default function UrlBar() {
     }
   };
 
-  const handleImportCurl = async () => {
-    setCurlModal({ type: 'import', content: '' });
-  };
-
-  const handleImportSubmit = async () => {
-    if (!curlModal || curlModal.content.trim() === '') return;
-    try {
-      const parsed: { method: string; url: string; headers: [string, string][]; body: string | null } = await invoke('parse_curl', { command: curlModal.content });
-      setMethod(parsed.method.toUpperCase() as HttpMethod);
-      setUrl(parsed.url);
-      setTimeout(() => syncParamsFromUrl(), 0);
-      if (parsed.body) {
-        setBodyType(parsed.body.startsWith('{') ? 'raw' : parsed.body.startsWith('<?xml') ? 'raw' : 'raw');
-        setBody(parsed.body);
-      }
-      setCurlModal(null);
-    } catch (err) {
-      alert(`Failed to parse curl: ${err}`);
-    }
-  };
-
   const handleExportCurl = async () => {
     syncUrlFromParams();
     const autoProtocol = useSettingsStore.getState().autoCompleteProtocol;
@@ -150,7 +156,7 @@ export default function UrlBar() {
         bodyType: effectiveBodyType,
         body: bodyForCurl,
       });
-      setCurlModal({ type: 'export', content: curl });
+      setExportCurl(curl);
     } catch (err) {
       alert(`Failed to generate curl: ${err}`);
     }
@@ -162,44 +168,39 @@ export default function UrlBar() {
         <select className="method-select" value={requestMethod} onChange={e => setMethod(e.target.value as HttpMethod)}>
           {METHODS.map(m => <option key={m} value={m}>{m}</option>)}
         </select>
-        <input className="url-input" type="text" placeholder={t('url.placeholder')} value={requestUrl} onChange={handleUrlChange} onKeyDown={e => {
-          if (e.key === 'Enter') {
-            if (requestUrl.startsWith('curl')) {
-              handleImportCurl();
-            } else {
-              handleSend();
+        <input
+          className="url-input"
+          type="text"
+          placeholder={t('url.placeholder')}
+          value={requestUrl}
+          onChange={handleUrlChange}
+          onPaste={handlePaste}
+          onKeyDown={async e => {
+            if (e.key === 'Enter') {
+              if (isCurlCommand(requestUrl)) {
+                e.preventDefault();
+                await applyCurlCommand(requestUrl);
+              } else {
+                handleSend();
+              }
             }
-          }
-        }} />
-        <button className="btn btn-icon" title={t('url.import.title')} onClick={handleImportCurl}>{'{}'}</button>
+          }}
+        />
         <button className="btn btn-icon" title={t('url.export.title')} onClick={handleExportCurl}>→_</button>
         <button className="btn btn-send" disabled={loading} onClick={handleSend}>{loading ? t('url.sending') : t('url.send')}</button>
       </div>
 
-      {curlModal && (
-        <div className="modal-overlay" onClick={() => setCurlModal(null)}>
+      {exportCurl !== null && (
+        <div className="modal-overlay" onClick={() => setExportCurl(null)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
-            <h3>{curlModal.type === 'import' ? t('url.import.title') : t('url.export.title')}</h3>
-            {curlModal.type === 'import' ? (
-              <textarea
-                value={curlModal.content}
-                onChange={e => setCurlModal({ ...curlModal, content: e.target.value })}
-                placeholder={t('url.import.placeholder')}
-                spellCheck={false}
-              />
-            ) : (
-              <div className="copy-area">{curlModal.content}</div>
-            )}
+            <h3>{t('url.export.title')}</h3>
+            <div className="copy-area">{exportCurl}</div>
             <div className="modal-actions">
-              <button className="btn btn-secondary" onClick={() => setCurlModal(null)}>{t('url.cancel')}</button>
-              {curlModal.type === 'export' ? (
-                <button className="btn btn-send" onClick={async () => {
-                  try { await navigator.clipboard.writeText(curlModal.content); } catch { /* ignore */ }
-                  setCurlModal(null);
-                }}>{t('url.copy')}</button>
-              ) : (
-                <button className="btn btn-send" onClick={handleImportSubmit}>{t('url.importBtn')}</button>
-              )}
+              <button className="btn btn-secondary" onClick={() => setExportCurl(null)}>{t('url.cancel')}</button>
+              <button className="btn btn-send" onClick={async () => {
+                try { await navigator.clipboard.writeText(exportCurl); } catch { /* ignore */ }
+                setExportCurl(null);
+              }}>{t('url.copy')}</button>
             </div>
           </div>
         </div>

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { nanoid } from 'nanoid';
 import type { HttpRequest, HttpResponse, HistoryEntry, KeyValue } from '../types';
 import type { RawContentType } from '../types';
+import { inferRawContentType } from '../utils/curlUtils';
 
 const defaultParams: KeyValue[] = [];
 const defaultHeaders: KeyValue[] = [];
@@ -64,6 +65,12 @@ interface AppState {
   setBodyType: (bodyType: HttpRequest['bodyType']) => void;
   setRawContentType: (rawContentType: RawContentType) => void;
   setBody: (body: string) => void;
+  applyParsedCurl: (parsed: {
+    method: string;
+    url: string;
+    headers: [string, string][];
+    body: string | null;
+  }) => void;
   setActiveTab: (tab: AppState['activeTab']) => void;
   setResponseTab: (tab: AppState['responseTab']) => void;
 
@@ -332,6 +339,35 @@ export const useStore = create<AppState>((set, get) => ({
   setBodyType: (bodyType) => set(state => withUnsaved(state, { request: { ...activeRequest(state)!, bodyType } })),
   setRawContentType: (rawContentType) => set(state => withUnsaved(state, { request: { ...activeRequest(state)!, rawContentType } })),
   setBody: (body) => set(state => withUnsaved(state, { request: { ...activeRequest(state)!, body } })),
+  applyParsedCurl: (parsed) => set(state => {
+    const req = activeRequest(state);
+    if (!req) return state;
+    const headers = parsed.headers.map(([key, value]) => ({ key, value, enabled: true }));
+    const url = parsed.url;
+    const params = parseParamsFromUrl(url);
+    let bodyType: HttpRequest['bodyType'] = 'none';
+    let rawContentType = req.rawContentType;
+    let body = '';
+    if (parsed.body) {
+      bodyType = 'raw';
+      body = parsed.body;
+      const ct = headers.find(h => h.key.toLowerCase() === 'content-type')?.value ?? '';
+      rawContentType = inferRawContentType(ct);
+    }
+    return updateActiveTab(state, {
+      request: {
+        ...req,
+        method: parsed.method.toUpperCase() as HttpRequest['method'],
+        url,
+        params,
+        headers,
+        bodyType,
+        rawContentType,
+        body,
+      },
+      unsaved: true,
+    });
+  }),
   setActiveTab: (activeTab) => set({ activeTab }),
   setResponseTab: (responseTab) => set({ responseTab }),
 

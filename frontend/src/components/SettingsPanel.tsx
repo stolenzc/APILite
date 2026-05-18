@@ -6,7 +6,6 @@ import type { ShortcutConfig } from '../store/useSettings';
 const SHORTCUT_LABELS: Record<keyof ShortcutConfig, string> = {
   sendRequest: 'shortcut.sendRequest',
   saveRequest: 'shortcut.saveRequest',
-  importCurl: 'shortcut.importCurl',
   exportCurl: 'shortcut.exportCurl',
   focusUrl: 'shortcut.focusUrl',
   toggleSettings: 'shortcut.toggleSettings',

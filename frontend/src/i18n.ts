@@ -14,16 +14,13 @@ const messages: Record<Locale, Record<string, string>> = {
 
     // URL Bar
     'url.placeholder': 'Enter request URL or paste curl command',
-    'url.import': 'Import cURL',
     'url.export': 'Export cURL',
     'url.send': 'Send',
     'url.sending': 'Sending...',
-    'url.import.title': 'Import cURL',
     'url.export.title': 'Export cURL',
-    'url.import.placeholder': 'curl -X POST \'https://example.com/api\' -H \'Content-Type: application/json\' -d \'{"key":"value"}\'',
     'url.cancel': 'Cancel',
     'url.copy': 'Copy to Clipboard',
-    'url.importBtn': 'Import',
+    'url.curlParseError': 'Failed to parse cURL',
 
     // Tabs
     'tab.params': 'Params',
@@ -106,7 +103,6 @@ const messages: Record<Locale, Record<string, string>> = {
     // Shortcut labels
     'shortcut.sendRequest': 'Send Request',
     'shortcut.saveRequest': 'Save Request',
-    'shortcut.importCurl': 'Import cURL',
     'shortcut.exportCurl': 'Export cURL',
     'shortcut.focusUrl': 'Focus URL Bar',
     'shortcut.toggleSettings': 'Open Settings',
@@ -146,16 +142,13 @@ const messages: Record<Locale, Record<string, string>> = {
 
     // URL Bar
     'url.placeholder': '输入请求 URL 或粘贴 curl 命令',
-    'url.import': '导入 cURL',
     'url.export': '导出 cURL',
     'url.send': '发送',
     'url.sending': '发送中...',
-    'url.import.title': '导入 cURL',
     'url.export.title': '导出 cURL',
-    'url.import.placeholder': 'curl -X POST \'https://example.com/api\' -H \'Content-Type: application/json\' -d \'{"key":"value"}\'',
     'url.cancel': '取消',
     'url.copy': '复制到剪贴板',
-    'url.importBtn': '导入',
+    'url.curlParseError': 'cURL 解析失败',
 
     // Tabs
     'tab.params': '参数',
@@ -238,7 +231,6 @@ const messages: Record<Locale, Record<string, string>> = {
     // Shortcut labels
     'shortcut.sendRequest': '发送请求',
     'shortcut.saveRequest': '保存请求',
-    'shortcut.importCurl': '导入 cURL',
     'shortcut.exportCurl': '导出 cURL',
     'shortcut.focusUrl': '聚焦地址栏',
     'shortcut.toggleSettings': '打开设置',

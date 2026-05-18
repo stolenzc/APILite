@@ -4,7 +4,6 @@ import { setLocale as applyI18nLocale, type Locale } from '../i18n';
 export interface ShortcutConfig {
   sendRequest: string;
   saveRequest: string;
-  importCurl: string;
   exportCurl: string;
   focusUrl: string;
   toggleSettings: string;
@@ -21,7 +20,6 @@ const mod = isMac ? 'Cmd' : 'Ctrl';
 export const defaultShortcuts: ShortcutConfig = {
   sendRequest: `${mod}+Enter`,
   saveRequest: `${mod}+S`,
-  importCurl: `${mod}+Shift+I`,
   exportCurl: `${mod}+Shift+E`,
   focusUrl: `${mod}+L`,
   toggleSettings: `${mod}+,`,
@@ -53,15 +51,16 @@ export const defaultSettings: AppSettings = {
   autoCompleteProtocol: true,
 };
 
-function migrateShortcuts(shortcuts: ShortcutConfig): ShortcutConfig {
-  // Migrate Ctrl/Cmd to platform-appropriate modifier
+function migrateShortcuts(shortcuts: Partial<ShortcutConfig> & Record<string, string>): ShortcutConfig {
   const currentMod = isMac ? 'Cmd' : 'Ctrl';
   const oldMod = isMac ? 'Ctrl' : 'Cmd';
-  const migrated: ShortcutConfig = { ...shortcuts };
-  for (const key of Object.keys(shortcuts) as (keyof ShortcutConfig)[]) {
-    if (shortcuts[key].startsWith(oldMod + '+')) {
-      migrated[key] = shortcuts[key].replace(oldMod + '+', currentMod + '+');
-    }
+  const merged = { ...defaultShortcuts, ...shortcuts };
+  const migrated = { ...defaultShortcuts };
+  for (const key of Object.keys(defaultShortcuts) as (keyof ShortcutConfig)[]) {
+    const value = merged[key] ?? defaultShortcuts[key];
+    migrated[key] = value.startsWith(oldMod + '+')
+      ? value.replace(oldMod + '+', currentMod + '+')
+      : value;
   }
   return migrated;
 }
