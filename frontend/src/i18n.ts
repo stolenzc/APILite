@@ -121,6 +121,8 @@ const messages: Record<Locale, Record<string, string>> = {
     'collection.duplicate': 'Duplicate',
     'collection.delete': 'Delete',
     'collection.empty': 'No collections yet',
+    'collection.searchPlaceholder': 'Search collections, folders, requests by name or URL…',
+    'collection.searchNoResults': 'No matches',
     'collection.rename.placeholder': 'Enter name...',
     'collection.rename.confirm': 'Confirm',
 
@@ -249,6 +251,8 @@ const messages: Record<Locale, Record<string, string>> = {
     'collection.duplicate': '复制',
     'collection.delete': '删除',
     'collection.empty': '暂无集合',
+    'collection.searchPlaceholder': '按集合、文件夹、请求名称或 URL 搜索…',
+    'collection.searchNoResults': '没有匹配项',
     'collection.rename.placeholder': '输入名称...',
     'collection.rename.confirm': '确认',
 

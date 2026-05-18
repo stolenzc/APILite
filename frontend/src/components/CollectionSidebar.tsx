@@ -1,8 +1,8 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { nanoid } from 'nanoid';
 import { useCollectionStore, getCollectionPath } from '../store/useCollection';
 import { useStore } from '../store/useStore';
-import type { CollectionNode, CollectionFolder } from '../types';
+import type { CollectionNode, CollectionRequest } from '../types';
 import { t } from '../i18n';
 import { methodColors } from '../constants';
 
@@ -16,6 +16,67 @@ function updateGhostPos(e: MouseEvent) {
     dragGhostEl.style.left = e.clientX + 12 + 'px';
     dragGhostEl.style.top = e.clientY + 12 + 'px';
   }
+}
+
+function requestMatchesSearch(node: CollectionRequest, queryNorm: string): boolean {
+  if (!queryNorm) return true;
+  const url = node.request.url.toLowerCase();
+  const name = node.name.toLowerCase();
+  return name.includes(queryNorm) || url.includes(queryNorm);
+}
+
+function folderNameMatches(node: { name: string }, queryNorm: string): boolean {
+  if (!queryNorm) return false;
+  return node.name.toLowerCase().includes(queryNorm);
+}
+
+/** Deep copy folder nodes with collapsed=false so search results stay expanded. */
+function withFoldersExpandedForSearch(nodes: CollectionNode[]): CollectionNode[] {
+  return nodes.map(n => {
+    if (n.type === 'request') return n;
+    return {
+      ...n,
+      collapsed: false,
+      children: withFoldersExpandedForSearch(n.children),
+    };
+  });
+}
+
+/**
+ * Filter tree: requests match by name/URL; folders & collection roots match by name.
+ * If a folder name matches, include its full subtree (all descendants).
+ */
+function filterCollectionTree(nodes: CollectionNode[], query: string): CollectionNode[] {
+  const q = query.trim();
+  if (!q) return nodes;
+  const qn = q.toLowerCase();
+
+  const walk = (list: CollectionNode[]): CollectionNode[] => {
+    const out: CollectionNode[] = [];
+    for (const node of list) {
+      if (node.type === 'request') {
+        if (requestMatchesSearch(node, qn)) out.push(node);
+      } else {
+        const nameHit = folderNameMatches(node, qn);
+        const filteredChildren = walk(node.children);
+        if (nameHit) {
+          out.push({
+            ...node,
+            collapsed: false,
+            children: withFoldersExpandedForSearch(node.children),
+          });
+        } else if (filteredChildren.length > 0) {
+          out.push({
+            ...node,
+            collapsed: false,
+            children: filteredChildren,
+          });
+        }
+      }
+    }
+    return out;
+  };
+  return walk(nodes);
 }
 
 function TreeNode({ node, depth = 0 }: { node: CollectionNode; depth?: number }) {
@@ -289,6 +350,14 @@ function ContextMenu({ nodeId, isFolder, onStartRename }: { nodeId: string; isFo
 
 export default function CollectionSidebar() {
   const { collections, addCollection } = useCollectionStore();
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const visibleCollections = useMemo(
+    () => filterCollectionTree(collections, searchQuery),
+    [collections, searchQuery],
+  );
+
+  const searching = searchQuery.trim().length > 0;
 
   return (
     <div className="sidebar">
@@ -299,11 +368,26 @@ export default function CollectionSidebar() {
             <button type="button" title={t('collection.addCollection')} onClick={() => addCollection()}>+</button>
           </div>
         </div>
+        {collections.length > 0 && (
+          <div className="sidebar-collection-search">
+            <input
+              type="search"
+              className="sidebar-collection-search-input"
+              placeholder={t('collection.searchPlaceholder')}
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              spellCheck={false}
+            />
+          </div>
+        )}
         <div className="sidebar-section-body">
           {collections.length === 0 && (
             <div className="sidebar-placeholder">{t('collection.empty')}</div>
           )}
-          {collections.map((node) => (
+          {collections.length > 0 && searching && visibleCollections.length === 0 && (
+            <div className="sidebar-placeholder">{t('collection.searchNoResults')}</div>
+          )}
+          {visibleCollections.map((node) => (
             <TreeNode key={node.id} node={node} />
           ))}
         </div>
