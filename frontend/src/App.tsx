@@ -180,6 +180,7 @@ export default function App() {
     const onPrevTab = () => switchToPreviousTabRef.current();
     const onNextTab = () => switchToNextTabRef.current();
 
+    window.addEventListener('shortcut:toggle-settings', onToggleSettings);
     window.addEventListener('shortcut:new-tab', onNewTab);
     window.addEventListener('shortcut:save-request', onSaveRequest);
     window.addEventListener('shortcut:close-tab', onCloseTab);
@@ -211,6 +212,7 @@ export default function App() {
 
     return () => {
       removeKeyboardShortcuts();
+      window.removeEventListener('shortcut:toggle-settings', onToggleSettings);
       window.removeEventListener('shortcut:new-tab', onNewTab);
       window.removeEventListener('shortcut:save-request', onSaveRequest);
       window.removeEventListener('shortcut:close-tab', onCloseTab);

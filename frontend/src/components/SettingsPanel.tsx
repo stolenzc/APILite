@@ -1,6 +1,8 @@
+import { useCallback, useEffect } from 'react';
+import { open } from '@tauri-apps/plugin-dialog';
 import { useSettingsStore } from '../store/useSettings';
 import { themes } from '../themes';
-import { t, getAvailableLocales, getLocale } from '../i18n';
+import { t, getAvailableLocales } from '../i18n';
 import type { ShortcutConfig } from '../store/useSettings';
 
 const SHORTCUT_LABELS: Record<keyof ShortcutConfig, string> = {
@@ -22,7 +24,26 @@ export default function SettingsPanel() {
     locale, setLocale,
     shortcuts, updateShortcut, resetShortcuts, resetSettings,
     autoCompleteProtocol, setAutoCompleteProtocol,
+    collectionDir, setCollectionDir,
   } = useSettingsStore();
+
+  const handleSelectCollectionDir = useCallback(async () => {
+    const selected = await open({ directory: true });
+    if (selected) setCollectionDir(selected);
+  }, [setCollectionDir]);
+
+  useEffect(() => {
+    if (!settingsOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        setSettingsOpen(false);
+      }
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [settingsOpen, setSettingsOpen]);
 
   if (!settingsOpen) return null;
 
@@ -65,6 +86,38 @@ export default function SettingsPanel() {
                 {t(`theme.${key}`)}
               </div>
             ))}
+          </div>
+        </div>
+
+        <div className="settings-section">
+          <h4>{t('settings.collection.title')}</h4>
+          <div className="settings-collection-dir">
+            <span
+              className="settings-collection-dir-path"
+              title={collectionDir || t('settings.collection.notSet')}
+            >
+              {collectionDir || t('settings.collection.notSet')}
+            </span>
+            <div className="settings-collection-dir-actions">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                style={{ fontSize: 12, padding: '6px 12px' }}
+                onClick={handleSelectCollectionDir}
+              >
+                {t('settings.collection.select')}
+              </button>
+              {collectionDir && (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  style={{ fontSize: 12, padding: '6px 12px' }}
+                  onClick={() => setCollectionDir('')}
+                >
+                  {t('settings.collection.clear')}
+                </button>
+              )}
+            </div>
           </div>
         </div>
 

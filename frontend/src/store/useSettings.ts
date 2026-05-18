@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { setLocale as applyI18nLocale, type Locale } from '../i18n';
+import { useEnvironmentStore } from './useEnvironmentStore';
 
 export interface ShortcutConfig {
   sendRequest: string;
@@ -57,7 +58,8 @@ function migrateShortcuts(shortcuts: Partial<ShortcutConfig> & Record<string, st
   const merged = { ...defaultShortcuts, ...shortcuts };
   const migrated = { ...defaultShortcuts };
   for (const key of Object.keys(defaultShortcuts) as (keyof ShortcutConfig)[]) {
-    const value = merged[key] ?? defaultShortcuts[key];
+    const raw = merged[key]?.trim();
+    const value = raw || defaultShortcuts[key];
     migrated[key] = value.startsWith(oldMod + '+')
       ? value.replace(oldMod + '+', currentMod + '+')
       : value;
@@ -69,11 +71,12 @@ function loadSettings(): AppSettings {
   try {
     const stored = localStorage.getItem('APILite-settings');
     if (stored) {
-      const parsed = JSON.parse(stored);
-      if (parsed.shortcuts) {
-        parsed.shortcuts = migrateShortcuts({ ...defaultShortcuts, ...parsed.shortcuts });
-      }
-      return parsed;
+      const parsed = JSON.parse(stored) as Partial<AppSettings>;
+      return {
+        ...defaultSettings,
+        ...parsed,
+        shortcuts: migrateShortcuts({ ...defaultShortcuts, ...parsed.shortcuts }),
+      };
     }
   } catch { /* ignore */ }
   return { ...defaultSettings };
@@ -124,9 +127,11 @@ export const useSettingsStore = create<SettingsState>((set) => {
     }),
 
     updateShortcut: (key, value) => set(state => {
+      const trimmed = value.trim();
+      if (!trimmed) return state;
       const next = {
         ...state,
-        shortcuts: { ...state.shortcuts, [key]: value },
+        shortcuts: { ...state.shortcuts, [key]: trimmed },
       };
       saveSettings(next);
       return next;
@@ -176,26 +181,70 @@ export const useSettingsStore = create<SettingsState>((set) => {
   };
 });
 
-// Keyboard shortcut dispatcher (browser dev mode; Tauri uses native menu accelerators)
+export function toggleSettingsPanel() {
+  const open = useSettingsStore.getState().settingsOpen;
+  useSettingsStore.getState().setSettingsOpen(!open);
+}
+
+function isToggleSettingsKey(e: KeyboardEvent | React.KeyboardEvent): boolean {
+  const mod = isMac ? e.metaKey : e.ctrlKey;
+  return mod && !e.shiftKey && !e.altKey && (e.key === ',' || e.code === 'Comma');
+}
+
+export function matchesShortcutCombo(
+  e: KeyboardEvent | React.KeyboardEvent,
+  shortcut: string,
+): boolean {
+  const trimmed = shortcut.trim();
+  if (!trimmed) return false;
+  if (buildCombo(e) === trimmed) return true;
+  if (trimmed === defaultShortcuts.toggleSettings && isToggleSettingsKey(e)) return true;
+  return false;
+}
+
+function handleEscapeKey(e: KeyboardEvent) {
+  if (e.key !== 'Escape') return false;
+  const { envModalOpen, setEnvModalOpen } = useEnvironmentStore.getState();
+  if (envModalOpen) {
+    e.preventDefault();
+    setEnvModalOpen(false);
+    return true;
+  }
+  if (useSettingsStore.getState().settingsOpen) {
+    e.preventDefault();
+    useSettingsStore.getState().setSettingsOpen(false);
+    return true;
+  }
+  return false;
+}
+
+// Keyboard shortcut dispatcher (capture phase; works with Tauri menu actions via custom events)
 export function initKeyboardShortcuts(): () => void {
   const handler = (e: KeyboardEvent) => {
-    const shortcuts = useSettingsStore.getState().shortcuts;
-    const combo = buildCombo(e);
+    if (handleEscapeKey(e)) return;
 
-    if (combo === shortcuts.sendRequest) {
+    const shortcuts = useSettingsStore.getState().shortcuts;
+
+    if (matchesShortcutCombo(e, shortcuts.toggleSettings)) {
+      e.preventDefault();
+      window.dispatchEvent(new CustomEvent('shortcut:toggle-settings'));
+      return;
+    }
+
+    if (matchesShortcutCombo(e, shortcuts.sendRequest)) {
       e.preventDefault();
       const sendBtn = document.querySelector('.btn-send') as HTMLElement | null;
       sendBtn?.click();
       return;
     }
 
-    if (combo === shortcuts.saveRequest) {
+    if (matchesShortcutCombo(e, shortcuts.saveRequest)) {
       e.preventDefault();
       window.dispatchEvent(new CustomEvent('shortcut:save-request'));
       return;
     }
 
-    if (combo === shortcuts.focusUrl) {
+    if (matchesShortcutCombo(e, shortcuts.focusUrl)) {
       e.preventDefault();
       const urlInput = document.querySelector('.url-input') as HTMLInputElement | null;
       urlInput?.focus();
@@ -203,44 +252,31 @@ export function initKeyboardShortcuts(): () => void {
       return;
     }
 
-    if (combo === shortcuts.toggleSettings) {
-      e.preventDefault();
-      useSettingsStore.getState().setSettingsOpen(!useSettingsStore.getState().settingsOpen);
-      return;
-    }
-
-    if (combo === shortcuts.newTab) {
+    if (matchesShortcutCombo(e, shortcuts.newTab)) {
       e.preventDefault();
       e.stopPropagation();
       window.dispatchEvent(new CustomEvent('shortcut:new-tab'));
       return;
     }
 
-    if (combo === shortcuts.closeTab) {
+    if (matchesShortcutCombo(e, shortcuts.closeTab)) {
       e.preventDefault();
       e.stopPropagation();
       window.dispatchEvent(new CustomEvent('shortcut:close-tab'));
       return;
     }
 
-    if (combo === shortcuts.prevTab) {
+    if (matchesShortcutCombo(e, shortcuts.prevTab)) {
       e.preventDefault();
       e.stopPropagation();
       window.dispatchEvent(new CustomEvent('shortcut:prev-tab'));
       return;
     }
 
-    if (combo === shortcuts.nextTab) {
+    if (matchesShortcutCombo(e, shortcuts.nextTab)) {
       e.preventDefault();
       e.stopPropagation();
       window.dispatchEvent(new CustomEvent('shortcut:next-tab'));
-      return;
-    }
-
-    // ESC to close settings
-    if (e.key === 'Escape' && useSettingsStore.getState().settingsOpen) {
-      e.preventDefault();
-      useSettingsStore.getState().setSettingsOpen(false);
       return;
     }
   };
@@ -271,5 +307,5 @@ export function buildCombo(e: KeyboardEvent | React.KeyboardEvent): string {
 }
 
 export function matchesShortcut(e: KeyboardEvent | React.KeyboardEvent, shortcut: string): boolean {
-  return buildCombo(e) === shortcut;
+  return matchesShortcutCombo(e, shortcut);
 }

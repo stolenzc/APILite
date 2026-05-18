@@ -1,10 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { nanoid } from 'nanoid';
-import { open } from '@tauri-apps/plugin-dialog';
 import { useCollectionStore, getCollectionPath } from '../store/useCollection';
 import { useStore } from '../store/useStore';
-import { useEnvironmentStore } from '../store/useEnvironmentStore';
-import { useSettingsStore } from '../store/useSettings';
 import type { CollectionNode, CollectionFolder } from '../types';
 import { t } from '../i18n';
 import { methodColors } from '../constants';
@@ -292,19 +289,6 @@ function ContextMenu({ nodeId, isFolder, onStartRename }: { nodeId: string; isFo
 
 export default function CollectionSidebar() {
   const { collections, addCollection } = useCollectionStore();
-  const { collectionDir, setCollectionDir } = useSettingsStore();
-  const {
-    environments,
-    activeEnvironmentId,
-    setActiveEnvironmentId,
-    setEnvModalOpen,
-    addEnvironmentColumn,
-  } = useEnvironmentStore();
-
-  const handleSelectCollectionDir = useCallback(async () => {
-    const selected = await open({ directory: true });
-    if (selected) setCollectionDir(selected);
-  }, [setCollectionDir]);
 
   return (
     <div className="sidebar">
@@ -313,24 +297,6 @@ export default function CollectionSidebar() {
           <span>{t('collection.title')}</span>
           <div className="sidebar-section-actions">
             <button type="button" title={t('collection.addCollection')} onClick={() => addCollection()}>+</button>
-          </div>
-        </div>
-        <div className="sidebar-collection-dir">
-          <span
-            className="sidebar-collection-dir-path"
-            title={collectionDir || t('settings.collection.notSet')}
-          >
-            {collectionDir || t('settings.collection.notSet')}
-          </span>
-          <div className="sidebar-section-actions">
-            <button type="button" title={t('settings.collection.select')} onClick={handleSelectCollectionDir}>
-              {t('settings.collection.select')}
-            </button>
-            {collectionDir && (
-              <button type="button" title={t('settings.collection.clear')} onClick={() => setCollectionDir('')}>
-                {t('settings.collection.clear')}
-              </button>
-            )}
           </div>
         </div>
         <div className="sidebar-section-body">
@@ -343,30 +309,6 @@ export default function CollectionSidebar() {
         </div>
       </section>
 
-      <section className="sidebar-section sidebar-section-environments">
-        <div className="sidebar-section-header">
-          <span>{t('env.sidebarTitle')}</span>
-          <div className="sidebar-section-actions">
-            <button type="button" title={t('env.addEnvColumn')} onClick={() => addEnvironmentColumn()}>
-              +
-            </button>
-            <button type="button" title={t('env.manage')} onClick={() => setEnvModalOpen(true)}>
-              ⋯
-            </button>
-          </div>
-        </div>
-        <ul className="sidebar-section-body sidebar-env-list">
-          {environments.map((e) => (
-            <li
-              key={e.id}
-              className={`sidebar-list-item${e.id === activeEnvironmentId ? ' active' : ''}`}
-              onClick={() => setActiveEnvironmentId(e.id)}
-            >
-              {e.name.trim() ? e.name : t('env.unnamed')}
-            </li>
-          ))}
-        </ul>
-      </section>
     </div>
   );
 }
