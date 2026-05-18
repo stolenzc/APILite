@@ -13,8 +13,7 @@ export default function RequestEnvToolbar() {
         {t('env.active')}
       </span>
       <select
-        className="raw-type-select"
-        style={{ minWidth: 140 }}
+        className="request-env-select"
         value={activeEnvironmentId}
         onChange={(e) => setActiveEnvironmentId(e.target.value)}
       >
