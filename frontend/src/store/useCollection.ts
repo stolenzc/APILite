@@ -1,8 +1,10 @@
 import { create } from 'zustand';
 import { nanoid } from 'nanoid';
 import { invoke } from '@tauri-apps/api/core';
-import type { CollectionNode, CollectionFolder, CollectionRequest, HttpRequest, HttpMethod, KeyValue, BodyType } from '../types';
+import type { CollectionNode, CollectionFolder, CollectionRequest, HttpRequest } from '../types';
 import { useSettingsStore } from './useSettings';
+import { showToast } from '../utils/toast';
+import { t } from '../i18n';
 
 const defaultRequest: HttpRequest = {
   method: 'GET',
@@ -14,8 +16,40 @@ const defaultRequest: HttpRequest = {
   body: '',
 };
 
-// Utility: find node by id in tree, return path
-function findNode(nodes: CollectionNode[], id: string): { node: CollectionNode | null; parent: CollectionFolder | null; path: CollectionNode[] } {
+function collectionDir(): string {
+  return useSettingsStore.getState().collectionDir;
+}
+
+function isCollectionRoot(node: CollectionNode): boolean {
+  return node.type === 'folder' && !!node.fileName;
+}
+
+function asCollectionRoot(node: CollectionNode): CollectionFolder | null {
+  if (node.type === 'folder' && node.fileName) return node;
+  return null;
+}
+
+function collectionNameTaken(collections: CollectionNode[], name: string, exceptId?: string): boolean {
+  const norm = name.trim().toLowerCase();
+  if (!norm) return false;
+  return collections.some(
+    n => isCollectionRoot(n) && n.id !== exceptId && n.name.trim().toLowerCase() === norm,
+  );
+}
+
+function collectionFilePayload(root: CollectionFolder): string {
+  return JSON.stringify({
+    id: root.id,
+    name: root.name,
+    collapsed: root.collapsed,
+    children: root.children,
+  });
+}
+
+function findNode(
+  nodes: CollectionNode[],
+  id: string,
+): { node: CollectionNode | null; parent: CollectionFolder | null; path: CollectionNode[] } {
   for (const node of nodes) {
     if (node.id === id) return { node, parent: null, path: [node] };
     if (node.type === 'folder') {
@@ -26,20 +60,53 @@ function findNode(nodes: CollectionNode[], id: string): { node: CollectionNode |
   return { node: null, parent: null, path: [] };
 }
 
-// Build breadcrumb path like "Folder > Sub > Request"
+function findCollectionRoot(nodes: CollectionNode[], nodeId: string): CollectionFolder | null {
+  for (const node of nodes) {
+    if (node.type === 'folder' && node.fileName) {
+      if (node.id === nodeId) return node;
+      if (findNode(node.children, nodeId).node) return node;
+    }
+  }
+  return null;
+}
+
+async function persistCollectionRoot(root: CollectionFolder) {
+  const dir = collectionDir();
+  if (!dir || !root.fileName) return;
+  await invoke('collections_save', {
+    dir,
+    fileName: root.fileName,
+    data: collectionFilePayload(root),
+  });
+}
+
+async function persistForNodeId(nodeId: string, collections: CollectionNode[]) {
+  const root = findCollectionRoot(collections, nodeId);
+  if (root) await persistCollectionRoot(root);
+}
+
+function defaultParentId(collections: CollectionNode[], activeNodeId: string | null): string | null {
+  if (activeNodeId) {
+    const { node } = findNode(collections, activeNodeId);
+    if (node?.type === 'folder') return node.id;
+    const root = findCollectionRoot(collections, activeNodeId);
+    if (root) return root.id;
+  }
+  const first = collections.find((n): n is CollectionFolder => isCollectionRoot(n));
+  return first?.id ?? null;
+}
+
 export function getCollectionPath(nodes: CollectionNode[], id: string): string {
   const { path } = findNode(nodes, id);
   return path.map(n => n.name).join(' > ');
 }
 
-// Utility: remove node by id from tree
 function removeNode(nodes: CollectionNode[], id: string): CollectionNode[] {
-  return nodes.filter(n => n.id !== id).map(n =>
-    n.type === 'folder' ? { ...n, children: removeNode(n.children, id) } : n
-  );
+  return nodes
+    .filter(n => n.id !== id)
+    .map(n => (n.type === 'folder' ? { ...n, children: removeNode(n.children, id) } : n));
 }
 
-// Utility: update node in tree
 function updateNode(nodes: CollectionNode[], id: string, update: Partial<CollectionNode>): CollectionNode[] {
   return nodes.map(n => {
     if (n.id === id) return { ...n, ...update } as CollectionNode;
@@ -48,13 +115,23 @@ function updateNode(nodes: CollectionNode[], id: string, update: Partial<Collect
   });
 }
 
-// Utility: deep clone a node
-function cloneNode(node: CollectionNode): CollectionNode {
-  if (node.type === 'folder') return { ...node, id: nanoid(), children: node.children.map(cloneNode) };
-  return { ...node, id: nanoid(), request: { ...node.request, params: [...node.request.params], headers: [...node.request.headers] } };
+function duplicateNode(node: CollectionNode): CollectionNode {
+  if (node.type === 'folder') {
+    const copy: CollectionFolder = {
+      ...node,
+      id: nanoid(),
+      fileName: undefined,
+      children: node.children.map(duplicateNode),
+    };
+    return copy;
+  }
+  return {
+    ...node,
+    id: nanoid(),
+    request: { ...node.request, params: [...node.request.params], headers: [...node.request.headers] },
+  };
 }
 
-// Utility: find all ancestors of a node
 function getAncestorIds(nodes: CollectionNode[], targetId: string, ancestors: string[] = []): string[] {
   for (const node of nodes) {
     if (node.id === targetId) return ancestors;
@@ -66,42 +143,24 @@ function getAncestorIds(nodes: CollectionNode[], targetId: string, ancestors: st
   return [];
 }
 
-// Persist to file system via Tauri
-async function persistCollections(dir: string, collections: CollectionNode[]) {
-  if (!dir) return;
-  try {
-    await invoke('save_collections', { dir, data: JSON.stringify(collections, null, 2) });
-  } catch (err) {
-    console.error('Failed to save collections:', err);
-  }
-}
-
 interface CollectionStore {
   collections: CollectionNode[];
   activeNodeId: string | null;
   contextMenu: { nodeId: string; x: number; y: number } | null;
 
-  // Init
   initCollections: (dir: string) => Promise<void>;
-
-  // CRUD
+  addCollection: (name?: string) => boolean;
   addFolder: (parentId: string | null) => void;
   addRequest: (parentId: string | null, name?: string, request?: HttpRequest, id?: string) => void;
-  renameNode: (id: string, name: string) => void;
+  renameNode: (id: string, name: string) => boolean;
   updateRequest: (id: string, name: string, request: HttpRequest) => void;
   deleteNode: (id: string) => void;
   toggleCollapse: (id: string) => void;
   cloneNode: (id: string) => void;
-
-  // Active node
   setActiveNode: (id: string | null) => void;
   loadRequest: (id: string) => HttpRequest | null;
-
-  // Context menu
   openContextMenu: (nodeId: string, x: number, y: number) => void;
   closeContextMenu: () => void;
-
-  // Move
   moveNode: (sourceId: string, targetFolderId: string) => void;
   moveToRoot: (sourceId: string) => void;
 }
@@ -125,7 +184,45 @@ export const useCollectionStore = create<CollectionStore>((set, get) => ({
     }
   },
 
-  addFolder: (parentId) => set(state => {
+  addCollection: (name = 'New Collection') => {
+    const trimmed = name.trim() || 'New Collection';
+    if (collectionNameTaken(get().collections, trimmed)) {
+      showToast(t('collection.duplicateName'));
+      return false;
+    }
+    const id = nanoid();
+    const root: CollectionFolder = {
+      id,
+      name: trimmed,
+      type: 'folder',
+      children: [],
+      collapsed: false,
+      fileName: '',
+    };
+    set(state => ({ collections: [...state.collections, root] }));
+    const dir = collectionDir();
+    if (!dir) return true;
+    void invoke<string>('collections_create', { dir, id, name: trimmed })
+      .then(fileName => {
+        set(state => ({
+          collections: updateNode(state.collections, id, { fileName } as Partial<CollectionFolder>),
+        }));
+      })
+      .catch(err => {
+        console.error('Failed to create collection:', err);
+        set(state => ({ collections: removeNode(state.collections, id) }));
+        if (String(err).includes('duplicate_collection_name')) {
+          showToast(t('collection.duplicateName'));
+        }
+      });
+    return true;
+  },
+
+  addFolder: (parentId) => {
+    const collections = [...get().collections];
+    const parentKey = parentId ?? defaultParentId(collections, get().activeNodeId);
+    if (!parentKey) return;
+
     const folder: CollectionFolder = {
       id: nanoid(),
       name: 'New Folder',
@@ -133,45 +230,76 @@ export const useCollectionStore = create<CollectionStore>((set, get) => ({
       children: [],
       collapsed: false,
     };
-    let collections = [...state.collections];
-    if (parentId) {
-      collections = updateNode(collections, parentId, { children: [...(findNode(collections, parentId).node as CollectionFolder)?.children || [], folder] });
-    } else {
-      collections = [...collections, folder];
-    }
-    persistCollections(useSettingsStore.getState().collectionDir, collections);
-    return { collections };
-  }),
+    const parent = findNode(collections, parentKey).node;
+    if (parent?.type !== 'folder') return;
+    parent.children = [...parent.children, folder];
+    set({ collections });
+    void persistForNodeId(parentKey, collections).catch(err =>
+      console.error('Failed to save folder:', err),
+    );
+  },
 
-  addRequest: (parentId, name = 'New Request', request = { ...defaultRequest }, id?: string) => set(state => {
-    const nodeId = id ?? nanoid();
+  addRequest: (parentId, name = 'New Request', request = { ...defaultRequest }, id?: string) => {
+    const collections = [...get().collections];
+    const parentKey = parentId ?? defaultParentId(collections, get().activeNodeId);
+    if (!parentKey) return;
+
     const node: CollectionRequest = {
-      id: nodeId,
+      id: id ?? nanoid(),
       name,
       type: 'request',
       request: { ...request, params: [...request.params], headers: [...request.headers] },
     };
-    let collections = [...state.collections];
-    if (parentId) {
-      const parent = findNode(collections, parentId);
-      if (parent.node && parent.node.type === 'folder') {
-        collections = updateNode(collections, parentId, { children: [...(parent.node as CollectionFolder).children, node] });
-      }
-    } else {
-      collections = [...collections, node];
+    const parent = findNode(collections, parentKey).node;
+    if (parent?.type !== 'folder') return;
+    parent.children = [...parent.children, node];
+    set({ collections });
+    void persistForNodeId(parentKey, collections).catch(err =>
+      console.error('Failed to save request:', err),
+    );
+  },
+
+  renameNode: (id, name) => {
+    const trimmed = name.trim();
+    if (!trimmed) return false;
+    const { node } = findNode(get().collections, id);
+    if (!node) return false;
+
+    const collectionRoot = asCollectionRoot(node);
+    if (collectionRoot && collectionNameTaken(get().collections, trimmed, id)) {
+      showToast(t('collection.duplicateName'));
+      return false;
     }
-    persistCollections(useSettingsStore.getState().collectionDir, collections);
-    return { collections };
-  }),
 
-  renameNode: (id, name) => set(state => {
-    const collections = updateNode([...state.collections], id, { name });
-    persistCollections(useSettingsStore.getState().collectionDir, collections);
-    return { collections };
-  }),
+    const collections = updateNode([...get().collections], id, { name: trimmed });
+    set({ collections });
 
-  updateRequest: (id, name, request) => set(state => {
-    const collections = updateNode([...state.collections], id, {
+    if (collectionRoot?.fileName) {
+      const dir = collectionDir();
+      if (!dir) return true;
+      void invoke<string>('collections_rename', { dir, fileName: collectionRoot.fileName, newName: trimmed })
+        .then(fileName => {
+          set(state => ({
+            collections: updateNode(state.collections, id, { fileName, name: trimmed } as Partial<CollectionFolder>),
+          }));
+          void persistForNodeId(id, get().collections);
+        })
+        .catch(err => {
+          console.error('Failed to rename collection file:', err);
+          if (String(err).includes('duplicate_collection_name')) {
+            showToast(t('collection.duplicateName'));
+          }
+        });
+    } else {
+      void persistForNodeId(id, collections).catch(err =>
+        console.error('Failed to save rename:', err),
+      );
+    }
+    return true;
+  },
+
+  updateRequest: (id, name, request) => {
+    const collections = updateNode([...get().collections], id, {
       name,
       request: {
         method: request.method,
@@ -183,42 +311,86 @@ export const useCollectionStore = create<CollectionStore>((set, get) => ({
         body: request.body,
       },
     });
-    persistCollections(useSettingsStore.getState().collectionDir, collections);
-    return { collections };
-  }),
+    set({ collections });
+    void persistForNodeId(id, collections).catch(err =>
+      console.error('Failed to update request:', err),
+    );
+  },
 
-  deleteNode: (id) => set(state => {
-    const collections = removeNode([...state.collections], id);
-    persistCollections(useSettingsStore.getState().collectionDir, collections);
-    return { collections, activeNodeId: state.activeNodeId === id ? null : state.activeNodeId };
-  }),
+  deleteNode: (id) => {
+    const { node } = findNode(get().collections, id);
+    const root = findCollectionRoot(get().collections, id);
+    const collections = removeNode([...get().collections], id);
+    set({
+      collections,
+      activeNodeId: get().activeNodeId === id ? null : get().activeNodeId,
+    });
+    const dir = collectionDir();
+    if (!dir || !node) return;
 
-  toggleCollapse: (id) => set(state => {
-    const node = findNode(state.collections, id).node;
-    if (!node || node.type !== 'folder') return state;
-    const collections = updateNode([...state.collections], id, { collapsed: !node.collapsed });
-    persistCollections(useSettingsStore.getState().collectionDir, collections);
-    return { collections };
-  }),
+    const collectionRoot = asCollectionRoot(node);
+    if (collectionRoot?.fileName) {
+      void invoke('collections_delete', { dir, fileName: collectionRoot.fileName }).catch(err =>
+        console.error('Failed to delete collection file:', err),
+      );
+    } else if (root) {
+      const updated = findNode(collections, root.id).node as CollectionFolder | null;
+      if (updated?.type === 'folder') {
+        void persistCollectionRoot(updated).catch(err =>
+          console.error('Failed to save after delete:', err),
+        );
+      }
+    }
+  },
 
-  cloneNode: (id) => set(state => {
-    const { node, parent } = findNode(state.collections, id);
-    if (!node) return state;
-    const cloned = cloneNode(node);
-    let collections = [...state.collections];
+  toggleCollapse: (id) => {
+    const { node } = findNode(get().collections, id);
+    if (!node || node.type !== 'folder') return;
+    const collections = updateNode([...get().collections], id, { collapsed: !node.collapsed });
+    set({ collections });
+    void persistForNodeId(id, collections).catch(err =>
+      console.error('Failed to save collapse state:', err),
+    );
+  },
+
+  cloneNode: (id) => {
+    const { node, parent } = findNode(get().collections, id);
+    if (!node) return;
+    const cloned = duplicateNode(node);
+    const collections = [...get().collections];
+    let persistId: string;
+
     if (parent) {
-      const parentFolder = findNode(collections, parent.id).node as CollectionFolder;
-      const idx = parentFolder.children.findIndex(c => c.id === id);
-      const children = [...parentFolder.children];
-      children.splice(idx + 1, 0, cloned);
-      collections = updateNode(collections, parent.id, { children });
+      const idx = parent.children.findIndex(c => c.id === id);
+      parent.children.splice(idx + 1, 0, cloned);
+      persistId = parent.id;
     } else {
+      if (cloned.type === 'folder' && asCollectionRoot(node)) {
+        if (collectionNameTaken(collections, cloned.name)) {
+          showToast(t('collection.duplicateName'));
+          return;
+        }
+      }
       const idx = collections.findIndex(c => c.id === id);
       collections.splice(idx + 1, 0, cloned);
+      persistId = asCollectionRoot(node)?.id ?? cloned.id;
+      if (cloned.type === 'folder' && asCollectionRoot(node)) {
+        const dir = collectionDir();
+        if (dir) {
+          void invoke<string>('collections_create', { dir, id: cloned.id, name: cloned.name })
+            .then(fileName => {
+              set(state => ({
+                collections: updateNode(state.collections, cloned.id, { fileName } as Partial<CollectionFolder>),
+              }));
+            });
+        }
+      }
     }
-    persistCollections(useSettingsStore.getState().collectionDir, collections);
-    return { collections };
-  }),
+    set({ collections });
+    void persistForNodeId(persistId, collections).catch(err =>
+      console.error('Failed to clone:', err),
+    );
+  },
 
   setActiveNode: (activeNodeId) => set({ activeNodeId }),
 
@@ -231,25 +403,38 @@ export const useCollectionStore = create<CollectionStore>((set, get) => ({
   openContextMenu: (nodeId, x, y) => set({ contextMenu: { nodeId, x, y } }),
   closeContextMenu: () => set({ contextMenu: null }),
 
-  moveNode: (sourceId, targetFolderId) => set(state => {
+  moveNode: (sourceId, targetFolderId) => {
+    const state = get();
     const { node } = findNode(state.collections, sourceId);
-    if (!node || sourceId === targetFolderId) return state;
-    // Prevent moving a folder into itself or its descendants
-    if (node.type === 'folder' && getAncestorIds(state.collections, targetFolderId).includes(sourceId)) return state;
-    let collections = removeNode([...state.collections], sourceId);
-    const target = findNode(collections, targetFolderId).node;
-    if (target && target.type === 'folder') {
-      collections = updateNode(collections, targetFolderId, { children: [...(target as CollectionFolder).children, node] });
+    if (!node || sourceId === targetFolderId) return;
+    if (isCollectionRoot(node)) return;
+    if (node.type === 'folder' && getAncestorIds(state.collections, targetFolderId).includes(sourceId)) {
+      return;
     }
-    persistCollections(useSettingsStore.getState().collectionDir, collections);
-    return { collections };
-  }),
+    const target = findNode(state.collections, targetFolderId).node;
+    if (!target || target.type !== 'folder') return;
 
-  moveToRoot: (sourceId) => set(state => {
-    const { node } = findNode(state.collections, sourceId);
-    if (!node) return state;
-    const collections = [...removeNode([...state.collections], sourceId), node];
-    persistCollections(useSettingsStore.getState().collectionDir, collections);
-    return { collections };
-  }),
+    let collections = removeNode([...state.collections], sourceId);
+    const targetLive = findNode(collections, targetFolderId).node;
+    if (targetLive?.type === 'folder') {
+      targetLive.children = [...targetLive.children, node];
+    }
+    set({ collections });
+    void persistForNodeId(sourceId, collections);
+    void persistForNodeId(targetFolderId, collections);
+  },
+
+  moveToRoot: (sourceId) => {
+    const state = get();
+    const { node, parent } = findNode(state.collections, sourceId);
+    if (!node || !parent || isCollectionRoot(node)) return;
+
+    let collections = removeNode([...state.collections], sourceId);
+    const root = findCollectionRoot(collections, sourceId);
+    if (root) {
+      root.children = [...root.children, node];
+      set({ collections });
+      void persistCollectionRoot(root).catch(err => console.error('Failed to move to root:', err));
+    }
+  },
 }));

@@ -52,6 +52,19 @@ export default function App() {
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
   }, [saveModalOpen]);
+
+  useEffect(() => {
+    const onToast = (e: Event) => {
+      const message = (e as CustomEvent<string>).detail;
+      if (!message) return;
+      setToast(message);
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+      toastTimer.current = setTimeout(() => setToast(''), 2000);
+    };
+    window.addEventListener('app:toast', onToast);
+    return () => window.removeEventListener('app:toast', onToast);
+  }, []);
+
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleSaveRequest = (folderId: string | null, name: string) => {

@@ -66,9 +66,12 @@ function TreeNode({ node, depth = 0 }: { node: CollectionNode; depth?: number })
   }, [node.id, openContextMenu]);
 
   const confirmRename = useCallback(() => {
-    if (editName.trim()) renameNode(node.id, editName.trim());
+    const next = editName.trim();
+    if (next && !renameNode(node.id, next)) {
+      setEditName(node.name);
+    }
     setRenaming(false);
-  }, [editName, node.id, renameNode]);
+  }, [editName, node.id, node.name, renameNode]);
 
   const handleKey = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter') confirmRename();
@@ -288,8 +291,7 @@ function ContextMenu({ nodeId, isFolder, onStartRename }: { nodeId: string; isFo
 }
 
 export default function CollectionSidebar() {
-  const { collections, addFolder, addRequest } = useCollectionStore();
-  const { openTabFromCollection } = useStore();
+  const { collections, addCollection } = useCollectionStore();
   const { collectionDir, setCollectionDir } = useSettingsStore();
   const {
     environments,
@@ -310,19 +312,7 @@ export default function CollectionSidebar() {
         <div className="sidebar-section-header">
           <span>{t('collection.title')}</span>
           <div className="sidebar-section-actions">
-            <button type="button" title={t('collection.addFolder')} onClick={() => addFolder(null)}>+F</button>
-            <button
-              type="button"
-              title={t('collection.addRequest')}
-              onClick={() => {
-                const id = nanoid();
-                addRequest(null, 'New Request', undefined, id);
-                const req = useCollectionStore.getState().loadRequest(id)!;
-                openTabFromCollection(req, 'New Request', 'New Request', id);
-              }}
-            >
-              +R
-            </button>
+            <button type="button" title={t('collection.addCollection')} onClick={() => addCollection()}>+</button>
           </div>
         </div>
         <div className="sidebar-collection-dir">

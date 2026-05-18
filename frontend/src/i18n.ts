@@ -117,6 +117,8 @@ const messages: Record<Locale, Record<string, string>> = {
 
     // Collection
     'collection.title': 'Collections',
+    'collection.addCollection': 'New collection',
+    'collection.duplicateName': 'A collection with this name already exists',
     'collection.addFolder': 'New Folder',
     'collection.addRequest': 'New Request',
     'collection.rename': 'Rename',
@@ -247,6 +249,8 @@ const messages: Record<Locale, Record<string, string>> = {
 
     // Collection
     'collection.title': '集合',
+    'collection.addCollection': '新建集合',
+    'collection.duplicateName': '已存在同名集合',
     'collection.addFolder': '新建文件夹',
     'collection.addRequest': '新建请求',
     'collection.rename': '重命名',

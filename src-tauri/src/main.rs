@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod collections;
 mod curl_export;
 mod curl_parser;
 mod history;
@@ -7,8 +8,6 @@ mod http_client;
 
 use history::HistoryStore;
 use std::collections::HashMap;
-use std::fs;
-use std::path::PathBuf;
 use tauri::Emitter;
 
 #[tauri::command]
@@ -78,7 +77,6 @@ fn clear_history(state: tauri::State<HistoryStore>) {
     state.clear();
 }
 
-const COLLECTION_FILE: &str = "apilite-collections.json";
 const DEFAULT_COLLECTION_DIR: &str = ".APILite/collections";
 
 #[tauri::command]
@@ -89,27 +87,36 @@ fn get_default_collection_dir() -> Result<String, String> {
 
 #[tauri::command]
 fn load_collections(dir: String) -> Result<String, String> {
-    let path = PathBuf::from(&dir).join(COLLECTION_FILE);
-    if !path.exists() {
-        return Ok("[]".to_string());
-    }
-    fs::read_to_string(&path).map_err(|e| format!("Failed to read collections: {}", e))
+    collections::load_tree(&dir)
+}
+
+#[tauri::command]
+fn collections_save(dir: String, file_name: String, data: String) -> Result<(), String> {
+    collections::save_collection(&dir, &file_name, &data)
+}
+
+#[tauri::command]
+fn collections_create(dir: String, id: String, name: String) -> Result<String, String> {
+    collections::create_collection(&dir, &id, &name)
+}
+
+#[tauri::command]
+fn collections_delete(dir: String, file_name: String) -> Result<(), String> {
+    collections::delete_collection(&dir, &file_name)
+}
+
+#[tauri::command]
+fn collections_rename(
+    dir: String,
+    file_name: String,
+    new_name: String,
+) -> Result<String, String> {
+    collections::rename_collection(&dir, &file_name, &new_name)
 }
 
 #[tauri::command]
 fn force_close_window(window: tauri::Window) {
     let _ = window.close();
-}
-
-#[tauri::command]
-fn save_collections(dir: String, data: String) -> Result<(), String> {
-    let dir_path = PathBuf::from(&dir);
-    if !dir_path.exists() {
-        fs::create_dir_all(&dir_path)
-            .map_err(|e| format!("Failed to create directory: {}", e))?;
-    }
-    let path = dir_path.join(COLLECTION_FILE);
-    fs::write(&path, data).map_err(|e| format!("Failed to write collections: {}", e))
 }
 
 fn main() {
@@ -132,7 +139,10 @@ fn main() {
             clear_history,
             get_default_collection_dir,
             load_collections,
-            save_collections,
+            collections_save,
+            collections_create,
+            collections_delete,
+            collections_rename,
             force_close_window,
         ])
         .run(tauri::generate_context!())

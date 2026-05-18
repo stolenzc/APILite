@@ -35,6 +35,8 @@ export interface CollectionFolder {
   type: 'folder';
   children: CollectionNode[];
   collapsed: boolean;
+  /** Set only on top-level collection roots (one `.json` file each). */
+  fileName?: string;
 }
 
 export interface CollectionRequest {
