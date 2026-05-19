@@ -6,6 +6,7 @@ mod curl_export;
 mod curl_parser;
 mod history;
 mod http_client;
+mod proxy_config;
 
 use history::HistoryStore;
 use std::collections::HashMap;

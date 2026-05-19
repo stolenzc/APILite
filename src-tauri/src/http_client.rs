@@ -1,6 +1,21 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::OnceLock;
 use std::time::Instant;
+
+static HTTP_CLIENT: OnceLock<Result<reqwest::Client, String>> = OnceLock::new();
+
+fn shared_client() -> Result<&'static reqwest::Client, String> {
+    HTTP_CLIENT
+        .get_or_init(|| {
+            let builder = reqwest::Client::builder()
+                .redirect(reqwest::redirect::Policy::limited(10));
+            let builder = crate::proxy_config::prepare_http_client_builder(builder)?;
+            builder.build().map_err(|e| e.to_string())
+        })
+        .as_ref()
+        .map_err(|e| e.clone())
+}
 
 #[derive(Deserialize)]
 pub struct SendRequest {
@@ -57,10 +72,7 @@ fn format_raw_http(
 }
 
 pub async fn send(req: SendRequest) -> Result<SendResponse, String> {
-    let client = reqwest::Client::builder()
-        .redirect(reqwest::redirect::Policy::limited(10))
-        .build()
-        .map_err(|e| e.to_string())?;
+    let client = shared_client()?;
 
     let method = reqwest::Method::from_bytes(req.method.as_bytes())
         .map_err(|e| format!("Invalid HTTP method: {}", e))?;
