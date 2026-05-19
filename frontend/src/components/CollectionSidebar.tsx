@@ -2,20 +2,59 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { nanoid } from 'nanoid';
 import { useCollectionStore, getCollectionPath } from '../store/useCollection';
 import { useStore } from '../store/useStore';
-import type { CollectionNode, CollectionRequest } from '../types';
+import type { CollectionFolder, CollectionNode, CollectionRequest } from '../types';
 import { t } from '../i18n';
 import { methodColors } from '../constants';
 
 // Global drag state shared across all TreeNodes
 let dragSourceId: string | null = null;
+let dragSourceIsFolder = false;
 let dragGhostEl: HTMLElement | null = null;
 let dragListenersAttached = false;
+let dragDropTargetId: string | null = null;
+let dragDropPosition: 'before' | 'after' | 'inside' | null = null;
+
+const DRAG_HOVER_EVENT = 'collection-drag-hover';
 
 function updateGhostPos(e: MouseEvent) {
   if (dragGhostEl) {
     dragGhostEl.style.left = e.clientX + 12 + 'px';
     dragGhostEl.style.top = e.clientY + 12 + 'px';
   }
+}
+
+function resolveDropTarget(clientX: number, clientY: number): void {
+  dragDropTargetId = null;
+  dragDropPosition = null;
+  const el = document.elementFromPoint(clientX, clientY);
+  if (!el) return;
+
+  if (dragSourceIsFolder) {
+    const folderEl = el.closest('[data-folder-id]') as HTMLElement | null;
+    if (folderEl) {
+      dragDropTargetId = folderEl.getAttribute('data-folder-id');
+      dragDropPosition = 'inside';
+    }
+    return;
+  }
+
+  const requestEl = el.closest('[data-request-id]') as HTMLElement | null;
+  if (requestEl) {
+    dragDropTargetId = requestEl.getAttribute('data-request-id');
+    const rect = requestEl.getBoundingClientRect();
+    dragDropPosition = clientY < rect.top + rect.height / 2 ? 'before' : 'after';
+    return;
+  }
+
+  const folderEl = el.closest('[data-folder-id]') as HTMLElement | null;
+  if (folderEl) {
+    dragDropTargetId = folderEl.getAttribute('data-folder-id');
+    dragDropPosition = 'inside';
+  }
+}
+
+function notifyDragHover(): void {
+  window.dispatchEvent(new CustomEvent(DRAG_HOVER_EVENT));
 }
 
 function requestMatchesSearch(node: CollectionRequest, queryNorm: string): boolean {
@@ -84,18 +123,42 @@ function TreeNode({ node, depth = 0 }: { node: CollectionNode; depth?: number })
     toggleCollapse, setActiveNode, activeNodeId,
     openContextMenu, closeContextMenu, contextMenu,
     deleteNode, cloneNode, addFolder, addRequest, renameNode, loadRequest,
-    moveNode, pendingRenameNodeId, consumePendingRename,
+    moveRequest, moveFolder, pendingRenameNodeId, consumePendingRename,
   } = useCollectionStore();
   const { openTabFromCollection } = useStore();
 
   const isFolder = node.type === 'folder';
+  const isCollectionRoot = isFolder && !!(node as CollectionFolder).fileName;
+  const canDrag = !isCollectionRoot;
   const isActive = activeNodeId === node.id;
   const [renaming, setRenaming] = useState(false);
   const [editName, setEditName] = useState(node.name);
   const [hovered, setHovered] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [dropHint, setDropHint] = useState<'before' | 'after' | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const nodeRef = useRef<HTMLDivElement>(null);
+
+  const syncDropHint = useCallback(() => {
+    if (!dragSourceId || dragDropTargetId !== node.id) {
+      setDropHint(null);
+      setDragOver(false);
+      return;
+    }
+    if (isFolder) {
+      setDropHint(null);
+      setDragOver(dragDropPosition === 'inside');
+      return;
+    }
+    setDragOver(false);
+    setDropHint(dragDropPosition === 'before' || dragDropPosition === 'after' ? dragDropPosition : null);
+  }, [isFolder, node.id]);
+
+  useEffect(() => {
+    const onDragHover = () => syncDropHint();
+    window.addEventListener(DRAG_HOVER_EVENT, onDragHover);
+    return () => window.removeEventListener(DRAG_HOVER_EVENT, onDragHover);
+  }, [syncDropHint]);
 
   useEffect(() => {
     if (renaming && inputRef.current) {
@@ -143,8 +206,8 @@ function TreeNode({ node, depth = 0 }: { node: CollectionNode; depth?: number })
     if (e.key === 'Escape') { setEditName(node.name); setRenaming(false); }
   }, [confirmRename, node.name]);
 
-  // Custom drag: start on mousedown
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (!canDrag) return;
     if (e.button !== 0) return;
     const target = e.target as HTMLElement;
     if (target.tagName === 'BUTTON' || target.tagName === 'INPUT') return;
@@ -156,6 +219,7 @@ function TreeNode({ node, depth = 0 }: { node: CollectionNode; depth?: number })
     let lastY = startY;
     let dragging = false;
     dragSourceId = node.id;
+    dragSourceIsFolder = isFolder;
 
     const onMouseMove = (ev: MouseEvent) => {
       lastX = ev.clientX;
@@ -179,6 +243,8 @@ function TreeNode({ node, depth = 0 }: { node: CollectionNode; depth?: number })
       }
       if (dragging) {
         updateGhostPos(ev);
+        resolveDropTarget(ev.clientX, ev.clientY);
+        notifyDragHover();
       }
     };
 
@@ -189,16 +255,20 @@ function TreeNode({ node, depth = 0 }: { node: CollectionNode; depth?: number })
       if (dragging && dragGhostEl) {
         dragGhostEl.remove();
         dragGhostEl = null;
-        const el = document.elementFromPoint(lastX, lastY);
-        const folderNode = el?.closest('[data-folder-id]');
-        if (folderNode) {
-          const targetId = folderNode.getAttribute('data-folder-id')!;
-          if (targetId !== dragSourceId) {
-            moveNode(dragSourceId!, targetId);
+        resolveDropTarget(lastX, lastY);
+        if (dragSourceId && dragDropTargetId && dragDropTargetId !== dragSourceId) {
+          if (dragSourceIsFolder && dragDropPosition === 'inside') {
+            moveFolder(dragSourceId, dragDropTargetId);
+          } else if (!dragSourceIsFolder && dragDropPosition) {
+            moveRequest(dragSourceId, dragDropTargetId, dragDropPosition);
           }
         }
       }
       dragSourceId = null;
+      dragSourceIsFolder = false;
+      dragDropTargetId = null;
+      dragDropPosition = null;
+      notifyDragHover();
     };
 
     if (!dragListenersAttached) {
@@ -206,17 +276,7 @@ function TreeNode({ node, depth = 0 }: { node: CollectionNode; depth?: number })
       document.addEventListener('mouseup', onMouseUp);
       dragListenersAttached = true;
     }
-  }, [node.id, node.name, moveNode]);
-
-  // Track drag-over for folder drop targets
-  const handleDragOver = useCallback((e: React.MouseEvent) => {
-    if (!isFolder || !dragSourceId || dragSourceId === node.id) return;
-    setDragOver(true);
-  }, [isFolder, node.id]);
-
-  const handleDragLeave = useCallback(() => {
-    setDragOver(false);
-  }, []);
+  }, [canDrag, isFolder, node.id, node.name, moveRequest, moveFolder]);
 
   const ctxOpen = contextMenu?.nodeId === node.id;
 
@@ -224,19 +284,18 @@ function TreeNode({ node, depth = 0 }: { node: CollectionNode; depth?: number })
     <div>
       <div
         ref={nodeRef}
-        className={`tree-node ${isActive ? 'active' : ''} ${dragOver ? 'drag-over' : ''}`}
-        style={{ paddingLeft: depth * 16 + 8, cursor: 'grab' }}
+        className={`tree-node ${isActive ? 'active' : ''} ${dragOver ? 'drag-over' : ''} ${dropHint === 'before' ? 'drop-before' : ''} ${dropHint === 'after' ? 'drop-after' : ''}`}
+        style={{ paddingLeft: depth * 16 + 8, cursor: canDrag ? 'grab' : 'default' }}
         data-folder-id={isFolder ? node.id : undefined}
+        data-request-id={!isFolder ? node.id : undefined}
         onClick={handleClick}
         onDoubleClick={() => { setEditName(node.name); setRenaming(true); }}
         onContextMenu={handleContextMenu}
-        onMouseEnter={(e) => {
-          setHovered(true);
-          handleDragOver(e);
-        }}
+        onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => {
           setHovered(false);
-          handleDragLeave();
+          setDragOver(false);
+          setDropHint(null);
         }}
         onMouseDown={handleMouseDown}
       >

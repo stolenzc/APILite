@@ -44,6 +44,8 @@ export interface CollectionRequest {
   name: string;
   type: 'request';
   request: HttpRequest;
+  /** Manual order among sibling requests (folders are sorted by name). */
+  sortOrder?: number;
 }
 
 export type CollectionNode = CollectionFolder | CollectionRequest;

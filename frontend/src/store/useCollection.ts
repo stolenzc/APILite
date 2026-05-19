@@ -6,6 +6,11 @@ import { useSettingsStore } from './useSettings';
 import { showToast } from '../utils/toast';
 import { t } from '../i18n';
 import { useStore } from './useStore';
+import {
+  normalizeCollectionTree,
+  normalizeFolderChildren,
+  nextRequestSortOrder,
+} from '../utils/collectionSort';
 
 const defaultRequest: HttpRequest = {
   method: 'GET',
@@ -133,15 +138,22 @@ function duplicateNode(node: CollectionNode): CollectionNode {
   };
 }
 
-function getAncestorIds(nodes: CollectionNode[], targetId: string, ancestors: string[] = []): string[] {
+/** True if `targetId` is the folder or any node inside it. */
+function folderContainsId(nodes: CollectionNode[], folderId: string, targetId: string): boolean {
+  if (folderId === targetId) return true;
+  const { node } = findNode(nodes, folderId);
+  if (!node || node.type !== 'folder') return false;
+  return findNode(node.children, targetId).node !== null;
+}
+
+function findParentFolder(nodes: CollectionNode[], childId: string): CollectionFolder | null {
   for (const node of nodes) {
-    if (node.id === targetId) return ancestors;
-    if (node.type === 'folder') {
-      const result = getAncestorIds(node.children, targetId, [...ancestors, node.id]);
-      if (result.length > 0) return result;
-    }
+    if (node.type !== 'folder') continue;
+    if (node.children.some((c) => c.id === childId)) return node;
+    const nested = findParentFolder(node.children, childId);
+    if (nested) return nested;
   }
-  return [];
+  return null;
 }
 
 interface CollectionStore {
@@ -165,8 +177,12 @@ interface CollectionStore {
   loadRequest: (id: string) => HttpRequest | null;
   openContextMenu: (nodeId: string, x: number, y: number) => void;
   closeContextMenu: () => void;
-  moveNode: (sourceId: string, targetFolderId: string) => void;
-  moveToRoot: (sourceId: string) => void;
+  moveRequest: (
+    sourceId: string,
+    targetId: string,
+    position: 'before' | 'after' | 'inside',
+  ) => void;
+  moveFolder: (sourceId: string, targetFolderId: string) => void;
 }
 
 export const useCollectionStore = create<CollectionStore>((set, get) => ({
@@ -184,7 +200,7 @@ export const useCollectionStore = create<CollectionStore>((set, get) => ({
     }
     try {
       const data: string = await invoke('load_collections', { dir });
-      set({ collections: JSON.parse(data) });
+      set({ collections: normalizeCollectionTree(JSON.parse(data)) });
     } catch (err) {
       console.error('Failed to load collections:', err);
       set({ collections: [] });
@@ -244,7 +260,7 @@ export const useCollectionStore = create<CollectionStore>((set, get) => ({
     const parent = findNode(collections, parentKey).node;
     if (parent?.type !== 'folder') return undefined;
     parent.collapsed = false;
-    parent.children = [...parent.children, folder];
+    parent.children = normalizeFolderChildren([...parent.children, folder]);
     set({
       collections,
       pendingRenameNodeId: folder.id,
@@ -261,16 +277,17 @@ export const useCollectionStore = create<CollectionStore>((set, get) => ({
     const parentKey = parentId ?? defaultParentId(collections, get().activeNodeId);
     if (!parentKey) return undefined;
 
+    const parent = findNode(collections, parentKey).node;
+    if (parent?.type !== 'folder') return undefined;
     const node: CollectionRequest = {
       id: id ?? nanoid(),
       name,
       type: 'request',
       request: { ...request, params: [...request.params], headers: [...request.headers] },
+      sortOrder: nextRequestSortOrder(parent.children),
     };
-    const parent = findNode(collections, parentKey).node;
-    if (parent?.type !== 'folder') return undefined;
     parent.collapsed = false;
-    parent.children = [...parent.children, node];
+    parent.children = normalizeFolderChildren([...parent.children, node]);
     set({
       collections,
       pendingRenameNodeId: node.id,
@@ -299,7 +316,13 @@ export const useCollectionStore = create<CollectionStore>((set, get) => ({
       return false;
     }
 
-    const collections = updateNode([...get().collections], id, { name: trimmed });
+    let collections = updateNode([...get().collections], id, { name: trimmed });
+    if (node.type === 'folder' && !isCollectionRoot(node)) {
+      const parent = findParentFolder(collections, id);
+      if (parent) {
+        parent.children = normalizeFolderChildren(parent.children);
+      }
+    }
     set({ collections });
 
     if (node.type === 'request') {
@@ -393,8 +416,21 @@ export const useCollectionStore = create<CollectionStore>((set, get) => ({
     let persistId: string;
 
     if (parent) {
-      const idx = parent.children.findIndex(c => c.id === id);
-      parent.children.splice(idx + 1, 0, cloned);
+      if (node.type === 'request' && cloned.type === 'request') {
+        const requests = parent.children.filter((c): c is CollectionRequest => c.type === 'request');
+        const idx = requests.findIndex((r) => r.id === id);
+        requests.splice(idx + 1, 0, cloned as CollectionRequest);
+        parent.children = normalizeFolderChildren([
+          ...parent.children.filter((c) => c.type === 'folder'),
+          ...requests,
+        ]);
+      } else {
+        const idx = parent.children.findIndex((c) => c.id === id);
+        parent.children.splice(idx + 1, 0, cloned);
+        if (cloned.type === 'folder') {
+          parent.children = normalizeFolderChildren(parent.children);
+        }
+      }
       persistId = parent.id;
     } else {
       if (cloned.type === 'folder' && asCollectionRoot(node)) {
@@ -435,53 +471,84 @@ export const useCollectionStore = create<CollectionStore>((set, get) => ({
   openContextMenu: (nodeId, x, y) => set({ contextMenu: { nodeId, x, y } }),
   closeContextMenu: () => set({ contextMenu: null }),
 
-  moveNode: (sourceId, targetFolderId) => {
+  moveRequest: (sourceId, targetId, position) => {
     const state = get();
-    const { node } = findNode(state.collections, sourceId);
-    if (!node || sourceId === targetFolderId) return;
-    if (isCollectionRoot(node)) return;
-    if (node.type === 'folder' && getAncestorIds(state.collections, targetFolderId).includes(sourceId)) {
-      return;
+    const { node: source } = findNode(state.collections, sourceId);
+    if (!source || source.type !== 'request' || sourceId === targetId) return;
+
+    const sourceRoot = findCollectionRoot(state.collections, sourceId);
+    const sourceSnapshot: CollectionRequest = {
+      ...source,
+      request: {
+        ...source.request,
+        params: source.request.params.map((p) => ({ ...p })),
+        headers: source.request.headers.map((h) => ({ ...h })),
+      },
+    };
+
+    let collections = removeNode([...state.collections], sourceId);
+
+    if (position === 'inside') {
+      const target = findNode(collections, targetId).node;
+      if (!target || target.type !== 'folder') return;
+      target.children = normalizeFolderChildren([
+        ...target.children,
+        { ...sourceSnapshot, sortOrder: nextRequestSortOrder(target.children) },
+      ]);
+    } else {
+      const target = findNode(collections, targetId).node;
+      if (!target || target.type !== 'request') return;
+      const parent = findParentFolder(collections, targetId);
+      if (!parent) return;
+
+      const folders = parent.children.filter((c): c is CollectionFolder => c.type === 'folder');
+      const requests = parent.children.filter((c): c is CollectionRequest => c.type === 'request');
+      const targetIdx = requests.findIndex((r) => r.id === targetId);
+      if (targetIdx === -1) return;
+      const insertIdx = position === 'before' ? targetIdx : targetIdx + 1;
+      requests.splice(insertIdx, 0, sourceSnapshot);
+      parent.children = normalizeFolderChildren([...folders, ...requests]);
     }
+
+    set({ collections });
+
+    if (sourceRoot) {
+      const updatedRoot = findNode(collections, sourceRoot.id).node;
+      if (updatedRoot?.type === 'folder') {
+        void persistCollectionRoot(updatedRoot).catch((err) =>
+          console.error('Failed to save collection after move:', err),
+        );
+      }
+    }
+  },
+
+  moveFolder: (sourceId, targetFolderId) => {
+    if (sourceId === targetFolderId) return;
+    const state = get();
+    const { node: source } = findNode(state.collections, sourceId);
+    if (!source || source.type !== 'folder' || isCollectionRoot(source)) return;
+
     const target = findNode(state.collections, targetFolderId).node;
     if (!target || target.type !== 'folder') return;
+    if (folderContainsId(state.collections, sourceId, targetFolderId)) return;
 
     const sourceRoot = findCollectionRoot(state.collections, sourceId);
 
     let collections = removeNode([...state.collections], sourceId);
     const targetLive = findNode(collections, targetFolderId).node;
-    if (targetLive?.type === 'folder') {
-      targetLive.children = [...targetLive.children, node];
-    }
+    if (!targetLive || targetLive.type !== 'folder') return;
+
+    targetLive.collapsed = false;
+    targetLive.children = normalizeFolderChildren([...targetLive.children, source]);
     set({ collections });
 
     if (sourceRoot) {
-      const updatedSource = findNode(collections, sourceRoot.id).node;
-      if (updatedSource?.type === 'folder') {
-        void persistCollectionRoot(updatedSource).catch(err =>
-          console.error('Failed to save source collection after move:', err),
+      const updatedRoot = findNode(collections, sourceRoot.id).node;
+      if (updatedRoot?.type === 'folder') {
+        void persistCollectionRoot(updatedRoot).catch((err) =>
+          console.error('Failed to save collection after folder move:', err),
         );
       }
-    }
-    void persistForNodeId(targetFolderId, collections).catch(err =>
-      console.error('Failed to save target collection after move:', err),
-    );
-  },
-
-  moveToRoot: (sourceId) => {
-    const state = get();
-    const { node, parent } = findNode(state.collections, sourceId);
-    if (!node || !parent || isCollectionRoot(node)) return;
-
-    const sourceRoot = findCollectionRoot(state.collections, sourceId);
-    if (!sourceRoot) return;
-
-    let collections = removeNode([...state.collections], sourceId);
-    const root = findNode(collections, sourceRoot.id).node;
-    if (root?.type === 'folder') {
-      root.children = [...root.children, node];
-      set({ collections });
-      void persistCollectionRoot(root).catch(err => console.error('Failed to move to root:', err));
     }
   },
 }));
