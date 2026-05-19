@@ -28,7 +28,7 @@ type ParsedCurl = {
 };
 
 export default function UrlBar() {
-  const { setMethod, setUrl, syncParamsFromUrl, syncUrlFromParams, setLoading, setResponse, addHistory, applyParsedCurl } = useStore();
+  const { setMethod, setUrl, syncParamsFromUrl, setLoading, setResponse, addHistory, applyParsedCurl } = useStore();
   const urlInputRef = useRef<HTMLInputElement>(null);
   const requestMethod = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.method ?? 'GET');
   const requestUrl = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.url ?? '');
@@ -144,8 +144,6 @@ export default function UrlBar() {
   const handleSend = async () => {
     if (!requestUrl) return;
 
-    syncUrlFromParams();
-
     const reqAfterSync = (() => {
       const s = useStore.getState();
       const tab = s.tabs.find((t) => t.id === s.activeTabId);
@@ -225,7 +223,6 @@ export default function UrlBar() {
   };
 
   const handleExportCurl = async () => {
-    syncUrlFromParams();
     const req = (() => {
       const s = useStore.getState();
       const tab = s.tabs.find((t) => t.id === s.activeTabId);
@@ -363,7 +360,7 @@ function resolveOutboundRequest(
   const interpolatedUrl = interpolateEnvVars(req.url, vars);
   const params = interpolateKeyValues(req.params, vars);
   const headers = interpolateKeyValues(req.headers, vars);
-  let finalUrl = urlWithParams(interpolatedUrl, params);
+  let finalUrl = interpolatedUrl;
   if (autoProtocol) finalUrl = ensureProtocol(finalUrl);
 
   const effectiveBodyType = req.bodyType === 'raw' ? req.rawContentType : req.bodyType;
@@ -392,14 +389,6 @@ function kvToMap(kvs: KeyValue[]): Record<string, string> {
     if (kv.key && kv.enabled) map[kv.key] = kv.value;
   }
   return map;
-}
-
-function urlWithParams(url: string, params: KeyValue[]): string {
-  const baseUrl = url.split('?')[0];
-  const active = params.filter(p => p.key && p.enabled);
-  if (active.length === 0) return baseUrl;
-  const qs = active.map(p => `${encodeURIComponent(p.key)}=${encodeURIComponent(p.value)}`).join('&');
-  return `${baseUrl}?${qs}`;
 }
 
 function ensureProtocol(url: string): string {

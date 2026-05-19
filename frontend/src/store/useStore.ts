@@ -3,6 +3,7 @@ import { nanoid } from 'nanoid';
 import type { HttpRequest, HttpResponse, HistoryEntry, KeyValue } from '../types';
 import type { RawContentType } from '../types';
 import { inferRawContentType } from '../utils/curlUtils';
+import { parseParamsFromUrl, urlWithParams } from '../utils/urlQuery';
 
 const defaultParams: KeyValue[] = [];
 const defaultHeaders: KeyValue[] = [];
@@ -84,25 +85,6 @@ interface AppState {
 
   // Reset
   resetRequest: () => void;
-}
-
-function urlWithParams(url: string, params: KeyValue[]): string {
-  const baseUrl = url.split('?')[0];
-  const active = params.filter(p => p.key && p.enabled);
-  if (active.length === 0) return baseUrl;
-  const qs = active.map(p => `${encodeURIComponent(p.key)}=${encodeURIComponent(p.value)}`).join('&');
-  return `${baseUrl}?${qs}`;
-}
-
-function parseParamsFromUrl(url: string): KeyValue[] {
-  const qs = url.includes('?') ? url.split('?')[1] ?? '' : '';
-  if (!qs) return [];
-  const entries = new URLSearchParams(qs);
-  const params: KeyValue[] = [];
-  for (const [key, value] of entries.entries()) {
-    params.push({ key, value: decodeURIComponent(value), enabled: true });
-  }
-  return params;
 }
 
 function newEmptyTab(): RequestTab {
