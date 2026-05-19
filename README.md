@@ -5,10 +5,18 @@
 <h1 align="center">APILite</h1>
 
 <p align="center">
+  A lightweight desktop HTTP client built with Tauri (Rust) and React <br>It provides a Postman-like interface for making, testing, and managing API requests.
+</p>
+
+<p align="center">
   <a href="README.zh.md">简体中文</a>
 </p>
 
-APILite is a lightweight desktop HTTP client built with Tauri (Rust) and React. It provides a Postman-like interface for making, testing, and managing API requests.
+<p align="center">
+  <picture>
+    <img alt="APILite HTTP client with request editor and response panel" src=".github/assets/app.png" width="800">
+  </picture>
+</p>
 
 ## Table of Contents
 
@@ -37,8 +45,6 @@ APILite is a lightweight desktop HTTP client built with Tauri (Rust) and React. 
   - [Keyboard Shortcuts](#keyboard-shortcuts)
 
 ---
-
-中文文档
 
 ## Getting Started
 

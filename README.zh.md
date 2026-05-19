@@ -5,10 +5,18 @@
 <h1 align="center">APILite</h1>
 
 <p align="center">
+  一款基于 Tauri（Rust）和 React 构建的轻量级桌面 HTTP 客户端<br>提供类似 Postman 的界面，用于发送、测试和管理 API 请求。
+</p>
+
+<p align="center">
   <a href="README.md">English</a>
 </p>
 
-APILite 是一款基于 Tauri（Rust）和 React 构建的轻量级桌面 HTTP 客户端，提供类似 Postman 的界面，用于发送、测试和管理 API 请求。
+<p align="center">
+  <picture>
+    <img alt="APILite HTTP client with request editor and response panel" src=".github/assets/app.png" width="800">
+  </picture>
+</p>
 
 ## 目录
 
