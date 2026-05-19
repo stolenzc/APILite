@@ -148,11 +148,13 @@ interface CollectionStore {
   collections: CollectionNode[];
   activeNodeId: string | null;
   contextMenu: { nodeId: string; x: number; y: number } | null;
+  pendingRenameNodeId: string | null;
 
   initCollections: (dir: string) => Promise<void>;
-  addCollection: (name?: string) => boolean;
-  addFolder: (parentId: string | null) => void;
+  addCollection: (name?: string) => string | false;
+  addFolder: (parentId: string | null) => string | undefined;
   addRequest: (parentId: string | null, name?: string, request?: HttpRequest, id?: string) => string | undefined;
+  consumePendingRename: () => void;
   getRequestNode: (id: string) => CollectionRequest | null;
   renameNode: (id: string, name: string) => boolean;
   updateRequest: (id: string, name: string, request: HttpRequest) => void;
@@ -171,6 +173,9 @@ export const useCollectionStore = create<CollectionStore>((set, get) => ({
   collections: [],
   activeNodeId: null,
   contextMenu: null,
+  pendingRenameNodeId: null,
+
+  consumePendingRename: () => set({ pendingRenameNodeId: null }),
 
   initCollections: async (dir: string) => {
     if (!dir) {
@@ -201,9 +206,13 @@ export const useCollectionStore = create<CollectionStore>((set, get) => ({
       collapsed: false,
       fileName: '',
     };
-    set(state => ({ collections: [...state.collections, root] }));
+    set(state => ({
+      collections: [...state.collections, root],
+      pendingRenameNodeId: id,
+      activeNodeId: id,
+    }));
     const dir = collectionDir();
-    if (!dir) return true;
+    if (!dir) return id;
     void invoke<string>('collections_create', { dir, id, name: trimmed })
       .then(fileName => {
         set(state => ({
@@ -217,13 +226,13 @@ export const useCollectionStore = create<CollectionStore>((set, get) => ({
           showToast(t('collection.duplicateName'));
         }
       });
-    return true;
+    return id;
   },
 
   addFolder: (parentId) => {
     const collections = [...get().collections];
     const parentKey = parentId ?? defaultParentId(collections, get().activeNodeId);
-    if (!parentKey) return;
+    if (!parentKey) return undefined;
 
     const folder: CollectionFolder = {
       id: nanoid(),
@@ -233,12 +242,18 @@ export const useCollectionStore = create<CollectionStore>((set, get) => ({
       collapsed: false,
     };
     const parent = findNode(collections, parentKey).node;
-    if (parent?.type !== 'folder') return;
+    if (parent?.type !== 'folder') return undefined;
+    parent.collapsed = false;
     parent.children = [...parent.children, folder];
-    set({ collections });
+    set({
+      collections,
+      pendingRenameNodeId: folder.id,
+      activeNodeId: folder.id,
+    });
     void persistForNodeId(parentKey, collections).catch(err =>
       console.error('Failed to save folder:', err),
     );
+    return folder.id;
   },
 
   addRequest: (parentId, name = 'New Request', request = { ...defaultRequest }, id?: string) => {
@@ -254,8 +269,13 @@ export const useCollectionStore = create<CollectionStore>((set, get) => ({
     };
     const parent = findNode(collections, parentKey).node;
     if (parent?.type !== 'folder') return undefined;
+    parent.collapsed = false;
     parent.children = [...parent.children, node];
-    set({ collections });
+    set({
+      collections,
+      pendingRenameNodeId: node.id,
+      activeNodeId: node.id,
+    });
     void persistForNodeId(parentKey, collections).catch(err =>
       console.error('Failed to save request:', err),
     );

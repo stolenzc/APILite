@@ -4,6 +4,7 @@ import type { HttpRequest, HttpResponse, HistoryEntry, KeyValue } from '../types
 import type { RawContentType } from '../types';
 import { inferRawContentType } from '../utils/curlUtils';
 import { parseParamsFromUrl, urlWithParams } from '../utils/urlQuery';
+import { dispatchFocusUrl } from '../utils/focusUrl';
 
 const defaultParams: KeyValue[] = [];
 const defaultHeaders: KeyValue[] = [];
@@ -157,10 +158,13 @@ export const useStore = create<AppState>((set, get) => ({
   responseTab: 'body',
   history: [],
 
-  createTab: () => set(state => {
-    const tab = newEmptyTab();
-    return { tabs: [...state.tabs, tab], activeTabId: tab.id };
-  }),
+  createTab: () => {
+    set(state => {
+      const tab = newEmptyTab();
+      return { tabs: [...state.tabs, tab], activeTabId: tab.id };
+    });
+    queueMicrotask(() => dispatchFocusUrl());
+  },
 
   closeTab: (id) => set(state => {
     const idx = state.tabs.findIndex(t => t.id === id);

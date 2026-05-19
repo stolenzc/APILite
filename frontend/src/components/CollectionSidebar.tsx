@@ -84,7 +84,7 @@ function TreeNode({ node, depth = 0 }: { node: CollectionNode; depth?: number })
     toggleCollapse, setActiveNode, activeNodeId,
     openContextMenu, closeContextMenu, contextMenu,
     deleteNode, cloneNode, addFolder, addRequest, renameNode, loadRequest,
-    moveNode,
+    moveNode, pendingRenameNodeId, consumePendingRename,
   } = useCollectionStore();
   const { openTabFromCollection } = useStore();
 
@@ -103,6 +103,13 @@ function TreeNode({ node, depth = 0 }: { node: CollectionNode; depth?: number })
       inputRef.current.select();
     }
   }, [renaming]);
+
+  useEffect(() => {
+    if (pendingRenameNodeId !== node.id) return;
+    setEditName(node.name);
+    setRenaming(true);
+    consumePendingRename();
+  }, [pendingRenameNodeId, node.id, node.name, consumePendingRename]);
 
   const handleClick = useCallback(() => {
     if (isFolder) {

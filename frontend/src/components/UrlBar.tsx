@@ -15,6 +15,7 @@ import {
 import { useEnvironmentStore } from '../store/useEnvironmentStore';
 import { isCurlCommand } from '../utils/curlUtils';
 import { showToast } from '../utils/toast';
+import { focusUrlInput } from '../utils/focusUrl';
 
 const METHODS: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
 
@@ -112,6 +113,12 @@ export default function UrlBar() {
   useEffect(() => {
     setEnvSuggest(null);
   }, [activeTabId]);
+
+  useEffect(() => {
+    const onFocusUrl = () => focusUrlInput();
+    window.addEventListener('app:focus-url', onFocusUrl);
+    return () => window.removeEventListener('app:focus-url', onFocusUrl);
+  }, []);
 
   const applyCurlCommand = useCallback(async (command: string) => {
     const trimmed = command.trim();

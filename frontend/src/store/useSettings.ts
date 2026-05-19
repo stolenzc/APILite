@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { setLocale as applyI18nLocale, type Locale } from '../i18n';
+import { focusUrlInput } from '../utils/focusUrl';
 import { useEnvironmentStore } from './useEnvironmentStore';
 
 export interface ShortcutConfig {
@@ -246,9 +247,7 @@ export function initKeyboardShortcuts(): () => void {
 
     if (matchesShortcutCombo(e, shortcuts.focusUrl)) {
       e.preventDefault();
-      const urlInput = document.querySelector('.url-input') as HTMLInputElement | null;
-      urlInput?.focus();
-      urlInput?.select();
+      focusUrlInput();
       return;
     }
 
