@@ -263,11 +263,11 @@ body {
   border-radius: 6px;
 }
 
-/* Tab Bar */
+/* Tab Bar (inside main-workspace top — shares row height with collections sidebar) */
 .tab-bar {
   display: flex;
   align-items: center;
-  background: var(--bg-primary);
+  background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
   overflow-x: auto;
   min-height: 36px;
@@ -381,10 +381,46 @@ body {
   color: var(--accent);
 }
 
+.app-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
 .main-content {
   display: flex;
   flex: 1;
   overflow: hidden;
+  min-height: 0;
+}
+
+.app-history-dock {
+  flex-shrink: 0;
+  width: 100%;
+}
+
+.app-history-dock .history-panel {
+  width: 100%;
+}
+
+/* Right column: request tabs on top, URL/request UI below (collections stay left full-height). */
+.main-workspace {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+  min-height: 0;
+}
+
+.main-workspace-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
 }
 
 /* Sidebar */
@@ -649,6 +685,19 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+.workspace-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.6;
+  background: var(--bg-primary);
 }
 
 /* URL bar + environment row (above request tabs) */

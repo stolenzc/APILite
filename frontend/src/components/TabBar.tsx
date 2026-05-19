@@ -4,7 +4,13 @@ import { methodColors } from '../constants';
 export default function TabBar() {
   const { tabs, activeTabId, switchTab, closeTab, createTab } = useStore();
 
-  if (tabs.length === 0) return null;
+  if (tabs.length === 0) {
+    return (
+      <div className="tab-bar">
+        <button className="tab-add" onClick={createTab} title="New Tab">+</button>
+      </div>
+    );
+  }
 
   return (
     <div className="tab-bar">
@@ -25,11 +31,9 @@ export default function TabBar() {
             </span>
             <span className="tab-url">{truncated}</span>
             {tab.unsaved && <span className="tab-unsaved" title="Unsaved" />}
-            {tabs.length > 1 && (
-              <button className="tab-close" onClick={e => { e.stopPropagation(); closeTab(tab.id); }}>
-                ×
-              </button>
-            )}
+            <button className="tab-close" onClick={e => { e.stopPropagation(); closeTab(tab.id); }}>
+              ×
+            </button>
           </div>
         );
       })}

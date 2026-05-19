@@ -25,6 +25,9 @@ import { hydrateEnvironmentsFromDisk } from './store/useEnvironmentStore';
 
 export default function App() {
   const { activeTab, setActiveTab, createTab, closeTab, switchToPreviousTab, switchToNextTab, tabs, activeTabId } = useStore();
+  const hasRequestTab = useStore(
+    (s) => s.activeTabId != null && s.tabs.some((t) => t.id === s.activeTabId),
+  );
   const { theme, locale, settingsOpen, setSettingsOpen, responseHeight, collectionDir, setCollectionDir, shortcuts } = useSettingsStore();
   const initCollections = useCollectionStore(s => s.initCollections);
 
@@ -175,11 +178,11 @@ export default function App() {
       }
     };
     const onCloseTab = () => {
-      if (activeTabIdRef.current && tabsRef.current.length > 1) {
+      if (activeTabIdRef.current && tabsRef.current.length > 0) {
         closeTabRef.current(activeTabIdRef.current);
-      } else {
-        invoke('force_close_window');
+        return;
       }
+      invoke('force_close_window');
     };
     const onToggleSettings = () => {
       useSettingsStore.getState().setSettingsOpen(!useSettingsStore.getState().settingsOpen);
@@ -197,11 +200,11 @@ export default function App() {
     const unlisteners: Array<() => void> = [];
 
     listen('native-close-requested', () => {
-      if (tabsRef.current.length > 1) {
-        closeTabRef.current(activeTabIdRef.current!);
-      } else {
-        invoke('force_close_window');
+      if (activeTabIdRef.current && tabsRef.current.length > 0) {
+        closeTabRef.current(activeTabIdRef.current);
+        return;
       }
+      invoke('force_close_window');
     }).then(fn => unlisteners.push(fn));
 
     let cleanupMenu: (() => void) | undefined;
@@ -238,30 +241,42 @@ export default function App() {
         <button className="btn btn-icon" onClick={() => setSettingsOpen(!settingsOpen)} title={`${t('app.settings')} (${shortcuts.toggleSettings})`}>⚙</button>
         <RequestEnvToolbar />
       </div>
-      <TabBar />
-      <div className="main-content">
+      <div className="app-body">
+        <div className="main-content">
         {sidebarOpen && <CollectionSidebar />}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
-            <div className="request-toolbar-group">
-              <UrlBar />
-            </div>
-            <div className="tabs">
-              <span className={`tab ${activeTab === 'params' ? 'active' : ''}`} onClick={() => setActiveTab('params')}>{t('tab.params')}</span>
-              <span className={`tab ${activeTab === 'headers' ? 'active' : ''}`} onClick={() => setActiveTab('headers')}>{t('tab.headers')}</span>
-              <span className={`tab ${activeTab === 'body' ? 'active' : ''}`} onClick={() => setActiveTab('body')}>{t('tab.body')}</span>
-            </div>
-            <div style={{ flex: 1, borderBottom: '1px solid var(--border-color)', overflow: 'auto', minHeight: 0 }}>
-              {activeTab === 'params' && <ParamsTab />}
-              {activeTab === 'headers' && <HeadersTab />}
-              {activeTab === 'body' && <BodyEditor />}
-            </div>
+        <div className="main-workspace">
+          <TabBar />
+          <div className="main-workspace-body">
+            {hasRequestTab ? (
+              <>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
+                  <div className="request-toolbar-group">
+                    <UrlBar />
+                  </div>
+                  <div className="tabs">
+                    <span className={`tab ${activeTab === 'params' ? 'active' : ''}`} onClick={() => setActiveTab('params')}>{t('tab.params')}</span>
+                    <span className={`tab ${activeTab === 'headers' ? 'active' : ''}`} onClick={() => setActiveTab('headers')}>{t('tab.headers')}</span>
+                    <span className={`tab ${activeTab === 'body' ? 'active' : ''}`} onClick={() => setActiveTab('body')}>{t('tab.body')}</span>
+                  </div>
+                  <div style={{ flex: 1, borderBottom: '1px solid var(--border-color)', overflow: 'auto', minHeight: 0 }}>
+                    {activeTab === 'params' && <ParamsTab />}
+                    {activeTab === 'headers' && <HeadersTab />}
+                    {activeTab === 'body' && <BodyEditor />}
+                  </div>
+                </div>
+                <ResizableSplitter />
+                <div style={{ height: responseHeight, flexShrink: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                  <ResponsePanel />
+                </div>
+              </>
+            ) : (
+              <div className="workspace-empty">{t('app.noTab')}</div>
+            )}
           </div>
-          <ResizableSplitter />
-          <div style={{ height: responseHeight, flexShrink: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <ResponsePanel />
-            <HistoryPanel />
-          </div>
+        </div>
+        </div>
+        <div className="app-history-dock">
+          <HistoryPanel />
         </div>
       </div>
       <SettingsPanel />

@@ -134,14 +134,43 @@ function activeRequest(state: AppState): HttpRequest | null {
 
 // Mark active tab as unsaved
 function withUnsaved(state: AppState, update: Partial<RequestTab>): AppState {
+  if (!state.activeTabId || !activeRequest(state)) return state;
   return updateActiveTab(state, { ...update, unsaved: true });
 }
 
-const initialTab = newEmptyTab();
+function applyParsedToRequest(req: HttpRequest, parsed: {
+  method: string;
+  url: string;
+  headers: [string, string][];
+  body: string | null;
+}): HttpRequest {
+  const headers = parsed.headers.map(([key, value]) => ({ key, value, enabled: true }));
+  const url = parsed.url;
+  const params = parseParamsFromUrl(url);
+  let bodyType: HttpRequest['bodyType'] = 'none';
+  let rawContentType = req.rawContentType;
+  let body = '';
+  if (parsed.body) {
+    bodyType = 'raw';
+    body = parsed.body;
+    const ct = headers.find(h => h.key.toLowerCase() === 'content-type')?.value ?? '';
+    rawContentType = inferRawContentType(ct);
+  }
+  return {
+    ...req,
+    method: parsed.method.toUpperCase() as HttpRequest['method'],
+    url,
+    params,
+    headers,
+    bodyType,
+    rawContentType,
+    body,
+  };
+}
 
 export const useStore = create<AppState>((set, get) => ({
-  tabs: [initialTab],
-  activeTabId: initialTab.id,
+  tabs: [],
+  activeTabId: null,
   activeTab: 'params',
   responseTab: 'body',
   history: [],
@@ -156,8 +185,7 @@ export const useStore = create<AppState>((set, get) => ({
     if (idx === -1) return state;
     const tabs = state.tabs.filter(t => t.id !== id);
     if (tabs.length === 0) {
-      const tab = newEmptyTab();
-      return { tabs: [tab], activeTabId: tab.id };
+      return { tabs: [], activeTabId: null };
     }
     let activeTabId = state.activeTabId;
     if (state.activeTabId === id) {
@@ -170,7 +198,7 @@ export const useStore = create<AppState>((set, get) => ({
   switchTab: (id) => set({ activeTabId: id }),
 
   switchToPreviousTab: () => set(state => {
-    if (state.tabs.length <= 1) return state;
+    if (state.tabs.length < 2) return state;
     const idx = state.tabs.findIndex(t => t.id === state.activeTabId);
     const currentIdx = idx === -1 ? 0 : idx;
     if (currentIdx <= 0) return state;
@@ -178,7 +206,7 @@ export const useStore = create<AppState>((set, get) => ({
   }),
 
   switchToNextTab: () => set(state => {
-    if (state.tabs.length <= 1) return state;
+    if (state.tabs.length < 2) return state;
     const idx = state.tabs.findIndex(t => t.id === state.activeTabId);
     const currentIdx = idx === -1 ? 0 : idx;
     if (currentIdx >= state.tabs.length - 1) return state;
@@ -277,10 +305,15 @@ export const useStore = create<AppState>((set, get) => ({
 
   clearUnsaved: () => set(state => updateActiveTab(state, { unsaved: false })),
 
-  setMethod: (method) => set(state => withUnsaved(state, { request: { ...activeRequest(state)!, method } })),
+  setMethod: (method) => set(state => {
+    const req = activeRequest(state);
+    if (!req) return state;
+    return withUnsaved(state, { request: { ...req, method } });
+  }),
 
   setUrl: (url) => set(state => {
-    const req = activeRequest(state)!;
+    const req = activeRequest(state);
+    if (!req) return state;
     const params = parseParamsFromUrl(url);
     return withUnsaved(state, {
       request: {
@@ -292,79 +325,85 @@ export const useStore = create<AppState>((set, get) => ({
   }),
 
   syncParamsFromUrl: () => set(state => {
-    const req = activeRequest(state)!;
+    const req = activeRequest(state);
+    if (!req) return state;
     const params = parseParamsFromUrl(req.url);
     return updateActiveTab(state, { request: { ...req, params } });
   }),
 
   syncUrlFromParams: () => set(state => {
-    const req = activeRequest(state)!;
+    const req = activeRequest(state);
+    if (!req) return state;
     return updateActiveTab(state, { request: { ...req, url: urlWithParams(req.url, req.params) } });
   }),
 
   updateParam: (index, field, val) => set(state => {
-    const req = activeRequest(state)!;
+    const req = activeRequest(state);
+    if (!req) return state;
     const params = [...req.params];
     params[index] = { ...params[index], [field]: val };
     return withUnsaved(state, { request: { ...req, params } });
   }),
 
   addParam: () => set(state => {
-    const req = activeRequest(state)!;
+    const req = activeRequest(state);
+    if (!req) return state;
     return withUnsaved(state, { request: { ...req, params: [...req.params, { key: '', value: '', enabled: true }] } });
   }),
 
   removeParam: (index) => set(state => {
-    const req = activeRequest(state)!;
+    const req = activeRequest(state);
+    if (!req) return state;
     return withUnsaved(state, { request: { ...req, params: req.params.filter((_p: KeyValue, i: number) => i !== index) } });
   }),
 
   updateHeader: (index, field, val) => set(state => {
-    const req = activeRequest(state)!;
+    const req = activeRequest(state);
+    if (!req) return state;
     const headers = [...req.headers];
     headers[index] = { ...headers[index], [field]: val };
     return withUnsaved(state, { request: { ...req, headers } });
   }),
 
   addHeader: () => set(state => {
-    const req = activeRequest(state)!;
+    const req = activeRequest(state);
+    if (!req) return state;
     return withUnsaved(state, { request: { ...req, headers: [...req.headers, { key: '', value: '', enabled: true }] } });
   }),
 
   removeHeader: (index) => set(state => {
-    const req = activeRequest(state)!;
+    const req = activeRequest(state);
+    if (!req) return state;
     return withUnsaved(state, { request: { ...req, headers: req.headers.filter((_h: KeyValue, i: number) => i !== index) } });
   }),
 
-  setBodyType: (bodyType) => set(state => withUnsaved(state, { request: { ...activeRequest(state)!, bodyType } })),
-  setRawContentType: (rawContentType) => set(state => withUnsaved(state, { request: { ...activeRequest(state)!, rawContentType } })),
-  setBody: (body) => set(state => withUnsaved(state, { request: { ...activeRequest(state)!, body } })),
-  applyParsedCurl: (parsed) => set(state => {
+  setBodyType: (bodyType) => set(state => {
     const req = activeRequest(state);
     if (!req) return state;
-    const headers = parsed.headers.map(([key, value]) => ({ key, value, enabled: true }));
-    const url = parsed.url;
-    const params = parseParamsFromUrl(url);
-    let bodyType: HttpRequest['bodyType'] = 'none';
-    let rawContentType = req.rawContentType;
-    let body = '';
-    if (parsed.body) {
-      bodyType = 'raw';
-      body = parsed.body;
-      const ct = headers.find(h => h.key.toLowerCase() === 'content-type')?.value ?? '';
-      rawContentType = inferRawContentType(ct);
+    return withUnsaved(state, { request: { ...req, bodyType } });
+  }),
+  setRawContentType: (rawContentType) => set(state => {
+    const req = activeRequest(state);
+    if (!req) return state;
+    return withUnsaved(state, { request: { ...req, rawContentType } });
+  }),
+  setBody: (body) => set(state => {
+    const req = activeRequest(state);
+    if (!req) return state;
+    return withUnsaved(state, { request: { ...req, body } });
+  }),
+  applyParsedCurl: (parsed) => set(state => {
+    if (!state.activeTabId) {
+      const tab = newEmptyTab();
+      return {
+        tabs: [{ ...tab, request: applyParsedToRequest(tab.request, parsed), unsaved: true }],
+        activeTabId: tab.id,
+      };
     }
+    const req = activeRequest(state);
+    if (!req) return state;
     return updateActiveTab(state, {
-      request: {
-        ...req,
-        method: parsed.method.toUpperCase() as HttpRequest['method'],
-        url,
-        params,
-        headers,
-        bodyType,
-        rawContentType,
-        body,
-      },
+      request: applyParsedToRequest(req, parsed),
       unsaved: true,
     });
   }),

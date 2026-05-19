@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef } from 'react';
 import { useSettingsStore } from '../store/useSettings';
 
 const MIN_HEIGHT = 100;
-// Fixed heights: app header (~42px) + URL bar (~56px) + tabs (~40px) + splitter (8px) = 146px
-const RESERVED = 146;
+// Chrome above response area: header + tab-bar + URL bar + params tabs + splitter + bottom history dock
+const RESERVED = 182;
 
 export default function ResizableSplitter() {
   const { responseHeight, setResponseHeight } = useSettingsStore();
