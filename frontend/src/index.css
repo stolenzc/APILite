@@ -1405,6 +1405,32 @@ body {
   border-radius: 6px;
 }
 
+.env-matrix-scroll--dragging input,
+.env-matrix-scroll--dragging button:not(.env-drag-handle) {
+  pointer-events: none;
+}
+
+.env-drag-ghost {
+  position: fixed;
+  z-index: 10001;
+  pointer-events: none;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-family: -apple-system, sans-serif;
+  opacity: 0.95;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.env-drag-handle {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
 .env-matrix-table {
   width: max-content;
   min-width: 100%;
@@ -1442,6 +1468,111 @@ body {
 
 .modal.modal--env-matrix h3 {
   flex-shrink: 0;
+}
+
+.env-modal-overlay {
+  z-index: 120;
+}
+
+.env-modal-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.env-modal-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.55;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.env-modal-actions {
+  margin-top: 16px;
+  flex-shrink: 0;
+}
+
+.env-matrix-col-head,
+.env-matrix-row-head {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.env-matrix-col-head {
+  flex-direction: column;
+  min-width: 140px;
+}
+
+.env-matrix-row-head {
+  align-items: center;
+}
+
+.env-matrix-row-head input {
+  flex: 1;
+  min-width: 100px;
+}
+
+.env-drag-handle {
+  cursor: grab;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1;
+  padding: 4px 2px;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.env-drag-handle:active {
+  cursor: grabbing;
+}
+
+.env-col-delete {
+  font-size: 11px !important;
+  padding: 4px 8px !important;
+  align-self: flex-start;
+}
+
+.env-matrix-add-col {
+  background: var(--bg-secondary);
+  vertical-align: middle;
+  min-width: 120px;
+}
+
+.env-matrix-add-row td {
+  padding: 10px;
+  background: var(--bg-secondary);
+  border-bottom: none;
+}
+
+.env-matrix-add-btn {
+  width: 100%;
+  font-size: 12px;
+  padding: 8px 12px;
+  border: 1px dashed var(--border-color);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.env-matrix-add-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--bg-input);
+}
+
+.env-matrix-add-btn--row {
+  text-align: center;
+}
+
+tr.env-row-drop-target td {
+  box-shadow: inset 0 2px 0 var(--accent);
+}
+
+th.env-col-drop-target {
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 
 .modal h3 {

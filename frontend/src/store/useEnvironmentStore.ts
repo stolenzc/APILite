@@ -47,8 +47,21 @@ interface EnvironmentState {
   removeVariableRow: (rowId: string) => void;
   updateVariableKey: (rowId: string, key: string) => void;
   updateCell: (rowId: string, envId: string, value: string) => void;
+  reorderVariableRows: (activeId: string, overId: string) => void;
+  reorderEnvironmentColumns: (activeId: string, overId: string) => void;
   /** Raw cells for active env, then `{{}}` cross-references resolved. */
   getActiveVarMap: () => Record<string, string>;
+}
+
+function reorderById<T extends { id: string }>(list: T[], activeId: string, overId: string): T[] {
+  if (activeId === overId) return list;
+  const from = list.findIndex((item) => item.id === activeId);
+  const to = list.findIndex((item) => item.id === overId);
+  if (from === -1 || to === -1) return list;
+  const next = [...list];
+  const [moved] = next.splice(from, 1);
+  next.splice(to, 0, moved);
+  return next;
 }
 
 const STORAGE_V2 = 'APILite-environments-v2';
@@ -66,6 +79,8 @@ function defaultState(): Omit<
   | 'removeVariableRow'
   | 'updateVariableKey'
   | 'updateCell'
+  | 'reorderVariableRows'
+  | 'reorderEnvironmentColumns'
   | 'getActiveVarMap'
 > {
   const id = nanoid();
@@ -89,6 +104,8 @@ function migrateV1(parsed: { environments?: LegacyEnv[]; activeEnvironmentId?: s
   | 'removeVariableRow'
   | 'updateVariableKey'
   | 'updateCell'
+  | 'reorderVariableRows'
+  | 'reorderEnvironmentColumns'
   | 'getActiveVarMap'
 > | null {
   const list = parsed.environments;
@@ -137,6 +154,8 @@ function parsePersistedV2(raw: string): Omit<
   | 'removeVariableRow'
   | 'updateVariableKey'
   | 'updateCell'
+  | 'reorderVariableRows'
+  | 'reorderEnvironmentColumns'
   | 'getActiveVarMap'
 > | null {
   try {
@@ -169,6 +188,8 @@ function load(): Omit<
   | 'removeVariableRow'
   | 'updateVariableKey'
   | 'updateCell'
+  | 'reorderVariableRows'
+  | 'reorderEnvironmentColumns'
   | 'getActiveVarMap'
 > {
   try {
@@ -309,6 +330,24 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => {
             : r,
         );
         const next = { ...s, variables };
+        save(next);
+        return next;
+      }),
+
+    reorderVariableRows: (activeId, overId) =>
+      set((s) => {
+        const variables = reorderById(s.variables, activeId, overId);
+        if (variables === s.variables) return s;
+        const next = { ...s, variables };
+        save(next);
+        return next;
+      }),
+
+    reorderEnvironmentColumns: (activeId, overId) =>
+      set((s) => {
+        const environments = reorderById(s.environments, activeId, overId);
+        if (environments === s.environments) return s;
+        const next = { ...s, environments };
         save(next);
         return next;
       }),
