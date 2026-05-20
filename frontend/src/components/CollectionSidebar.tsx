@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { nanoid } from 'nanoid';
-import { useCollectionStore, getCollectionPath } from '../store/useCollection';
+import { useCollectionStore, getCollectionPath, nodeInTree } from '../store/useCollection';
 import { useStore } from '../store/useStore';
 import type { CollectionFolder, CollectionNode, CollectionRequest } from '../types';
 import { t } from '../i18n';
@@ -287,6 +287,7 @@ function TreeNode({ node, depth = 0 }: { node: CollectionNode; depth?: number })
         ref={nodeRef}
         className={`tree-node ${isActive ? 'active' : ''} ${dragOver ? 'drag-over' : ''} ${dropHint === 'before' ? 'drop-before' : ''} ${dropHint === 'after' ? 'drop-after' : ''}`}
         style={{ paddingLeft: depth * 16 + 8, cursor: canDrag ? 'grab' : 'default' }}
+        data-collection-node-id={node.id}
         data-folder-id={isFolder ? node.id : undefined}
         data-request-id={!isFolder ? node.id : undefined}
         onClick={handleClick}
@@ -416,9 +417,16 @@ function ContextMenu({ nodeId, isFolder, onStartRename }: { nodeId: string; isFo
 }
 
 export default function CollectionSidebar() {
-  const { collections, addCollection } = useCollectionStore();
+  const { collections, addCollection, activeNodeId, revealNode } = useCollectionStore();
   const focusCollectionSearch = useSettingsStore((s) => s.shortcuts.focusCollectionSearch);
+  const activeTabCollectionId = useStore(
+    (s) => s.tabs.find((t) => t.id === s.activeTabId)?.collectionId ?? null,
+  );
   const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    revealNode(activeTabCollectionId);
+  }, [activeTabCollectionId, revealNode]);
 
   const visibleCollections = useMemo(
     () => filterCollectionTree(collections, searchQuery),
@@ -426,6 +434,19 @@ export default function CollectionSidebar() {
   );
 
   const searching = searchQuery.trim().length > 0;
+
+  useEffect(() => {
+    if (!activeNodeId) return;
+    if (searching && !nodeInTree(visibleCollections, activeNodeId)) {
+      setSearchQuery('');
+      return;
+    }
+    requestAnimationFrame(() => {
+      document
+        .querySelector(`[data-collection-node-id="${CSS.escape(activeNodeId)}"]`)
+        ?.scrollIntoView({ block: 'nearest' });
+    });
+  }, [activeNodeId, searching, visibleCollections]);
 
   return (
     <div className="sidebar">

@@ -100,6 +100,39 @@ export function getCollectionPath(nodes: CollectionNode[], id: string): string {
   return path.map(n => n.name).join(' > ');
 }
 
+export function nodeInTree(nodes: CollectionNode[], id: string): boolean {
+  for (const n of nodes) {
+    if (n.id === id) return true;
+    if (n.type === 'folder' && nodeInTree(n.children, id)) return true;
+  }
+  return false;
+}
+
+function expandPathToNode(collections: CollectionNode[], nodeId: string): CollectionNode[] {
+  const { node, path } = findNode(collections, nodeId);
+  if (!node) return collections;
+  const expandIds = new Set(
+    path.filter((n): n is CollectionFolder => n.type === 'folder').map((n) => n.id),
+  );
+
+  const mapNodes = (nodes: CollectionNode[]): { nodes: CollectionNode[]; changed: boolean } => {
+    let changed = false;
+    const mapped = nodes.map((n) => {
+      if (n.type !== 'folder') return n;
+      const { nodes: children, changed: childChanged } = mapNodes(n.children);
+      const needExpand = expandIds.has(n.id) && n.collapsed;
+      if (!needExpand && !childChanged) return n;
+      changed = true;
+      const folder = needExpand ? { ...n, collapsed: false } : n;
+      return childChanged ? { ...folder, children } : folder;
+    });
+    return { nodes: changed ? mapped : nodes, changed };
+  };
+
+  const { nodes, changed } = mapNodes(collections);
+  return changed ? nodes : collections;
+}
+
 function removeNode(nodes: CollectionNode[], id: string): CollectionNode[] {
   return nodes
     .filter(n => n.id !== id)
@@ -167,6 +200,8 @@ interface CollectionStore {
   toggleCollapse: (id: string) => void;
   cloneNode: (id: string) => void;
   setActiveNode: (id: string | null) => void;
+  /** Expand ancestors and highlight a collection tree node (e.g. when switching tabs). */
+  revealNode: (id: string | null) => void;
   loadRequest: (id: string) => HttpRequest | null;
   openContextMenu: (nodeId: string, x: number, y: number) => void;
   closeContextMenu: () => void;
@@ -446,6 +481,22 @@ export const useCollectionStore = create<CollectionStore>((set, get) => ({
   },
 
   setActiveNode: (activeNodeId) => set({ activeNodeId }),
+
+  revealNode: (nodeId) =>
+    set((state) => {
+      if (!nodeId) {
+        return state.activeNodeId === null ? state : { activeNodeId: null };
+      }
+      const { node } = findNode(state.collections, nodeId);
+      if (!node) {
+        return state.activeNodeId === null ? state : { activeNodeId: null };
+      }
+      const collections = expandPathToNode(state.collections, nodeId);
+      if (state.activeNodeId === nodeId && collections === state.collections) {
+        return state;
+      }
+      return { activeNodeId: nodeId, collections };
+    }),
 
   loadRequest: (id) => {
     const { node } = findNode(get().collections, id);
