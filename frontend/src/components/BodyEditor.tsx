@@ -1,10 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useStore } from '../store/useStore';
 import { matchesShortcut, useSettingsStore } from '../store/useSettings';
 import type { BodyType, RawContentType } from '../types';
 import { t } from '../i18n';
 import { formatJson, isJson } from '../utils/jsonUtils';
 import { EnvVarField } from './EnvVarField';
+import BodyFormTable from './BodyFormTable';
+import { pickFilePath, readBrowserFileAsBase64 } from '../utils/filePicker';
+import { isTauri } from '../tauri/setupMenu';
 
 function isSendRequestShortcut(e: React.KeyboardEvent): boolean {
   return matchesShortcut(e, useSettingsStore.getState().shortcuts.sendRequest);
@@ -47,9 +50,50 @@ function NoneBody() {
 }
 
 function BinaryBody() {
+  const binaryFile = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.binaryFile ?? null);
+  const setBinaryFile = useStore((s) => s.setBinaryFile);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePick = async () => {
+    if (isTauri()) {
+      const path = await pickFilePath();
+      if (!path) return;
+      const fileName = path.split(/[/\\]/).pop() || 'file';
+      setBinaryFile({ fileName, filePath: path });
+      return;
+    }
+    fileInputRef.current?.click();
+  };
+
+  const onBrowserFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const { fileName, fileDataBase64 } = await readBrowserFileAsBase64(file);
+      setBinaryFile({ fileName, fileDataBase64 });
+    } catch (err) {
+      console.error('Failed to read file:', err);
+    }
+  };
+
   return (
-    <div style={{ padding: '24px 16px', color: 'var(--text-muted)', fontSize: 13 }}>
-      {t('body.binary')}
+    <div className="body-binary-panel">
+      <input ref={fileInputRef} type="file" hidden onChange={onBrowserFile} />
+      <p className="body-binary-hint">{t('body.binaryHint')}</p>
+      <div className="body-binary-row">
+        <span className="body-file-name" title={binaryFile?.fileName}>
+          {binaryFile?.fileName ?? t('body.noFile')}
+        </span>
+        <button type="button" className="btn btn-secondary body-file-btn" onClick={() => void handlePick()}>
+          {t('body.selectFile')}
+        </button>
+        {binaryFile && (
+          <button type="button" className="btn btn-secondary body-file-btn" onClick={() => setBinaryFile(null)}>
+            {t('body.clearFile')}
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -202,42 +246,44 @@ function RawContentEditor({ rawContentType }: { rawContentType: RawContentType }
 }
 
 function FormBody() {
-  const setActiveTab = useStore((s) => s.setActiveTab);
+  const formFields = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.formFields ?? []);
+  const {
+    updateFormField,
+    setFormFieldType,
+    setFormFieldFile,
+    clearFormFieldFile,
+    addFormField,
+    removeFormField,
+  } = useStore();
+
   return (
-    <div style={{ padding: '8px 16px' }}>
-      <p style={{ marginBottom: 8, fontSize: 12, color: 'var(--text-muted)' }}>
-        {t('body.formHint')}{' '}
-        <span style={{ color: 'var(--accent)', cursor: 'pointer' }} onClick={() => setActiveTab('params')}>
-          {t('body.useParamsLink')}
-        </span>
-      </p>
-    </div>
+    <BodyFormTable
+      mode="form-data"
+      fields={formFields}
+      onUpdate={updateFormField}
+      onSetFieldType={setFormFieldType}
+      onSetFile={setFormFieldFile}
+      onClearFile={clearFormFieldFile}
+      onAdd={addFormField}
+      onRemove={removeFormField}
+    />
   );
 }
 
 function UrlencodedBody() {
-  const body = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.body ?? '');
-  const setBody = useStore((s) => s.setBody);
-  const setActiveTab = useStore((s) => s.setActiveTab);
+  const urlEncodedFields = useStore(
+    (s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.urlEncodedFields ?? [],
+  );
+  const { updateUrlEncodedField, addUrlEncodedField, removeUrlEncodedField } = useStore();
 
   return (
-    <div style={{ padding: '8px 16px', display: 'flex', flexDirection: 'column', flex: 1 }}>
-      <p style={{ marginBottom: 8, fontSize: 12, color: 'var(--text-muted)' }}>
-        {t('body.urlencodedHint')}{' '}
-        <span style={{ color: 'var(--accent)', cursor: 'pointer' }} onClick={() => setActiveTab('params')}>
-          {t('body.useParamsLink')}
-        </span>
-      </p>
-      <EnvVarField
-        as="textarea"
-        className="body-editor body-editor-flex"
-        value={body}
-        onValueChange={setBody}
-        onKeyDown={(e) => { if (isSendRequestShortcut(e)) e.preventDefault(); }}
-        placeholder="key1=value1&key2=value2"
-        spellCheck={false}
-      />
-    </div>
+    <BodyFormTable
+      mode="urlencoded"
+      fields={urlEncodedFields}
+      onUpdate={updateUrlEncodedField}
+      onAdd={addUrlEncodedField}
+      onRemove={removeUrlEncodedField}
+    />
   );
 }
 

@@ -23,6 +23,10 @@ fn to_curl(
     headers: HashMap<String, String>,
     body_type: String,
     body: Option<String>,
+    form_fields: Vec<curl_export::FormFieldPart>,
+    binary_file_path: Option<String>,
+    binary_file_name: Option<String>,
+    binary_data_base64: Option<String>,
 ) -> String {
     curl_export::to_curl(curl_export::ExportRequest {
         method,
@@ -30,6 +34,10 @@ fn to_curl(
         headers,
         body_type,
         body,
+        form_fields,
+        binary_file_path,
+        binary_file_name,
+        binary_data_base64,
     })
 }
 
@@ -40,6 +48,10 @@ async fn send_request(
     headers: HashMap<String, String>,
     body_type: String,
     body: Option<String>,
+    form_fields: Vec<http_client::FormFieldPart>,
+    binary_file_path: Option<String>,
+    binary_file_name: Option<String>,
+    binary_data_base64: Option<String>,
 ) -> Result<http_client::SendResponse, String> {
     http_client::send(http_client::SendRequest {
         method,
@@ -47,6 +59,10 @@ async fn send_request(
         headers,
         body_type,
         body,
+        form_fields,
+        binary_file_path,
+        binary_file_name,
+        binary_data_base64,
     })
     .await
 }

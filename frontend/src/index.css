@@ -1398,6 +1398,65 @@ body {
   padding: 6px 12px;
 }
 
+.body-form-table-wrap {
+  padding: 8px 12px;
+  overflow: auto;
+  flex: 1;
+}
+
+.body-form-table .body-field-type-select {
+  width: 100%;
+  font-size: 12px;
+  padding: 4px 6px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+}
+
+.body-file-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.body-file-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.body-file-btn {
+  font-size: 12px;
+  padding: 4px 10px;
+  flex-shrink: 0;
+}
+
+.body-binary-panel {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.body-binary-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.body-binary-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .history-row {
   border-bottom: 1px solid rgba(42, 58, 94, 0.3);
 }

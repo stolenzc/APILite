@@ -1,7 +1,16 @@
 import { create } from 'zustand';
 import { nanoid } from 'nanoid';
-import type { HttpRequest, HttpResponse, HistoryEntry, KeyValue } from '../types';
+import type {
+  BinaryBodyFile,
+  FormField,
+  FormFieldType,
+  HttpRequest,
+  HttpResponse,
+  HistoryEntry,
+  KeyValue,
+} from '../types';
 import type { RawContentType } from '../types';
+import { cloneHttpRequest, emptyFormField, emptyKeyValue, normalizeHttpRequest } from '../utils/normalizeRequest';
 import { inferRawContentType } from '../utils/curlUtils';
 import { parseParamsFromUrl, urlWithParams } from '../utils/urlQuery';
 import { dispatchFocusUrl } from '../utils/focusUrl';
@@ -16,18 +25,10 @@ import {
   pruneHistory,
 } from '../utils/historyStorage';
 
-const defaultParams: KeyValue[] = [];
-const defaultHeaders: KeyValue[] = [];
-
-const defaultRequest: HttpRequest = {
+const defaultRequest: HttpRequest = normalizeHttpRequest({
   method: 'GET',
   url: '',
-  params: [...defaultParams],
-  headers: [...defaultHeaders],
-  bodyType: 'none',
-  rawContentType: 'json',
-  body: '',
-};
+});
 
 export type TabSource = 'collection' | 'temporary';
 
@@ -78,6 +79,19 @@ interface AppState {
   setBodyType: (bodyType: HttpRequest['bodyType']) => void;
   setRawContentType: (rawContentType: RawContentType) => void;
   setBody: (body: string) => void;
+  updateFormField: (index: number, field: 'key' | 'value' | 'enabled', val: string | boolean) => void;
+  setFormFieldType: (index: number, fieldType: FormFieldType) => void;
+  setFormFieldFile: (
+    index: number,
+    file: { fileName: string; filePath?: string; fileDataBase64?: string; value?: string },
+  ) => void;
+  clearFormFieldFile: (index: number) => void;
+  addFormField: () => void;
+  removeFormField: (index: number) => void;
+  updateUrlEncodedField: (index: number, field: 'key' | 'value' | 'enabled', val: string | boolean) => void;
+  addUrlEncodedField: () => void;
+  removeUrlEncodedField: (index: number) => void;
+  setBinaryFile: (file: BinaryBodyFile | null) => void;
   applyParsedCurl: (parsed: {
     method: string;
     url: string;
@@ -152,7 +166,7 @@ function applyParsedToRequest(req: HttpRequest, parsed: {
     const ct = headers.find(h => h.key.toLowerCase() === 'content-type')?.value ?? '';
     rawContentType = inferRawContentType(ct);
   }
-  return {
+  return normalizeHttpRequest({
     ...req,
     method: parsed.method.toUpperCase() as HttpRequest['method'],
     url,
@@ -161,7 +175,7 @@ function applyParsedToRequest(req: HttpRequest, parsed: {
     bodyType,
     rawContentType,
     body,
-  };
+  });
 }
 
 const initialHistoryPage = loadInitialHistoryPage();
@@ -230,15 +244,7 @@ export const useStore = create<AppState>((set, get) => ({
                 sourcePath: collectionPath,
                 sourceType: 'collection' as const,
                 collectionId,
-                request: {
-                  method: req.method,
-                  url: req.url,
-                  params: req.params.map(p => ({ ...p })),
-                  headers: req.headers.map(h => ({ ...h })),
-                  bodyType: req.bodyType,
-                  rawContentType: req.rawContentType,
-                  body: req.body,
-                },
+                request: cloneHttpRequest(req),
                 unsaved: false,
               }
             : t,
@@ -249,15 +255,7 @@ export const useStore = create<AppState>((set, get) => ({
     const tab: RequestTab = {
       id: nanoid(),
       name,
-      request: {
-        method: req.method,
-        url: req.url,
-        params: req.params.map(p => ({ ...p })),
-        headers: req.headers.map(h => ({ ...h })),
-        bodyType: req.bodyType,
-        rawContentType: req.rawContentType,
-        body: req.body,
-      },
+      request: cloneHttpRequest(req),
       response: null,
       loading: false,
       sourceType: 'collection',
@@ -379,6 +377,111 @@ export const useStore = create<AppState>((set, get) => ({
     if (!req) return state;
     return withUnsaved(state, { request: { ...req, body } });
   }),
+
+  updateFormField: (index, field, val) => set(state => {
+    const req = activeRequest(state);
+    if (!req) return state;
+    const formFields = [...req.formFields];
+    formFields[index] = { ...formFields[index], [field]: val } as FormField;
+    return withUnsaved(state, { request: { ...req, formFields } });
+  }),
+
+  setFormFieldType: (index, fieldType) => set(state => {
+    const req = activeRequest(state);
+    if (!req) return state;
+    const formFields = [...req.formFields];
+    const row = { ...formFields[index], fieldType };
+    if (fieldType === 'text') {
+      row.fileName = undefined;
+      row.filePath = undefined;
+      row.fileDataBase64 = undefined;
+    } else {
+      row.value = row.fileName ?? '';
+    }
+    formFields[index] = row;
+    return withUnsaved(state, { request: { ...req, formFields } });
+  }),
+
+  setFormFieldFile: (index, file) => set(state => {
+    const req = activeRequest(state);
+    if (!req) return state;
+    const formFields = [...req.formFields];
+    formFields[index] = {
+      ...formFields[index],
+      fieldType: 'file',
+      fileName: file.fileName,
+      filePath: file.filePath,
+      fileDataBase64: file.fileDataBase64,
+      value: file.value ?? file.fileName,
+    };
+    return withUnsaved(state, { request: { ...req, formFields } });
+  }),
+
+  clearFormFieldFile: (index) => set(state => {
+    const req = activeRequest(state);
+    if (!req) return state;
+    const formFields = [...req.formFields];
+    formFields[index] = {
+      ...formFields[index],
+      value: '',
+      fileName: undefined,
+      filePath: undefined,
+      fileDataBase64: undefined,
+    };
+    return withUnsaved(state, { request: { ...req, formFields } });
+  }),
+
+  addFormField: () => set(state => {
+    const req = activeRequest(state);
+    if (!req) return state;
+    return withUnsaved(state, {
+      request: { ...req, formFields: [...req.formFields, emptyFormField()] },
+    });
+  }),
+
+  removeFormField: (index) => set(state => {
+    const req = activeRequest(state);
+    if (!req) return state;
+    const formFields = req.formFields.filter((_f, i) => i !== index);
+    return withUnsaved(state, {
+      request: { ...req, formFields: formFields.length ? formFields : [emptyFormField()] },
+    });
+  }),
+
+  updateUrlEncodedField: (index, field, val) => set(state => {
+    const req = activeRequest(state);
+    if (!req) return state;
+    const urlEncodedFields = [...req.urlEncodedFields];
+    urlEncodedFields[index] = { ...urlEncodedFields[index], [field]: val } as KeyValue;
+    return withUnsaved(state, { request: { ...req, urlEncodedFields } });
+  }),
+
+  addUrlEncodedField: () => set(state => {
+    const req = activeRequest(state);
+    if (!req) return state;
+    return withUnsaved(state, {
+      request: { ...req, urlEncodedFields: [...req.urlEncodedFields, emptyKeyValue()] },
+    });
+  }),
+
+  removeUrlEncodedField: (index) => set(state => {
+    const req = activeRequest(state);
+    if (!req) return state;
+    const urlEncodedFields = req.urlEncodedFields.filter((_f, i) => i !== index);
+    return withUnsaved(state, {
+      request: {
+        ...req,
+        urlEncodedFields: urlEncodedFields.length ? urlEncodedFields : [emptyKeyValue()],
+      },
+    });
+  }),
+
+  setBinaryFile: (binaryFile) => set(state => {
+    const req = activeRequest(state);
+    if (!req) return state;
+    return withUnsaved(state, { request: { ...req, binaryFile } });
+  }),
+
   applyParsedCurl: (parsed) => set(state => {
     if (!state.activeTabId) {
       const tab = newEmptyTab();

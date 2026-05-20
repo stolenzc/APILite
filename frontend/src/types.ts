@@ -10,6 +10,27 @@ export type BodyType = 'none' | 'form-data' | 'x-www-form-urlencoded' | 'raw' | 
 
 export type RawContentType = 'json' | 'xml' | 'text' | 'javascript' | 'html';
 
+export type FormFieldType = 'text' | 'file';
+
+export interface FormField {
+  key: string;
+  value: string;
+  enabled: boolean;
+  fieldType: FormFieldType;
+  /** Original file name for display / multipart filename. */
+  fileName?: string;
+  /** Local path (Tauri) for upload without loading into memory. */
+  filePath?: string;
+  /** Base64 payload when no path (browser or collection persistence). */
+  fileDataBase64?: string;
+}
+
+export interface BinaryBodyFile {
+  fileName: string;
+  filePath?: string;
+  fileDataBase64?: string;
+}
+
 export interface HttpRequest {
   method: HttpMethod;
   url: string;
@@ -18,6 +39,12 @@ export interface HttpRequest {
   bodyType: BodyType;
   rawContentType: RawContentType;
   body: string;
+  /** multipart/form-data fields */
+  formFields: FormField[];
+  /** application/x-www-form-urlencoded fields */
+  urlEncodedFields: KeyValue[];
+  /** application/octet-stream file body */
+  binaryFile: BinaryBodyFile | null;
 }
 
 export interface HttpResponse {

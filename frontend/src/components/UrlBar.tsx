@@ -16,6 +16,7 @@ import { showToast } from '../utils/toast';
 import { focusUrlInput } from '../utils/focusUrl';
 import { useModalOverlayDismiss } from '../utils/modalOverlayDismiss';
 import { EnvVarField } from './EnvVarField';
+import { resolveOutboundBody } from '../utils/requestBody';
 
 const METHODS: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
 
@@ -107,6 +108,10 @@ export default function UrlBar() {
         headers: kvToMap(resolved.headers),
         bodyType: resolved.effectiveBodyType,
         body: resolved.body,
+        formFields: resolved.formFields,
+        binaryFilePath: resolved.binaryFile?.filePath ?? null,
+        binaryFileName: resolved.binaryFile?.fileName ?? null,
+        binaryDataBase64: resolved.binaryFile?.fileDataBase64 ?? null,
       });
 
       setResponse({
@@ -160,6 +165,10 @@ export default function UrlBar() {
         headers: kvToMap(resolved.headers),
         bodyType: resolved.effectiveBodyType,
         body: resolved.body,
+        formFields: resolved.formFields,
+        binaryFilePath: resolved.binaryFile?.filePath ?? null,
+        binaryFileName: resolved.binaryFile?.fileName ?? null,
+        binaryDataBase64: resolved.binaryFile?.fileDataBase64 ?? null,
       });
       setExportCurl(curl);
     } catch (err) {
@@ -231,14 +240,8 @@ function resolveOutboundRequest(
   let finalUrl = interpolatedUrl;
   if (autoProtocol) finalUrl = ensureProtocol(finalUrl);
 
-  const effectiveBodyType = req.bodyType === 'raw' ? req.rawContentType : req.bodyType;
-  const templatedBody =
-    (req.bodyType === 'none' || req.bodyType === 'form-data' || req.bodyType === 'x-www-form-urlencoded') && !req.body
-      ? null
-      : req.body;
-  const body = templatedBody === null ? null : interpolateEnvVars(templatedBody, vars);
-
-  return { finalUrl, headers, body, effectiveBodyType };
+  const outbound = resolveOutboundBody(req, vars);
+  return { finalUrl, headers, ...outbound };
 }
 
 function kvToMap(kvs: KeyValue[]): Record<string, string> {

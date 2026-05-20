@@ -14,6 +14,7 @@ tokio = { version = "1", features = ["full"] }
 chrono = { version = "0.4", features = ["serde"] }
 url = "2"
 dirs-next = "2"
+base64 = "0.22"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 system-configuration = "0.7"

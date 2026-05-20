@@ -1,3 +1,4 @@
+use base64::{engine::general_purpose::STANDARD, Engine};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::OnceLock;
@@ -17,6 +18,18 @@ fn shared_client() -> Result<&'static reqwest::Client, String> {
         .map_err(|e| e.clone())
 }
 
+#[derive(Debug, Deserialize)]
+pub struct FormFieldPart {
+    pub key: String,
+    pub value: Option<String>,
+    #[serde(rename = "filePath", default)]
+    pub file_path: Option<String>,
+    #[serde(rename = "fileName", default)]
+    pub file_name: Option<String>,
+    #[serde(rename = "fileDataBase64", default)]
+    pub file_data_base64: Option<String>,
+}
+
 #[derive(Deserialize)]
 pub struct SendRequest {
     pub method: String,
@@ -25,6 +38,14 @@ pub struct SendRequest {
     #[serde(rename = "bodyType")]
     pub body_type: String,
     pub body: Option<String>,
+    #[serde(rename = "formFields", default)]
+    pub form_fields: Vec<FormFieldPart>,
+    #[serde(rename = "binaryFilePath", default)]
+    pub binary_file_path: Option<String>,
+    #[serde(rename = "binaryFileName", default)]
+    pub binary_file_name: Option<String>,
+    #[serde(rename = "binaryDataBase64", default)]
+    pub binary_data_base64: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -90,8 +111,86 @@ fn content_type_for_body_type(body_type: &str) -> Option<&'static str> {
         "javascript" => Some("application/javascript"),
         "x-www-form-urlencoded" => Some("application/x-www-form-urlencoded"),
         "form-data" => Some("multipart/form-data"),
+        "binary" => Some("application/octet-stream"),
         _ => None,
     }
+}
+
+fn read_file_bytes(path: &str) -> Result<Vec<u8>, String> {
+    std::fs::read(path).map_err(|e| format!("Failed to read file {}: {}", path, e))
+}
+
+fn decode_base64(data: &str) -> Result<Vec<u8>, String> {
+    STANDARD
+        .decode(data)
+        .map_err(|e| format!("Invalid base64 body: {}", e))
+}
+
+fn load_file_part(field: &FormFieldPart) -> Result<(Vec<u8>, String), String> {
+    if let Some(path) = &field.file_path {
+        let bytes = read_file_bytes(path)?;
+        let name = field
+            .file_name
+            .clone()
+            .or_else(|| {
+                std::path::Path::new(path)
+                    .file_name()
+                    .map(|s| s.to_string_lossy().to_string())
+            })
+            .unwrap_or_else(|| "file".to_string());
+        return Ok((bytes, name));
+    }
+    if let Some(b64) = &field.file_data_base64 {
+        let bytes = decode_base64(b64)?;
+        let name = field.file_name.clone().unwrap_or_else(|| "file".to_string());
+        return Ok((bytes, name));
+    }
+    Err("Form file field has no file path or data".to_string())
+}
+
+fn build_multipart_form(fields: &[FormFieldPart]) -> Result<reqwest::multipart::Form, String> {
+    let mut form = reqwest::multipart::Form::new();
+    for field in fields {
+        if field.key.is_empty() {
+            continue;
+        }
+        if field.file_path.is_some() || field.file_data_base64.is_some() {
+            let (bytes, name) = load_file_part(field)?;
+            let part = reqwest::multipart::Part::bytes(bytes)
+                .file_name(name)
+                .mime_str("application/octet-stream")
+                .map_err(|e| e.to_string())?;
+            form = form.part(field.key.clone(), part);
+        } else if let Some(value) = &field.value {
+            form = form.text(field.key.clone(), value.clone());
+        }
+    }
+    Ok(form)
+}
+
+fn load_binary_body(req: &SendRequest) -> Result<(Vec<u8>, String), String> {
+    if let Some(path) = &req.binary_file_path {
+        let bytes = read_file_bytes(path)?;
+        let name = req
+            .binary_file_name
+            .clone()
+            .or_else(|| {
+                std::path::Path::new(path)
+                    .file_name()
+                    .map(|s| s.to_string_lossy().to_string())
+            })
+            .unwrap_or_else(|| "file".to_string());
+        return Ok((bytes, name));
+    }
+    if let Some(b64) = &req.binary_data_base64 {
+        let bytes = decode_base64(b64)?;
+        let name = req
+            .binary_file_name
+            .clone()
+            .unwrap_or_else(|| "file".to_string());
+        return Ok((bytes, name));
+    }
+    Err("Binary body requires a file path or base64 data".to_string())
 }
 
 /// Reconstruct the outbound HTTP message (HTTP/1.1-style) including implicit headers.
@@ -101,6 +200,8 @@ fn format_raw_request(
     headers: &HashMap<String, String>,
     body_type: &str,
     body: Option<&str>,
+    form_fields: &[FormFieldPart],
+    binary_name: Option<&str>,
 ) -> String {
     let parsed: ::url::Url = match ::url::Url::parse(request_url) {
         Ok(u) => u,
@@ -132,14 +233,24 @@ fn format_raw_request(
     }
 
     let body_str = body.filter(|b| !b.is_empty() && body_type != "none");
-    if let Some(b) = body_str {
+    let has_structured_body = body_type == "form-data" && !form_fields.is_empty()
+        || body_type == "binary" && binary_name.is_some();
+
+    if body_str.is_some() || has_structured_body {
         if !header_exists(&header_lines, "content-type") {
             if let Some(ct) = content_type_for_body_type(body_type) {
                 header_lines.push(("Content-Type".to_string(), ct.to_string()));
             }
         }
-        if !header_exists(&header_lines, "content-length") {
-            header_lines.push(("Content-Length".to_string(), b.len().to_string()));
+        if let Some(b) = body_str {
+            if !header_exists(&header_lines, "content-length") {
+                header_lines.push(("Content-Length".to_string(), b.len().to_string()));
+            }
+        } else if has_structured_body {
+            header_lines.push((
+                "Content-Length".to_string(),
+                "(multipart body)".to_string(),
+            ));
         }
     }
 
@@ -150,6 +261,20 @@ fn format_raw_request(
     raw.push_str("\r\n");
     if let Some(b) = body_str {
         raw.push_str(b);
+    } else if body_type == "form-data" {
+        for field in form_fields {
+            if field.key.is_empty() {
+                continue;
+            }
+            if field.file_path.is_some() || field.file_data_base64.is_some() {
+                let name = field.file_name.as_deref().unwrap_or("file");
+                raw.push_str(&format!("[file] {}={}\n", field.key, name));
+            } else if let Some(v) = &field.value {
+                raw.push_str(&format!("{}={}\n", field.key, v));
+            }
+        }
+    } else if let Some(name) = binary_name {
+        raw.push_str(&format!("[binary file: {}]\n", name));
     }
     raw
 }
@@ -180,25 +305,26 @@ fn format_raw_http(
 pub async fn send(req: SendRequest) -> Result<SendResponse, String> {
     let client = shared_client()?;
 
-    let method = reqwest::Method::from_bytes(req.method.as_bytes())
-        .map_err(|e| format!("Invalid HTTP method: {}", e))?;
-
+    let binary_name = req.binary_file_name.as_deref();
     let request_raw = format_raw_request(
         &req.method,
         &req.url,
         &req.headers,
         &req.body_type,
         req.body.as_deref(),
+        &req.form_fields,
+        binary_name,
     );
+
+    let method = reqwest::Method::from_bytes(req.method.as_bytes())
+        .map_err(|e| format!("Invalid HTTP method: {}", e))?;
 
     let mut builder = client.request(method, &req.url);
 
-    // Add headers
     for (key, value) in &req.headers {
         builder = builder.header(key, value);
     }
 
-    // Add body
     if let Some(body) = &req.body {
         if !body.is_empty() && req.body_type != "none" {
             match req.body_type.as_str() {
@@ -230,15 +356,6 @@ pub async fn send(req: SendRequest) -> Result<SendResponse, String> {
                 "raw" => {
                     builder = builder.body(body.clone());
                 }
-                "form-data" => {
-                    let mut form = reqwest::multipart::Form::new();
-                    for part in body.split('&') {
-                        if let Some((k, v)) = part.split_once('=') {
-                            form = form.text(k.to_string(), v.to_string());
-                        }
-                    }
-                    builder = builder.multipart(form);
-                }
                 "x-www-form-urlencoded" => {
                     builder = builder
                         .header("Content-Type", "application/x-www-form-urlencoded")
@@ -248,6 +365,20 @@ pub async fn send(req: SendRequest) -> Result<SendResponse, String> {
                     builder = builder.body(body.clone());
                 }
             }
+        }
+    } else {
+        match req.body_type.as_str() {
+            "form-data" if !req.form_fields.is_empty() => {
+                let form = build_multipart_form(&req.form_fields)?;
+                builder = builder.multipart(form);
+            }
+            "binary" => {
+                let (bytes, _name) = load_binary_body(&req)?;
+                builder = builder
+                    .header("Content-Type", "application/octet-stream")
+                    .body(bytes);
+            }
+            _ => {}
         }
     }
 

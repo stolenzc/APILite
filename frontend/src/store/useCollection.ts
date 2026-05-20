@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { nanoid } from 'nanoid';
 import { invoke } from '@tauri-apps/api/core';
 import type { CollectionNode, CollectionFolder, CollectionRequest, HttpRequest } from '../types';
+import { cloneHttpRequest, normalizeHttpRequest } from '../utils/normalizeRequest';
 import { getCollectionsDir } from '../utils/storagePaths';
 import { showToast } from '../utils/toast';
 import { t } from '../i18n';
@@ -12,15 +13,7 @@ import {
   nextRequestSortOrder,
 } from '../utils/collectionSort';
 
-const defaultRequest: HttpRequest = {
-  method: 'GET',
-  url: '',
-  params: [],
-  headers: [],
-  bodyType: 'none',
-  rawContentType: 'json',
-  body: '',
-};
+const defaultRequest: HttpRequest = normalizeHttpRequest({ method: 'GET', url: '' });
 
 function collectionsDir(): string {
   return getCollectionsDir();
@@ -356,15 +349,7 @@ export const useCollectionStore = create<CollectionStore>((set, get) => ({
   updateRequest: (id, name, request) => {
     const collections = updateNode([...get().collections], id, {
       name,
-      request: {
-        method: request.method,
-        url: request.url,
-        params: request.params.map(p => ({ ...p })),
-        headers: request.headers.map(h => ({ ...h })),
-        bodyType: request.bodyType,
-        rawContentType: request.rawContentType,
-        body: request.body,
-      },
+      request: cloneHttpRequest(request),
     });
     set({ collections });
     void persistForNodeId(id, collections).catch(err =>

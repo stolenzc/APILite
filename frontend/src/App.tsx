@@ -22,6 +22,7 @@ import TabBar from './components/TabBar';
 import SaveRequestModal from './components/SaveRequestModal';
 import { isTauri, setupTauriMenu } from './tauri/setupMenu';
 import { bootstrapLocalStorage } from './utils/bootstrapStorage';
+import { cloneHttpRequest } from './utils/normalizeRequest';
 
 export default function App() {
   const { activeTab, setActiveTab, createTab, closeTab, switchToPreviousTab, switchToNextTab, tabs, activeTabId } = useStore();
@@ -72,15 +73,7 @@ export default function App() {
     const activeTab = useStore.getState().tabs.find(t => t.id === useStore.getState().activeTabId);
     if (!activeTab) return false;
     const req = activeTab.request;
-    useCollectionStore.getState().updateRequest(collectionId, name, {
-      method: req.method,
-      url: req.url,
-      params: req.params.map(p => ({ ...p })),
-      headers: req.headers.map(h => ({ ...h })),
-      bodyType: req.bodyType,
-      rawContentType: req.rawContentType,
-      body: req.body,
-    });
+    useCollectionStore.getState().updateRequest(collectionId, name, cloneHttpRequest(req));
     if (activeTab.collectionId !== collectionId) {
       const path = getCollectionPath(useCollectionStore.getState().collections, collectionId);
       useStore.getState().linkActiveTabToCollection(collectionId, name, path);
@@ -95,15 +88,7 @@ export default function App() {
     if (!activeTab) return;
     const req = activeTab.request;
     const requestId = nanoid();
-    const savedId = useCollectionStore.getState().addRequest(folderId, name, {
-      method: req.method,
-      url: req.url,
-      params: req.params.map(p => ({ ...p })),
-      headers: req.headers.map(h => ({ ...h })),
-      bodyType: req.bodyType,
-      rawContentType: req.rawContentType,
-      body: req.body,
-    }, requestId);
+    const savedId = useCollectionStore.getState().addRequest(folderId, name, cloneHttpRequest(req), requestId);
     if (!savedId) return;
     const path = getCollectionPath(useCollectionStore.getState().collections, savedId);
     useStore.getState().linkActiveTabToCollection(savedId, name, path);
