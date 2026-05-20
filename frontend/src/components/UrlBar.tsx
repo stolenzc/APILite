@@ -80,10 +80,9 @@ export default function UrlBar() {
       return;
     }
     const pf = open.partialRaw.trim().toLowerCase();
-    const list = envVarEntries.filter(({ name, value: varValue }) => {
+    const list = envVarEntries.filter(({ name }) => {
       if (!pf) return true;
-      // Filter by variable name and resolved value (not raw address-bar template text)
-      return name.toLowerCase().includes(pf) || varValue.toLowerCase().includes(pf);
+      return name.toLowerCase().includes(pf);
     });
     if (list.length === 0) {
       setEnvSuggest(null);
