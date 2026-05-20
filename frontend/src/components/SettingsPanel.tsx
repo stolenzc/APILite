@@ -5,6 +5,7 @@ import { themes } from '../themes';
 import { t, getAvailableLocales } from '../i18n';
 import type { ShortcutConfig } from '../store/useSettings';
 import { useModalOverlayDismiss } from '../utils/modalOverlayDismiss';
+import { COLLECTIONS_SUBDIR, ENVIRONMENTS_FILE } from '../utils/storagePaths';
 
 const SHORTCUT_LABELS: Record<keyof ShortcutConfig, string> = {
   sendRequest: 'shortcut.sendRequest',
@@ -25,14 +26,14 @@ export default function SettingsPanel() {
     locale, setLocale,
     shortcuts, updateShortcut, resetShortcuts, resetSettings,
     autoCompleteProtocol, setAutoCompleteProtocol,
-    collectionDir, setCollectionDir,
+    dataDir, setDataDir,
   } = useSettingsStore();
   const overlayDismiss = useModalOverlayDismiss(() => setSettingsOpen(false));
 
-  const handleSelectCollectionDir = useCallback(async () => {
+  const handleSelectDataDir = useCallback(async () => {
     const selected = await open({ directory: true });
-    if (selected) setCollectionDir(selected);
-  }, [setCollectionDir]);
+    if (selected) setDataDir(selected);
+  }, [setDataDir]);
 
   useEffect(() => {
     if (!settingsOpen) return;
@@ -92,31 +93,36 @@ export default function SettingsPanel() {
         </div>
 
         <div className="settings-section">
-          <h4>{t('settings.collection.title')}</h4>
-          <div className="settings-collection-dir">
+          <h4>{t('settings.storage.title')}</h4>
+          <p className="settings-storage-hint">{t('settings.storage.hint')}</p>
+          <ul className="settings-storage-layout">
+            <li><code>{COLLECTIONS_SUBDIR}/</code> — {t('settings.storage.collections')}</li>
+            <li><code>{ENVIRONMENTS_FILE}</code> — {t('settings.storage.environments')}</li>
+          </ul>
+          <div className="settings-storage-dir">
             <span
-              className="settings-collection-dir-path"
-              title={collectionDir || t('settings.collection.notSet')}
+              className="settings-storage-dir-path"
+              title={dataDir || t('settings.storage.notSet')}
             >
-              {collectionDir || t('settings.collection.notSet')}
+              {dataDir || t('settings.storage.notSet')}
             </span>
-            <div className="settings-collection-dir-actions">
+            <div className="settings-storage-dir-actions">
               <button
                 type="button"
                 className="btn btn-secondary"
                 style={{ fontSize: 12, padding: '6px 12px' }}
-                onClick={handleSelectCollectionDir}
+                onClick={handleSelectDataDir}
               >
-                {t('settings.collection.select')}
+                {t('settings.storage.select')}
               </button>
-              {collectionDir && (
+              {dataDir && (
                 <button
                   type="button"
                   className="btn btn-secondary"
                   style={{ fontSize: 12, padding: '6px 12px' }}
-                  onClick={() => setCollectionDir('')}
+                  onClick={() => setDataDir('')}
                 >
-                  {t('settings.collection.clear')}
+                  {t('settings.storage.clear')}
                 </button>
               )}
             </div>

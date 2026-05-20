@@ -1,26 +1,30 @@
 use std::fs;
-use std::path::PathBuf;
 
-fn apilite_dir() -> Result<PathBuf, String> {
-    let home = dirs_next::home_dir().ok_or_else(|| "Cannot determine home directory".to_string())?;
-    Ok(home.join(".APILite"))
-}
+use crate::storage;
 
-fn environments_file() -> Result<PathBuf, String> {
-    Ok(apilite_dir()?.join("environments.json"))
-}
-
-pub fn load() -> Result<Option<String>, String> {
-    let path = environments_file()?;
-    if !path.exists() {
-        return Ok(None);
+pub fn load(data_dir: &str) -> Result<Option<String>, String> {
+    let path = storage::environments_file(data_dir);
+    if path.exists() {
+        return fs::read_to_string(&path).map(Some).map_err(|e| e.to_string());
     }
-    fs::read_to_string(&path).map(Some).map_err(|e| e.to_string())
+
+    // One-time migration from legacy ~/.APILite/environments.json
+    let legacy = storage::legacy_data_dir()?.join("environments.json");
+    if legacy.exists() && legacy != path {
+        let data = fs::read_to_string(&legacy).map_err(|e| e.to_string())?;
+        save(data_dir, &data)?;
+        return Ok(Some(data));
+    }
+
+    Ok(None)
 }
 
-pub fn save(data: &str) -> Result<(), String> {
-    let dir = apilite_dir()?;
-    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    let path = environments_file()?;
+pub fn save(data_dir: &str, data: &str) -> Result<(), String> {
+    let root = storage::environments_file(data_dir)
+        .parent()
+        .ok_or_else(|| "Invalid data directory".to_string())?
+        .to_path_buf();
+    fs::create_dir_all(&root).map_err(|e| e.to_string())?;
+    let path = storage::environments_file(data_dir);
     fs::write(&path, data).map_err(|e| e.to_string())
 }

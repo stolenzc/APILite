@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { nanoid } from 'nanoid';
 import { invoke } from '@tauri-apps/api/core';
 import type { CollectionNode, CollectionFolder, CollectionRequest, HttpRequest } from '../types';
-import { useSettingsStore } from './useSettings';
+import { getCollectionsDir } from '../utils/storagePaths';
 import { showToast } from '../utils/toast';
 import { t } from '../i18n';
 import { useStore } from './useStore';
@@ -22,8 +22,8 @@ const defaultRequest: HttpRequest = {
   body: '',
 };
 
-function collectionDir(): string {
-  return useSettingsStore.getState().collectionDir;
+function collectionsDir(): string {
+  return getCollectionsDir();
 }
 
 function isCollectionRoot(node: CollectionNode): boolean {
@@ -77,7 +77,7 @@ function findCollectionRoot(nodes: CollectionNode[], nodeId: string): Collection
 }
 
 async function persistCollectionRoot(root: CollectionFolder) {
-  const dir = collectionDir();
+  const dir = collectionsDir();
   if (!dir || !root.fileName) return;
   await invoke('collections_save', {
     dir,
@@ -227,7 +227,7 @@ export const useCollectionStore = create<CollectionStore>((set, get) => ({
       pendingRenameNodeId: id,
       activeNodeId: id,
     }));
-    const dir = collectionDir();
+    const dir = collectionsDir();
     if (!dir) return id;
     void invoke<string>('collections_create', { dir, id, name: trimmed })
       .then(fileName => {
@@ -330,7 +330,7 @@ export const useCollectionStore = create<CollectionStore>((set, get) => ({
     }
 
     if (collectionRoot?.fileName) {
-      const dir = collectionDir();
+      const dir = collectionsDir();
       if (!dir) return true;
       void invoke<string>('collections_rename', { dir, fileName: collectionRoot.fileName, newName: trimmed })
         .then(fileName => {
@@ -380,7 +380,7 @@ export const useCollectionStore = create<CollectionStore>((set, get) => ({
       collections,
       activeNodeId: get().activeNodeId === id ? null : get().activeNodeId,
     });
-    const dir = collectionDir();
+    const dir = collectionsDir();
     if (!dir || !node) return;
 
     const collectionRoot = asCollectionRoot(node);
@@ -443,7 +443,7 @@ export const useCollectionStore = create<CollectionStore>((set, get) => ({
       collections.splice(idx + 1, 0, cloned);
       persistId = asCollectionRoot(node)?.id ?? cloned.id;
       if (cloned.type === 'folder' && asCollectionRoot(node)) {
-        const dir = collectionDir();
+        const dir = collectionsDir();
         if (dir) {
           void invoke<string>('collections_create', { dir, id: cloned.id, name: cloned.name })
             .then(fileName => {

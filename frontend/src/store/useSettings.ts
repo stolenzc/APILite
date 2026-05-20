@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { setLocale as applyI18nLocale, type Locale } from '../i18n';
 import { focusUrlInput } from '../utils/focusUrl';
 import { useEnvironmentStore } from './useEnvironmentStore';
+import { migrateStoragePath } from '../utils/storagePaths';
 
 export interface ShortcutConfig {
   sendRequest: string;
@@ -38,7 +39,8 @@ export interface AppSettings {
   responseHeight: number;
   historyHeight: number;
   historyCollapsed: boolean;
-  collectionDir: string;
+  /** Local data root: contains `collections/` and `environments.json`. */
+  dataDir: string;
   autoCompleteProtocol: boolean;
 }
 
@@ -49,7 +51,7 @@ export const defaultSettings: AppSettings = {
   responseHeight: 300,
   historyHeight: 250,
   historyCollapsed: true,
-  collectionDir: '',
+  dataDir: '',
   autoCompleteProtocol: true,
 };
 
@@ -72,11 +74,12 @@ function loadSettings(): AppSettings {
   try {
     const stored = localStorage.getItem('APILite-settings');
     if (stored) {
-      const parsed = JSON.parse(stored) as Partial<AppSettings>;
+      const parsed = JSON.parse(stored) as Partial<AppSettings> & { collectionDir?: string };
       return {
         ...defaultSettings,
         ...parsed,
         shortcuts: migrateShortcuts({ ...defaultShortcuts, ...parsed.shortcuts }),
+        dataDir: migrateStoragePath(parsed),
       };
     }
   } catch { /* ignore */ }
@@ -100,7 +103,7 @@ interface SettingsState extends AppSettings {
   setResponseHeight: (height: number) => void;
   setHistoryHeight: (height: number) => void;
   setHistoryCollapsed: (collapsed: boolean) => void;
-  setCollectionDir: (dir: string) => void;
+  setDataDir: (dir: string) => void;
   setAutoCompleteProtocol: (auto: boolean) => void;
 }
 
@@ -168,8 +171,8 @@ export const useSettingsStore = create<SettingsState>((set) => {
       return next;
     }),
 
-    setCollectionDir: (collectionDir) => set(state => {
-      const next = { ...state, collectionDir };
+    setDataDir: (dataDir) => set(state => {
+      const next = { ...state, dataDir: dataDir.trim() };
       saveSettings(next);
       return next;
     }),

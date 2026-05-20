@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { nanoid } from 'nanoid';
 import { invoke } from '@tauri-apps/api/core';
 import { isTauri } from '../tauri/setupMenu';
+import { getDataDir } from '../utils/storagePaths';
 import { resolveVariableMap } from '../utils/envInterpolation';
 import { t } from '../i18n';
 
@@ -241,8 +242,9 @@ function save(
   } catch {
     /* ignore */
   }
-  if (isTauri()) {
-    void invoke('environments_save', { data: json }).catch((err) =>
+  const dataDir = getDataDir();
+  if (isTauri() && dataDir) {
+    void invoke('environments_save', { dataDir, data: json }).catch((err) =>
       console.error('Failed to save environments to local file:', err),
     );
   }
@@ -414,13 +416,15 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => {
 });
 
 /**
- * Tauri: load `~/.APILite/environments.json` after startup (disk overrides localStorage when present).
+ * Tauri: load `{dataDir}/environments.json` after startup (disk overrides localStorage when present).
  * If the file is missing, writes the current in-memory state (from localStorage / defaults) to disk.
  */
 export async function hydrateEnvironmentsFromDisk(): Promise<void> {
   if (!isTauri()) return;
+  const dataDir = getDataDir();
+  if (!dataDir) return;
   try {
-    const rawOpt = await invoke<string | null>('environments_load');
+    const rawOpt = await invoke<string | null>('environments_load', { dataDir });
     if (rawOpt != null && rawOpt !== '') {
       const parsed = parsePersistedV2(rawOpt);
       if (parsed) {

@@ -21,34 +21,20 @@ import CollectionSidebar from './components/CollectionSidebar';
 import TabBar from './components/TabBar';
 import SaveRequestModal from './components/SaveRequestModal';
 import { isTauri, setupTauriMenu } from './tauri/setupMenu';
-import { hydrateEnvironmentsFromDisk } from './store/useEnvironmentStore';
+import { bootstrapLocalStorage } from './utils/bootstrapStorage';
 
 export default function App() {
   const { activeTab, setActiveTab, createTab, closeTab, switchToPreviousTab, switchToNextTab, tabs, activeTabId } = useStore();
   const hasRequestTab = useStore(
     (s) => s.activeTabId != null && s.tabs.some((t) => t.id === s.activeTabId),
   );
-  const { theme, locale, settingsOpen, setSettingsOpen, responseHeight, collectionDir, setCollectionDir, shortcuts } = useSettingsStore();
-  const initCollections = useCollectionStore(s => s.initCollections);
-
-  // Load collections from file system on startup and when dir changes
-  useEffect(() => {
-    if (collectionDir) {
-      initCollections(collectionDir);
-    } else {
-      // Resolve and set default collection directory
-      invoke<string>('get_default_collection_dir').then(dir => {
-        setCollectionDir(dir);
-      }).catch(err => {
-        console.error('Failed to get default collection dir:', err);
-      });
-    }
-  }, [collectionDir, initCollections, setCollectionDir]);
+  const { theme, locale, settingsOpen, setSettingsOpen, responseHeight, dataDir, shortcuts } = useSettingsStore();
 
   useEffect(() => {
-    if (!isTauri()) return;
-    void hydrateEnvironmentsFromDisk();
-  }, []);
+    void bootstrapLocalStorage().catch((err) => {
+      console.error('Failed to bootstrap local storage:', err);
+    });
+  }, [dataDir]);
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [toast, setToast] = useState('');

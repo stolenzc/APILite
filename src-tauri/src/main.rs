@@ -2,6 +2,7 @@
 
 mod collections;
 mod environments;
+mod storage;
 mod curl_export;
 mod curl_parser;
 mod history;
@@ -79,22 +80,24 @@ fn clear_history(state: tauri::State<HistoryStore>) {
     state.clear();
 }
 
-const DEFAULT_COLLECTION_DIR: &str = ".APILite/collections";
-
 #[tauri::command]
-fn get_default_collection_dir() -> Result<String, String> {
-    let home = dirs_next::home_dir().ok_or("Cannot determine home directory")?;
-    Ok(home.join(DEFAULT_COLLECTION_DIR).to_string_lossy().to_string())
+fn get_default_data_dir() -> Result<String, String> {
+    storage::default_data_dir()
 }
 
 #[tauri::command]
-fn environments_load() -> Result<Option<String>, String> {
-    environments::load()
+fn ensure_data_dir(data_dir: String) -> Result<(), String> {
+    storage::ensure_data_dir(&data_dir)
 }
 
 #[tauri::command]
-fn environments_save(data: String) -> Result<(), String> {
-    environments::save(&data)
+fn environments_load(data_dir: String) -> Result<Option<String>, String> {
+    environments::load(&data_dir)
+}
+
+#[tauri::command]
+fn environments_save(data_dir: String, data: String) -> Result<(), String> {
+    environments::save(&data_dir, &data)
 }
 
 #[tauri::command]
@@ -149,7 +152,8 @@ fn main() {
             add_history_entry,
             get_history,
             clear_history,
-            get_default_collection_dir,
+            get_default_data_dir,
+            ensure_data_dir,
             environments_load,
             environments_save,
             load_collections,
