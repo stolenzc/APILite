@@ -1388,6 +1388,7 @@ body {
 }
 
 .modal.modal--env-matrix {
+  flex-shrink: 0;
   min-width: min(720px, 94vw);
   width: min(1100px, 96vw);
   max-height: 85vh;
@@ -1396,13 +1397,39 @@ body {
   flex-direction: column;
 }
 
+/* Top-aligned overlay: avoid vertical re-center jump when inner height changes */
+.env-modal-overlay {
+  z-index: 120;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 7.5vh 0;
+  overflow-y: auto;
+}
+
 .env-matrix-scroll {
-  overflow: auto;
-  flex: 1;
+  flex: 0 0 auto;
+  height: min(56vh, 520px);
   min-height: 120px;
-  max-height: min(56vh, 520px);
+  overflow: hidden;
   border: 1px solid var(--border-color);
   border-radius: 6px;
+}
+
+.env-matrix-scroll-inner {
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+  overflow-anchor: none;
+}
+
+.env-matrix-scroll input {
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.env-matrix-scroll input:focus {
+  box-shadow: inset 0 0 0 1px var(--accent);
 }
 
 .env-matrix-scroll--dragging input,
@@ -1468,10 +1495,6 @@ body {
 
 .modal.modal--env-matrix h3 {
   flex-shrink: 0;
-}
-
-.env-modal-overlay {
-  z-index: 120;
 }
 
 .env-modal-title {

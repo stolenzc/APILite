@@ -130,6 +130,11 @@ const monoInputStyle: React.CSSProperties = {
   fontFamily: 'var(--font-mono)',
 };
 
+function focusEnvInput(e: React.MouseEvent<HTMLInputElement>) {
+  e.preventDefault();
+  e.currentTarget.focus({ preventScroll: true });
+}
+
 export default function EnvironmentModal() {
   const {
     envModalOpen,
@@ -195,6 +200,7 @@ export default function EnvironmentModal() {
         </h3>
         <p className="env-modal-hint">{t('env.modalHint')}</p>
         <div className={`env-matrix-scroll${isDragging ? ' env-matrix-scroll--dragging' : ''}`}>
+          <div className="env-matrix-scroll-inner">
           <table className="env-matrix-table">
             <thead>
               <tr>
@@ -217,6 +223,7 @@ export default function EnvironmentModal() {
                         type="text"
                         value={col.name}
                         onChange={(e) => renameEnvironmentColumn(col.id, e.target.value)}
+                        onMouseDown={focusEnvInput}
                         style={inputStyle}
                       />
                       <button
@@ -258,6 +265,7 @@ export default function EnvironmentModal() {
                         placeholder="base_url"
                         value={row.key}
                         onChange={(e) => updateVariableKey(row.id, e.target.value)}
+                        onMouseDown={focusEnvInput}
                         style={monoInputStyle}
                       />
                       <button
@@ -277,6 +285,7 @@ export default function EnvironmentModal() {
                         placeholder="{{base_url}}:8001"
                         value={row.valuesByEnvId[col.id] ?? ''}
                         onChange={(e) => updateCell(row.id, col.id, e.target.value)}
+                        onMouseDown={focusEnvInput}
                         style={monoInputStyle}
                       />
                     </td>
@@ -293,6 +302,7 @@ export default function EnvironmentModal() {
               </tr>
             </tbody>
           </table>
+          </div>
         </div>
         <div className="modal-actions env-modal-actions">
           <button type="button" className="btn btn-send" onClick={() => setEnvModalOpen(false)}>
