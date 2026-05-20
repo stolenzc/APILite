@@ -69,7 +69,10 @@ APILite/
 │   │   ├── curl_parser.rs   # cURL 命令解析
 │   │   ├── curl_export.rs   # cURL 命令生成
 │   │   ├── http_client.rs   # HTTP 请求引擎
-│   │   └── history.rs       # 内存请求历史缓存
+│   │   ├── histories.rs     # 历史记录持久化（按日分片）
+│   │   ├── storage.rs       # 数据目录结构
+│   │   ├── environments.rs  # 环境变量文件
+│   │   └── collections.rs   # API 集合文件
 │   ├── Cargo.toml
 │   └── tauri.conf.json
 ├── frontend/            # React + TypeScript 前端
@@ -170,10 +173,11 @@ APILite 界面由以下几个主要区域组成：
 | **XML**                   | `application/xml`                   | XML 格式数据                  |
 | **文本**                  | `text/plain`                        | 纯文本                        |
 | **HTML**                  | `text/html`                         | HTML 内容                     |
-| **表单数据**              | `multipart/form-data`               | 文件上传 / 表单字段           |
-| **x-www-form-urlencoded** | `application/x-www-form-urlencoded` | URL 编码键值对                |
+| **表单数据**              | `multipart/form-data`               | 键值表格，支持文本或文件字段  |
+| **x-www-form-urlencoded** | `application/x-www-form-urlencoded` | 键值表格，自动 URL 编码       |
+| **二进制**                | `application/octet-stream`          | 单个文件作为原始请求体        |
 
-每种格式类型都提供对应的占位模板，方便快速开始。
+**表单数据**与 **x-www-form-urlencoded** 在请求体标签页通过键值表编辑（勾选启用）。文件字段可选取本地文件（桌面端为系统对话框，浏览器为文件选择器）。**原始** 子类型（JSON、XML 等）提供占位模板。
 
 ---
 
@@ -214,8 +218,8 @@ APILite 会解析命令并填充：
 - 非 GET 请求的 `-X` 参数
 - 带参数的完整 URL
 - 请求头（`-H`）
-- 请求体（`-d`）
-- JSON/XML 格式自动补全 `Content-Type` 请求头
+- 请求体（`-d`、`--data-binary`，表单文件字段为 `-F`）
+- JSON/XML 等格式在缺少时自动补全 `Content-Type` 请求头
 
 ---
 
@@ -228,7 +232,7 @@ APILite 会解析命令并填充：
 - **URL** — 完整请求 URL
 - **状态** — 响应状态码
 
-点击任意历史记录可将该请求配置重新加载到编辑器。历史数据存储在内存中，关闭应用后自动清空。
+展开行可查看原始请求与响应。点击 **加载更多** 分批载入更早记录（每次 50 条）。历史保存在数据目录下的按日文件（`histories/YYYY-MM-DD.json`），可在 **设置** 中配置保留天数与条数上限。
 
 ---
 
@@ -255,6 +259,18 @@ APILite 会解析命令并填充：
 ### 拖拽分割线
 
 请求编辑器与响应面板之间有一条可拖拽的分割线。鼠标按住向上/向下拖动可调整响应面板高度，最高不能超过地址栏和标签栏区域，最小不低于 100px。拖动结束后高度自动保存。
+
+### 本地存储
+
+选择应用数据目录（默认 `~/.APILite`），自动创建：
+
+- `collections/` — API 集合
+- `histories/` — 请求历史（按日一个 JSON 文件）
+- `environments.json` — 环境变量
+
+### 历史记录保留
+
+可设置最长保留天数与最大条数，超出部分会从磁盘自动清理。
 
 ### 快捷键
 

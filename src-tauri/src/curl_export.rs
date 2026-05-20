@@ -101,7 +101,11 @@ pub fn to_curl(req: ExportRequest) -> String {
         if let Some(path) = &req.binary_file_path {
             parts.push(format!("--data-binary '@{}'", escape_single_quotes(path)));
         } else if req.binary_data_base64.is_some() {
-            parts.push("--data-binary '<(base64 file data)>'".to_string());
+            let label = req
+                .binary_file_name
+                .as_deref()
+                .unwrap_or("file");
+            parts.push(format!("--data-binary '<(base64: {})>'", escape_single_quotes(label)));
         }
     } else if let Some(body) = &req.body {
         if !body.is_empty() && req.body_type != "none" {

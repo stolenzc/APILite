@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import { useStore } from '../store/useStore';
 import { matchesShortcut, useSettingsStore } from '../store/useSettings';
 import type { BodyType, RawContentType } from '../types';
@@ -28,14 +28,6 @@ const RAW_CONTENT_TYPES: { value: RawContentType; label: string }[] = [
   { value: 'javascript', label: 'body.type.javascript' },
   { value: 'html', label: 'body.type.html' },
 ];
-
-const CONTENT_TYPE_MAP: Record<RawContentType, string> = {
-  json: 'application/json',
-  xml: 'application/xml',
-  text: 'text/plain',
-  javascript: 'application/javascript',
-  html: 'text/html',
-};
 
 const PLACEHOLDER_KEYS: Record<RawContentType, string> = {
   json: 'body.placeholder.json',

@@ -68,7 +68,10 @@ APILite/
 │   │   ├── curl_parser.rs   # cURL command parsing
 │   │   ├── curl_export.rs   # cURL command generation
 │   │   ├── http_client.rs   # HTTP request engine
-│   │   └── history.rs       # In-memory history cache
+│   │   ├── histories.rs     # History persistence (daily JSON shards)
+│   │   ├── storage.rs       # Data directory layout
+│   │   ├── environments.rs  # Environment variables on disk
+│   │   └── collections.rs   # API collection files
 │   ├── Cargo.toml
 │   └── tauri.conf.json
 ├── frontend/            # React + TypeScript frontend
@@ -169,10 +172,11 @@ Switch to the **Body** tab to configure the request body. Supported formats:
 | **XML**                   | `application/xml`                   | XML-formatted data            |
 | **Text**                  | `text/plain`                        | Plain text                    |
 | **HTML**                  | `text/html`                         | HTML content                  |
-| **Form Data**             | `multipart/form-data`               | File upload / form fields     |
-| **x-www-form-urlencoded** | `application/x-www-form-urlencoded` | URL-encoded key-value pairs   |
+| **Form Data**             | `multipart/form-data`               | Key/value table; text or file fields |
+| **x-www-form-urlencoded** | `application/x-www-form-urlencoded` | Key/value table, URL-encoded         |
+| **Binary**                | `application/octet-stream`          | Single file as raw body              |
 
-Each format type provides an appropriate placeholder template to get started.
+For **Form Data** and **x-www-form-urlencoded**, use the key/value table in the Body tab (enable rows with the checkbox). File fields open a file picker (desktop) or browser file input. **Raw** subtypes (JSON, XML, etc.) include placeholder templates where helpful.
 
 ---
 
@@ -213,21 +217,21 @@ The export automatically includes:
 - Method (`-X`) for non-GET requests
 - URL with all parameters
 - Headers (`-H`)
-- Request body (`-d`)
-- Auto-generated `Content-Type` header for JSON/XML body types
+- Request body (`-d`, `--data-binary`, or `-F` for form-data file fields)
+- Auto-generated `Content-Type` header for JSON/XML body types when missing
 
 ---
 
 ## Request History
 
-The history panel at the bottom of the window records your most recent requests:
+The history panel at the bottom of the window records sent requests:
 
 - **Time** — When the request was sent
 - **Method** — Color-coded HTTP method badge
 - **URL** — Full request URL
 - **Status** — Response status code
 
-Click any history entry to reload that request's configuration into the editor. The history is stored in memory and cleared when the app closes.
+Expand a row to view the raw request and response. Click **Load more** to fetch older entries (50 per page). History is persisted under your data directory as daily files (`histories/YYYY-MM-DD.json`); retention limits are configurable in **Settings**.
 
 ---
 
@@ -250,6 +254,22 @@ Select from five built-in themes:
 | **Nord**           | Arctic-inspired cool blue palette               |
 | **Solarized Dark** | Classic solarized dark color scheme             |
 | **Monokai**        | Editor-inspired dark theme with vibrant accents |
+
+### Local Storage
+
+Choose a folder for app data (default `~/.APILite`). The app creates:
+
+- `collections/` — saved API collections
+- `histories/` — request history (one JSON file per day)
+- `environments.json` — environment variables
+
+### History Retention
+
+Set maximum age (days) and maximum entry count. Older or excess entries are pruned from disk automatically.
+
+### Resizable Splitter
+
+Drag the handle between the request editor and response panel to resize the response area (min 100px). The height is saved automatically.
 
 ### Keyboard Shortcuts
 

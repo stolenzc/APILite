@@ -23,11 +23,6 @@ export interface HistoryPage {
   total: number;
 }
 
-export const defaultHistoryRetention: HistoryRetention = {
-  maxAgeDays: 30,
-  maxCount: 1000,
-};
-
 export function getHistoryRetention(): HistoryRetention {
   const { historyMaxAgeDays, historyMaxCount } = useSettingsStore.getState();
   return { maxAgeDays: historyMaxAgeDays, maxCount: historyMaxCount };
@@ -57,14 +52,6 @@ export function groupEntriesByDay(entries: HistoryEntry[]): Record<string, Histo
     byDay[day].sort((a, b) => (b.timestamp ?? 0) - (a.timestamp ?? 0));
   }
   return byDay;
-}
-
-/** Days whose on-disk shard may have changed between two snapshots. */
-export function getDirtyDays(before: HistoryEntry[], after: HistoryEntry[]): Set<string> {
-  const days = new Set<string>();
-  for (const e of before) days.add(dayKeyFromTimestamp(e.timestamp ?? 0));
-  for (const e of after) days.add(dayKeyFromTimestamp(e.timestamp ?? 0));
-  return days;
 }
 
 function normalizeEntries(entries: unknown[]): HistoryEntry[] {
@@ -107,14 +94,6 @@ function parseHistoryJson(raw: string): HistoryEntry[] | null {
   } catch {
     return null;
   }
-}
-
-function sortNewestFirst(entries: HistoryEntry[]): HistoryEntry[] {
-  return [...entries].sort((a, b) => {
-    const diff = (b.timestamp ?? 0) - (a.timestamp ?? 0);
-    if (diff !== 0) return diff;
-    return a.id.localeCompare(b.id);
-  });
 }
 
 function pageFromSorted(sorted: HistoryEntry[], offset: number, limit: number): HistoryPage {
@@ -195,25 +174,16 @@ function saveToLocalStorage(entries: HistoryEntry[]): void {
   }
 }
 
-function buildDiskSyncPayload(
-  entries: HistoryEntry[],
-  before?: HistoryEntry[],
-): { updates: Record<string, string>; keepDays: string[]; maxAgeDays: number } {
+function saveToDisk(entries: HistoryEntry[]): void {
+  const dataDir = getDataDir();
+  if (!isTauri() || !dataDir) return;
   const { maxAgeDays } = getHistoryRetention();
   const byDay = groupEntriesByDay(entries);
   const keepDays = Object.keys(byDay);
-  const dirty = before != null ? getDirtyDays(before, entries) : new Set(keepDays);
   const updates: Record<string, string> = {};
-  for (const day of dirty) {
+  for (const day of keepDays) {
     updates[day] = JSON.stringify(byDay[day] ?? []);
   }
-  return { updates, keepDays, maxAgeDays };
-}
-
-function saveToDisk(entries: HistoryEntry[], before?: HistoryEntry[]): void {
-  const dataDir = getDataDir();
-  if (!isTauri() || !dataDir) return;
-  const { updates, keepDays, maxAgeDays } = buildDiskSyncPayload(entries, before);
   void invoke('histories_sync', {
     dataDir,
     updates,
@@ -222,14 +192,9 @@ function saveToDisk(entries: HistoryEntry[], before?: HistoryEntry[]): void {
   }).catch((err) => console.error('Failed to sync history to disk:', err));
 }
 
-export interface SaveHistoryOptions {
-  /** When set, only rewrite day shards that changed (faster on append). */
-  before?: HistoryEntry[];
-}
-
-export function savePersistedHistory(entries: HistoryEntry[], options?: SaveHistoryOptions): void {
+function savePersistedHistory(entries: HistoryEntry[]): void {
   saveToLocalStorage(entries);
-  saveToDisk(entries, options?.before);
+  saveToDisk(entries);
 }
 
 export async function saveFullHistory(entries: HistoryEntry[]): Promise<void> {
