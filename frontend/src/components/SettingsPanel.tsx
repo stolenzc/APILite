@@ -4,6 +4,7 @@ import { useSettingsStore } from '../store/useSettings';
 import { themes } from '../themes';
 import { t, getAvailableLocales } from '../i18n';
 import type { ShortcutConfig } from '../store/useSettings';
+import { useModalOverlayDismiss } from '../utils/modalOverlayDismiss';
 
 const SHORTCUT_LABELS: Record<keyof ShortcutConfig, string> = {
   sendRequest: 'shortcut.sendRequest',
@@ -26,6 +27,7 @@ export default function SettingsPanel() {
     autoCompleteProtocol, setAutoCompleteProtocol,
     collectionDir, setCollectionDir,
   } = useSettingsStore();
+  const overlayDismiss = useModalOverlayDismiss(() => setSettingsOpen(false));
 
   const handleSelectCollectionDir = useCallback(async () => {
     const selected = await open({ directory: true });
@@ -48,7 +50,7 @@ export default function SettingsPanel() {
   if (!settingsOpen) return null;
 
   return (
-    <div className="settings-overlay" onClick={() => setSettingsOpen(false)}>
+    <div className="settings-overlay" {...overlayDismiss}>
       <div className="settings-modal" onClick={e => e.stopPropagation()}>
         <h3>
           {t('app.settings')}

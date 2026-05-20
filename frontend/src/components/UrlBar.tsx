@@ -16,6 +16,7 @@ import { useEnvironmentStore } from '../store/useEnvironmentStore';
 import { isCurlCommand } from '../utils/curlUtils';
 import { showToast } from '../utils/toast';
 import { focusUrlInput } from '../utils/focusUrl';
+import { useModalOverlayDismiss } from '../utils/modalOverlayDismiss';
 
 const METHODS: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
 
@@ -36,6 +37,7 @@ export default function UrlBar() {
   const loading = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.loading ?? false);
   const activeTabId = useStore(s => s.activeTabId);
   const [exportCurl, setExportCurl] = useState<string | null>(null);
+  const exportCurlOverlayDismiss = useModalOverlayDismiss(() => setExportCurl(null));
 
   const envEntriesSerialized = useEnvironmentStore((s) => {
     const envId = s.activeEnvironmentId;
@@ -340,7 +342,7 @@ export default function UrlBar() {
       </div>
 
       {exportCurl !== null && (
-        <div className="modal-overlay" onClick={() => setExportCurl(null)}>
+        <div className="modal-overlay" {...exportCurlOverlayDismiss}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <h3>{t('url.export.title')}</h3>
             <div className="copy-area">{exportCurl}</div>

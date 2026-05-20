@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useCollectionStore } from '../store/useCollection';
 import type { CollectionFolder, CollectionNode } from '../types';
 import { t } from '../i18n';
+import { useModalOverlayDismiss } from '../utils/modalOverlayDismiss';
 
 interface TreeNode {
   id: string;
@@ -37,6 +38,7 @@ export default function SaveRequestModal({ onClose, onSave, defaultName }: Props
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const overlayDismiss = useModalOverlayDismiss(onClose);
   const tree = buildTree(collections);
 
   useEffect(() => {
@@ -64,7 +66,7 @@ export default function SaveRequestModal({ onClose, onSave, defaultName }: Props
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" {...overlayDismiss}>
       <div className="modal" onClick={e => e.stopPropagation()} style={{ minWidth: 400 }}>
         <h3>{t('saveRequest.title')}</h3>
         <div style={{ marginBottom: 12 }}>

@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useEnvironmentStore } from '../store/useEnvironmentStore';
 import { t } from '../i18n';
+import { useModalOverlayDismiss } from '../utils/modalOverlayDismiss';
 
 type EnvDragKind = 'row' | 'col';
 
@@ -147,6 +148,7 @@ export default function EnvironmentModal() {
   const [rowDropId, setRowDropId] = useState<string | null>(null);
   const [colDropId, setColDropId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const overlayDismiss = useModalOverlayDismiss(() => setEnvModalOpen(false));
 
   const syncDropHints = useCallback(() => {
     setIsDragging(envDrag !== null);
@@ -183,7 +185,7 @@ export default function EnvironmentModal() {
   const colSpan = environments.length + 2;
 
   return (
-    <div className="modal-overlay env-modal-overlay" onClick={() => setEnvModalOpen(false)}>
+    <div className="modal-overlay env-modal-overlay" {...overlayDismiss}>
       <div className="modal modal--env-matrix" onClick={(e) => e.stopPropagation()}>
         <h3 className="env-modal-title">
           <span>{t('env.modalTitle')}</span>
