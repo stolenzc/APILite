@@ -42,6 +42,9 @@
 - [Settings](#settings)
   - [Language](#language)
   - [Theme](#theme)
+  - [Local Storage](#local-storage)
+  - [History Retention](#history-retention)
+  - [Resizable Splitter](#resizable-splitter)
   - [Keyboard Shortcuts](#keyboard-shortcuts)
 
 ---
@@ -164,14 +167,14 @@ Navigate suggestions with arrow keys and press Enter to select.
 
 Switch to the **Body** tab to configure the request body. Supported formats:
 
-| Format                    | Content-Type                        | Description                   |
-| ------------------------- | ----------------------------------- | ----------------------------- |
-| **None**                  | —                                   | No request body               |
-| **Raw**                   | —                                   | Raw text, no content-type set |
-| **JSON**                  | `application/json`                  | JSON-formatted data           |
-| **XML**                   | `application/xml`                   | XML-formatted data            |
-| **Text**                  | `text/plain`                        | Plain text                    |
-| **HTML**                  | `text/html`                         | HTML content                  |
+| Format                    | Content-Type                        | Description                          |
+| ------------------------- | ----------------------------------- | ------------------------------------ |
+| **None**                  | —                                   | No request body                      |
+| **Raw**                   | —                                   | Raw text, no content-type set        |
+| **JSON**                  | `application/json`                  | JSON-formatted data                  |
+| **XML**                   | `application/xml`                   | XML-formatted data                   |
+| **Text**                  | `text/plain`                        | Plain text                           |
+| **HTML**                  | `text/html`                         | HTML content                         |
 | **Form Data**             | `multipart/form-data`               | Key/value table; text or file fields |
 | **x-www-form-urlencoded** | `application/x-www-form-urlencoded` | Key/value table, URL-encoded         |
 | **Binary**                | `application/octet-stream`          | Single file as raw body              |
@@ -277,17 +280,18 @@ Configure custom keyboard shortcuts for common actions. Click **Reset Shortcuts*
 
 Defaults use **⌘ (Command)** on macOS and **Ctrl** on Windows and Linux (the app picks the platform modifier automatically). In the Tauri desktop build, the same combinations appear on the menu bar (**APILite** / **Tab**) and only apply while this app is focused.
 
-| Action          | macOS              | Windows / Linux      |
-| --------------- | ------------------ | -------------------- |
-| Send Request    | ⌘ Enter            | Ctrl+Enter           |
-| Save Request    | ⌘ S                | Ctrl+S               |
-| Import cURL     | ⌘ ⇧ I              | Ctrl+Shift+I         |
-| Export cURL     | ⌘ ⇧ E              | Ctrl+Shift+E         |
-| Focus URL Bar   | ⌘ L                | Ctrl+L               |
-| Open Settings   | ⌘ ,                | Ctrl+,               |
-| New Tab         | ⌘ T                | Ctrl+T               |
-| Close Tab       | ⌘ W                | Ctrl+W               |
-| Previous Tab    | ⌘ ⌥ ←              | Ctrl+Alt+Left Arrow  |
-| Next Tab        | ⌘ ⌥ →              | Ctrl+Alt+Right Arrow |
+| Action                  | macOS   | Windows / Linux      |
+| ----------------------- | ------- | -------------------- |
+| Send Request            | ⌘ Enter | Ctrl+Enter           |
+| Save Request            | ⌘ S     | Ctrl+S               |
+| Import cURL             | ⌘ ⇧ I   | Ctrl+Shift+I         |
+| Export cURL             | ⌘ ⇧ E   | Ctrl+Shift+E         |
+| Focus URL Bar           | ⌘ L     | Ctrl+L               |
+| Focus Collection Search | ⌘ ⇧ F   | Ctrl+Shift+F         |
+| Open Settings           | ⌘ ,     | Ctrl+,               |
+| New Tab                 | ⌘ T     | Ctrl+T               |
+| Close Tab               | ⌘ W     | Ctrl+W               |
+| Previous Tab            | ⌘ ⌥ ←   | Ctrl+Alt+Left Arrow  |
+| Next Tab                | ⌘ ⌥ →   | Ctrl+Alt+Right Arrow |
 
 All shortcuts can be customized in **Settings**.

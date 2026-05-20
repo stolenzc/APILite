@@ -22,6 +22,7 @@ import TabBar from './components/TabBar';
 import SaveRequestModal from './components/SaveRequestModal';
 import { isTauri, setupTauriMenu } from './tauri/setupMenu';
 import { bootstrapLocalStorage } from './utils/bootstrapStorage';
+import { focusCollectionSearchInput } from './utils/focusCollectionSearch';
 import { cloneHttpRequest } from './utils/normalizeRequest';
 
 export default function App() {
@@ -36,6 +37,15 @@ export default function App() {
       console.error('Failed to bootstrap local storage:', err);
     });
   }, [dataDir]);
+
+  useEffect(() => {
+    const onFocusCollectionSearch = () => {
+      setSidebarOpen(true);
+      requestAnimationFrame(() => focusCollectionSearchInput());
+    };
+    window.addEventListener('app:focus-collection-search', onFocusCollectionSearch);
+    return () => window.removeEventListener('app:focus-collection-search', onFocusCollectionSearch);
+  }, []);
 
   useEffect(() => {
     useStore.getState().syncHistoryRetention();

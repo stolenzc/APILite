@@ -5,6 +5,7 @@ import { useStore } from '../store/useStore';
 import type { CollectionFolder, CollectionNode, CollectionRequest } from '../types';
 import { t } from '../i18n';
 import { methodColors } from '../constants';
+import { useSettingsStore } from '../store/useSettings';
 
 // Global drag state shared across all TreeNodes
 let dragSourceId: string | null = null;
@@ -416,6 +417,7 @@ function ContextMenu({ nodeId, isFolder, onStartRename }: { nodeId: string; isFo
 
 export default function CollectionSidebar() {
   const { collections, addCollection } = useCollectionStore();
+  const focusCollectionSearch = useSettingsStore((s) => s.shortcuts.focusCollectionSearch);
   const [searchQuery, setSearchQuery] = useState('');
 
   const visibleCollections = useMemo(
@@ -440,6 +442,7 @@ export default function CollectionSidebar() {
               type="search"
               className="sidebar-collection-search-input"
               placeholder={t('collection.searchPlaceholder')}
+              title={`${t('collection.searchPlaceholder')} (${focusCollectionSearch})`}
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               spellCheck={false}

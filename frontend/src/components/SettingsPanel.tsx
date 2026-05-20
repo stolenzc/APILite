@@ -13,6 +13,7 @@ const SHORTCUT_LABELS: Record<keyof ShortcutConfig, string> = {
   saveRequest: 'shortcut.saveRequest',
   exportCurl: 'shortcut.exportCurl',
   focusUrl: 'shortcut.focusUrl',
+  focusCollectionSearch: 'shortcut.focusCollectionSearch',
   toggleSettings: 'shortcut.toggleSettings',
   newTab: 'shortcut.newTab',
   closeTab: 'shortcut.closeTab',

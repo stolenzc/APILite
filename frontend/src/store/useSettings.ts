@@ -9,6 +9,7 @@ export interface ShortcutConfig {
   saveRequest: string;
   exportCurl: string;
   focusUrl: string;
+  focusCollectionSearch: string;
   toggleSettings: string;
   newTab: string;
   closeTab: string;
@@ -25,6 +26,7 @@ export const defaultShortcuts: ShortcutConfig = {
   saveRequest: `${mod}+S`,
   exportCurl: `${mod}+Shift+E`,
   focusUrl: `${mod}+L`,
+  focusCollectionSearch: `${mod}+Shift+F`,
   toggleSettings: `${mod}+,`,
   newTab: `${mod}+T`,
   closeTab: `${mod}+W`,
@@ -307,6 +309,12 @@ export function initKeyboardShortcuts(): () => void {
     if (matchesShortcutCombo(e, shortcuts.focusUrl)) {
       e.preventDefault();
       focusUrlInput();
+      return;
+    }
+
+    if (matchesShortcutCombo(e, shortcuts.focusCollectionSearch)) {
+      e.preventDefault();
+      window.dispatchEvent(new CustomEvent('app:focus-collection-search'));
       return;
     }
 

@@ -43,6 +43,8 @@
   - [语言](#语言)
   - [主题](#主题)
   - [拖拽分割线](#拖拽分割线)
+  - [本地存储](#本地存储)
+  - [历史记录保留](#历史记录保留)
   - [快捷键](#快捷键)
 
 ---
@@ -278,17 +280,18 @@ APILite 会解析命令并填充：
 
 在 macOS 上默认使用 **⌘（Command）**，在 Windows 与 Linux 上默认使用 **Ctrl**（应用会按平台自动选择修饰键）。在 Tauri 桌面版中，相同组合会出现在菜单栏 **APILite** / **Tab** 中，且仅在当前应用获得焦点时生效。
 
-| 操作       | macOS        | Windows / Linux        |
-| ---------- | ------------ | ---------------------- |
-| 发送请求   | ⌘ Enter      | Ctrl+Enter             |
-| 保存请求   | ⌘ S          | Ctrl+S                 |
-| 导入 cURL  | ⌘ ⇧ I        | Ctrl+Shift+I           |
-| 导出 cURL  | ⌘ ⇧ E        | Ctrl+Shift+E           |
-| 聚焦地址栏 | ⌘ L          | Ctrl+L                 |
-| 打开设置   | ⌘ ,          | Ctrl+,                 |
-| 新建标签   | ⌘ T          | Ctrl+T                 |
-| 关闭标签   | ⌘ W          | Ctrl+W                 |
-| 上一个标签 | ⌘ ⌥ ←        | Ctrl+Alt+左方向键      |
-| 下一个标签 | ⌘ ⌥ →        | Ctrl+Alt+右方向键      |
+| 操作         | macOS   | Windows / Linux   |
+| ------------ | ------- | ----------------- |
+| 发送请求     | ⌘ Enter | Ctrl+Enter        |
+| 保存请求     | ⌘ S     | Ctrl+S            |
+| 导入 cURL    | ⌘ ⇧ I   | Ctrl+Shift+I      |
+| 导出 cURL    | ⌘ ⇧ E   | Ctrl+Shift+E      |
+| 聚焦地址栏   | ⌘ L     | Ctrl+L            |
+| 聚焦集合搜索 | ⌘ ⇧ F   | Ctrl+Shift+F      |
+| 打开设置     | ⌘ ,     | Ctrl+,            |
+| 新建标签     | ⌘ T     | Ctrl+T            |
+| 关闭标签     | ⌘ W     | Ctrl+W            |
+| 上一个标签   | ⌘ ⌥ ←   | Ctrl+Alt+左方向键 |
+| 下一个标签   | ⌘ ⌥ →   | Ctrl+Alt+右方向键 |
 
 所有快捷键均可在 **设置** 面板中自定义。
