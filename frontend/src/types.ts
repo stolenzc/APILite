@@ -56,6 +56,8 @@ export interface HistoryEntry {
   method: HttpMethod;
   url: string;
   status: number;
-  request: HttpRequest;
-  response: HttpResponse | null;
+  /** Raw HTTP request as sent (request line + headers + body). */
+  requestRaw: string;
+  /** Raw HTTP response (status line + headers + body). */
+  responseRaw: string | null;
 }

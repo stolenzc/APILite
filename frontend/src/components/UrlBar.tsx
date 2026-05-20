@@ -93,7 +93,15 @@ export default function UrlBar() {
     const resolved = resolveOutboundRequest(req, vars, autoProtocol);
 
     try {
-      const res: { status: number; status_text: string; headers: Record<string, string>; body: string; raw: string; duration_ms: number } = await invoke('send_request', {
+      const res: {
+        status: number;
+        status_text: string;
+        headers: Record<string, string>;
+        body: string;
+        request_raw: string;
+        raw: string;
+        duration_ms: number;
+      } = await invoke('send_request', {
         method: req.method,
         url: resolved.finalUrl,
         headers: kvToMap(resolved.headers),
@@ -114,15 +122,8 @@ export default function UrlBar() {
         method: req.method,
         url: resolved.finalUrl,
         status: res.status,
-        request: resolved.historyRequest,
-        response: {
-          status: res.status,
-          statusText: res.status_text,
-          headers: res.headers,
-          body: res.body,
-          raw: res.raw,
-          durationMs: res.duration_ms,
-        },
+        requestRaw: res.request_raw,
+        responseRaw: res.raw,
       });
     } catch (err) {
       const errorResponse = {
@@ -219,14 +220,13 @@ export default function UrlBar() {
   );
 }
 
-/** Resolve env placeholders for outbound HTTP, cURL export, and history (not for editor UI). */
+/** Resolve env placeholders for outbound HTTP and cURL export (not for editor UI). */
 function resolveOutboundRequest(
   req: HttpRequest,
   vars: Record<string, string>,
   autoProtocol: boolean,
 ) {
   const interpolatedUrl = interpolateEnvVars(req.url, vars);
-  const params = interpolateKeyValues(req.params, vars);
   const headers = interpolateKeyValues(req.headers, vars);
   let finalUrl = interpolatedUrl;
   if (autoProtocol) finalUrl = ensureProtocol(finalUrl);
@@ -238,17 +238,7 @@ function resolveOutboundRequest(
       : req.body;
   const body = templatedBody === null ? null : interpolateEnvVars(templatedBody, vars);
 
-  const historyRequest: HttpRequest = {
-    method: req.method,
-    url: finalUrl,
-    params: params.map((p) => ({ ...p })),
-    headers: headers.map((h) => ({ ...h })),
-    bodyType: req.bodyType,
-    rawContentType: req.rawContentType,
-    body: body ?? '',
-  };
-
-  return { finalUrl, headers, body, effectiveBodyType, historyRequest };
+  return { finalUrl, headers, body, effectiveBodyType };
 }
 
 function kvToMap(kvs: KeyValue[]): Record<string, string> {

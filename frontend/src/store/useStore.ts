@@ -19,7 +19,7 @@ const defaultRequest: HttpRequest = {
   body: '',
 };
 
-export type TabSource = 'collection' | 'history' | 'temporary';
+export type TabSource = 'collection' | 'temporary';
 
 export interface RequestTab {
   id: string;
@@ -47,7 +47,6 @@ interface AppState {
   switchToPreviousTab: () => void;
   switchToNextTab: () => void;
   openTabFromCollection: (req: HttpRequest, name: string, collectionPath: string, collectionId: string) => void;
-  openTabFromHistory: (entry: HistoryEntry) => void;
   syncCollectionTabName: (collectionId: string, name: string) => void;
   linkActiveTabToCollection: (collectionId: string, name: string, sourcePath: string) => void;
   markUnsaved: () => void;
@@ -267,22 +266,6 @@ export const useStore = create<AppState>((set, get) => ({
     }),
   ),
 
-  openTabFromHistory: (entry) => set(state => {
-    const urlName = entry.url.split('?')[0].split('/').pop() || 'Request';
-    const tab: RequestTab = {
-      id: nanoid(),
-      name: urlName,
-      request: { ...entry.request },
-      response: entry.response ? { ...entry.response } : null,
-      loading: false,
-      sourceType: 'history',
-      sourcePath: 'History',
-      unsaved: false,
-      collectionId: null,
-    };
-    return { tabs: [...state.tabs, tab], activeTabId: tab.id };
-  }),
-
   markUnsaved: () => set(state => {
     const tab = state.tabs.find(t => t.id === state.activeTabId);
     if (!tab || tab.sourceType !== 'collection') return state;
@@ -399,9 +382,13 @@ export const useStore = create<AppState>((set, get) => ({
   setResponse: (response) => set(state => updateActiveTab(state, { response })),
   setLoading: (loading) => set(state => updateActiveTab(state, { loading })),
 
-  addHistory: (entry) => set(state => ({
-    history: [{ ...entry, id: nanoid(), time: new Date().toLocaleTimeString() }, ...state.history].slice(0, 50),
-  })),
+  addHistory: (entry) =>
+    set((state) => ({
+      history: [
+        { ...entry, id: nanoid(), time: new Date().toLocaleTimeString() },
+        ...state.history,
+      ].slice(0, 50),
+    })),
 
   clearHistory: () => set({ history: [] }),
 

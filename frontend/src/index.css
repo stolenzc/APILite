@@ -322,19 +322,6 @@ body {
   border-bottom: 2px solid var(--accent);
 }
 
-/* History tabs get a muted blue tint */
-.tab-item.history {
-  background: rgba(97, 175, 255, 0.06);
-}
-.tab-item.history.active {
-  background: rgba(97, 175, 255, 0.12);
-  border-bottom-color: rgba(97, 175, 255, 0.5);
-}
-.tab-item.history .tab-url {
-  color: var(--text-muted);
-  font-size: 10px;
-}
-
 /* Collection tabs get a warm green tint */
 .tab-item.collection {
   background: rgba(73, 204, 144, 0.04);
@@ -1368,18 +1355,78 @@ body {
   list-style: none;
 }
 
+.history-row {
+  border-bottom: 1px solid rgba(42, 58, 94, 0.3);
+}
+
+.history-row--expanded {
+  background: rgba(30, 42, 74, 0.35);
+}
+
 .history-item {
   display: flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
   padding: 6px 16px;
   font-size: 12px;
   cursor: pointer;
-  border-bottom: 1px solid rgba(42, 58, 94, 0.3);
+  border: none;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  font-family: inherit;
 }
 
 .history-item:hover {
   background: var(--bg-input);
+}
+
+.history-row--expanded .history-item {
+  background: var(--bg-input);
+}
+
+.history-expand-icon {
+  flex-shrink: 0;
+  width: 10px;
+  font-size: 9px;
+  color: var(--text-muted);
+}
+
+.history-detail {
+  padding: 0 12px 10px 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.history-detail-block {
+  min-width: 0;
+}
+
+.history-detail-title {
+  margin: 0 0 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.history-raw {
+  margin: 0;
+  padding: 8px 10px;
+  max-height: 160px;
+  overflow: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: var(--text-secondary);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
 }
 
 .history-method {
@@ -1388,7 +1435,7 @@ body {
   padding: 2px 5px;
   border-radius: 2px;
   min-width: 48px;
-  text-align: center;
+  text-align: left;
 }
 
 .history-time {

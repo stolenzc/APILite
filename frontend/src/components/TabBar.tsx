@@ -18,12 +18,11 @@ export default function TabBar() {
         const isActive = tab.id === activeTabId;
         const method = tab.request.method;
         const truncated = tab.name.length > 20 ? tab.name.slice(0, 20) + '…' : tab.name;
-        const isHistory = tab.sourceType === 'history';
         const isCollection = tab.sourceType === 'collection';
         return (
           <div
             key={tab.id}
-            className={`tab-item ${isActive ? 'active' : ''} ${isHistory ? 'history' : ''} ${isCollection ? 'collection' : ''}`}
+            className={`tab-item ${isActive ? 'active' : ''}${isCollection ? ' collection' : ''}`}
             onClick={() => switchTab(tab.id)}
           >
             <span className="tab-method" style={{ color: (methodColors as any)[method] }}>

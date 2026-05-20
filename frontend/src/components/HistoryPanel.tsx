@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useState } from 'react';
 import { useStore } from '../store/useStore';
 import { useSettingsStore } from '../store/useSettings';
 import { t } from '../i18n';
@@ -14,8 +14,9 @@ const METHOD_COLORS: Record<string, string> = {
 };
 
 export default function HistoryPanel() {
-  const { history, clearHistory, openTabFromHistory } = useStore();
+  const { history, clearHistory } = useStore();
   const { historyCollapsed, setHistoryCollapsed, historyHeight, setHistoryHeight } = useSettingsStore();
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -38,6 +39,10 @@ export default function HistoryPanel() {
     document.addEventListener('mouseup', onMouseUp);
   }, [setHistoryHeight]);
 
+  const toggleEntry = (id: string) => {
+    setExpandedId((prev) => (prev === id ? null : id));
+  };
+
   return (
     <div
       ref={panelRef}
@@ -49,7 +54,6 @@ export default function HistoryPanel() {
         flexShrink: 0,
       }}
     >
-      {/* Drag handle - only visible when expanded */}
       {!historyCollapsed && (
         <div className="history-drag-handle" onMouseDown={handleMouseDown} />
       )}
@@ -62,19 +66,69 @@ export default function HistoryPanel() {
           {historyCollapsed ? '▶' : '▼'} {t('history.label')} ({history.length})
         </span>
         {!historyCollapsed && (
-          <button className="btn btn-icon" style={{ fontSize: 12 }} onClick={e => { e.stopPropagation(); clearHistory(); }} title={t('history.clear')}>{t('history.clear')}</button>
+          <button
+            type="button"
+            className="btn btn-icon"
+            style={{ fontSize: 12 }}
+            onClick={(e) => {
+              e.stopPropagation();
+              clearHistory();
+              setExpandedId(null);
+            }}
+            title={t('history.clear')}
+          >
+            {t('history.clear')}
+          </button>
         )}
       </div>
       {!historyCollapsed && (
         <ul className="history-list" style={{ overflowY: 'auto', height: 'calc(100% - 24px)' }}>
-          {history.map(entry => (
-            <li key={entry.id} className="history-item" onClick={() => openTabFromHistory(entry)}>
-              <span className="history-time">{entry.time}</span>
-              <span className="history-method" style={{ color: METHOD_COLORS[entry.method] || 'var(--text-primary)' }}>{entry.method}</span>
-              <span className="history-url">{entry.url}</span>
-              <span className={`history-status ${entry.status >= 400 ? 'status-5xx' : 'status-2xx'}`}>{entry.status || '-'}</span>
-            </li>
-          ))}
+          {history.map((entry) => {
+            const expanded = expandedId === entry.id;
+            const { requestRaw, responseRaw } = entry;
+            const statusClass =
+              entry.status >= 200 && entry.status < 300
+                ? 'status-2xx'
+                : entry.status >= 400
+                  ? 'status-5xx'
+                  : 'status-2xx';
+
+            return (
+              <li key={entry.id} className={`history-row${expanded ? ' history-row--expanded' : ''}`}>
+                <button
+                  type="button"
+                  className="history-item"
+                  onClick={() => toggleEntry(entry.id)}
+                  aria-expanded={expanded}
+                >
+                  <span className="history-expand-icon" aria-hidden>
+                    {expanded ? '▼' : '▶'}
+                  </span>
+                  <span className="history-time">{entry.time}</span>
+                  <span
+                    className="history-method"
+                    style={{ color: METHOD_COLORS[entry.method] || 'var(--text-primary)' }}
+                  >
+                    {entry.method}
+                  </span>
+                  <span className="history-url">{entry.url}</span>
+                  <span className={`history-status ${statusClass}`}>{entry.status || '-'}</span>
+                </button>
+                {expanded && (
+                  <div className="history-detail">
+                    <section className="history-detail-block">
+                      <h4 className="history-detail-title">{t('history.requestRaw')}</h4>
+                      <pre className="history-raw">{requestRaw}</pre>
+                    </section>
+                    <section className="history-detail-block">
+                      <h4 className="history-detail-title">{t('history.responseRaw')}</h4>
+                      <pre className="history-raw">{responseRaw ?? '—'}</pre>
+                    </section>
+                  </div>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

@@ -11,7 +11,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'app.settings': 'Settings',
     'app.toggleCollections': 'Toggle collections sidebar',
     'app.response.placeholder': 'Send a request to see the response',
-    'app.noTab': 'No open request. Click + to create a tab, or open one from Collections or History.',
+    'app.noTab': 'No open request. Click + to create a tab, or open one from Collections.',
 
     // URL Bar
     'url.placeholder': 'Enter request URL or paste curl command',
@@ -90,6 +90,8 @@ const messages: Record<Locale, Record<string, string>> = {
     // History
     'history.label': 'History',
     'history.clear': 'Clear',
+    'history.requestRaw': 'Request (raw)',
+    'history.responseRaw': 'Response (raw)',
 
     // Settings
     'settings.theme': 'Theme',
@@ -148,7 +150,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'app.settings': '设置',
     'app.toggleCollections': '显示或隐藏集合侧边栏',
     'app.response.placeholder': '发送请求以查看响应',
-    'app.noTab': '当前没有打开的请求。点击 + 新建标签页，或从集合 / 历史中打开。',
+    'app.noTab': '当前没有打开的请求。点击 + 新建标签页，或从集合中打开。',
 
     // URL Bar
     'url.placeholder': '输入请求 URL 或粘贴 curl 命令',
@@ -227,6 +229,8 @@ const messages: Record<Locale, Record<string, string>> = {
     // History
     'history.label': '历史记录',
     'history.clear': '清空',
+    'history.requestRaw': '请求（原始）',
+    'history.responseRaw': '响应（原始）',
 
     // Settings
     'settings.theme': '主题',
