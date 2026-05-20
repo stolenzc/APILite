@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useEnvironmentStore } from '../store/useEnvironmentStore';
 import { t } from '../i18n';
 import { useModalOverlayDismiss } from '../utils/modalOverlayDismiss';
@@ -135,6 +135,70 @@ function focusEnvInput(e: React.MouseEvent<HTMLInputElement>) {
   e.currentTarget.focus({ preventScroll: true });
 }
 
+type EnvCtxMenu =
+  | { kind: 'col'; id: string; x: number; y: number }
+  | { kind: 'row'; id: string; x: number; y: number };
+
+function EnvContextMenu({
+  menu,
+  canDeleteCol,
+  onClose,
+  onDuplicateCol,
+  onDeleteCol,
+  onDuplicateRow,
+  onDeleteRow,
+}: {
+  menu: EnvCtxMenu;
+  canDeleteCol: boolean;
+  onClose: () => void;
+  onDuplicateCol: (id: string) => void;
+  onDeleteCol: (id: string) => void;
+  onDuplicateRow: (id: string) => void;
+  onDeleteRow: (id: string) => void;
+}) {
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) onClose();
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [onClose]);
+
+  const run = (fn: () => void) => {
+    onClose();
+    fn();
+  };
+
+  const isCol = menu.kind === 'col';
+
+  return (
+    <div
+      ref={menuRef}
+      className="context-menu env-context-menu"
+      style={{ left: menu.x, top: menu.y }}
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      <div
+        className="context-menu-item"
+        onClick={() => run(() => (isCol ? onDuplicateCol(menu.id) : onDuplicateRow(menu.id)))}
+      >
+        {t('collection.duplicate')}
+      </div>
+      <div
+        className={`context-menu-item${isCol && !canDeleteCol ? ' context-menu-item--disabled' : ''}`}
+        onClick={() => {
+          if (isCol && !canDeleteCol) return;
+          run(() => (isCol ? onDeleteCol(menu.id) : onDeleteRow(menu.id)));
+        }}
+      >
+        {t('collection.delete')}
+      </div>
+    </div>
+  );
+}
+
 export default function EnvironmentModal() {
   const {
     envModalOpen,
@@ -143,9 +207,11 @@ export default function EnvironmentModal() {
     variables,
     addEnvironmentColumn,
     removeEnvironmentColumn,
+    duplicateEnvironmentColumn,
     renameEnvironmentColumn,
     addVariableRow,
     removeVariableRow,
+    duplicateVariableRow,
     updateVariableKey,
     updateCell,
   } = useEnvironmentStore();
@@ -153,7 +219,14 @@ export default function EnvironmentModal() {
   const [rowDropId, setRowDropId] = useState<string | null>(null);
   const [colDropId, setColDropId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [contextMenu, setContextMenu] = useState<EnvCtxMenu | null>(null);
   const overlayDismiss = useModalOverlayDismiss(() => setEnvModalOpen(false));
+
+  const openContextMenu = useCallback((e: React.MouseEvent, kind: 'col' | 'row', id: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({ kind, id, x: e.clientX, y: e.clientY });
+  }, []);
 
   const syncDropHints = useCallback(() => {
     setIsDragging(envDrag !== null);
@@ -164,11 +237,14 @@ export default function EnvironmentModal() {
   useEffect(() => {
     if (!envModalOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setEnvModalOpen(false);
+      if (e.key === 'Escape') {
+        if (contextMenu) setContextMenu(null);
+        else setEnvModalOpen(false);
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [envModalOpen, setEnvModalOpen]);
+  }, [envModalOpen, setEnvModalOpen, contextMenu]);
 
   useEffect(() => {
     const onHover = () => syncDropHints();
@@ -182,6 +258,7 @@ export default function EnvironmentModal() {
       setIsDragging(false);
       setRowDropId(null);
       setColDropId(null);
+      setContextMenu(null);
     }
   }, [envModalOpen]);
 
@@ -198,7 +275,11 @@ export default function EnvironmentModal() {
             ×
           </button>
         </h3>
-        <p className="env-modal-hint">{t('env.modalHint')}</p>
+        <p className="env-modal-hint">
+          {t('env.modalHint')}
+          {' '}
+          {t('env.contextMenu')}
+        </p>
         <div className={`env-matrix-scroll${isDragging ? ' env-matrix-scroll--dragging' : ''}`}>
           <div className="env-matrix-scroll-inner">
           <table className="env-matrix-table">
@@ -210,6 +291,7 @@ export default function EnvironmentModal() {
                     key={col.id}
                     data-env-col-id={col.id}
                     className={colDropId === col.id ? 'env-col-drop-target' : undefined}
+                    onContextMenu={(e) => openContextMenu(e, 'col', col.id)}
                   >
                     <div className="env-matrix-col-head">
                       <span
@@ -226,14 +308,6 @@ export default function EnvironmentModal() {
                         onMouseDown={focusEnvInput}
                         style={inputStyle}
                       />
-                      <button
-                        type="button"
-                        className="btn btn-secondary env-col-delete"
-                        disabled={environments.length <= 1}
-                        onClick={() => removeEnvironmentColumn(col.id)}
-                      >
-                        {t('env.deleteCol')}
-                      </button>
                     </div>
                   </th>
                 ))}
@@ -250,6 +324,7 @@ export default function EnvironmentModal() {
                   key={row.id}
                   data-env-row-id={row.id}
                   className={rowDropId === row.id ? 'env-row-drop-target' : undefined}
+                  onContextMenu={(e) => openContextMenu(e, 'row', row.id)}
                 >
                   <td className="env-matrix-sticky-col">
                     <div className="env-matrix-row-head">
@@ -268,14 +343,6 @@ export default function EnvironmentModal() {
                         onMouseDown={focusEnvInput}
                         style={monoInputStyle}
                       />
-                      <button
-                        type="button"
-                        className="remove-btn"
-                        title={t('kv.remove')}
-                        onClick={() => removeVariableRow(row.id)}
-                      >
-                        ×
-                      </button>
                     </div>
                   </td>
                   {environments.map((col) => (
@@ -310,6 +377,17 @@ export default function EnvironmentModal() {
           </button>
         </div>
       </div>
+      {contextMenu && (
+        <EnvContextMenu
+          menu={contextMenu}
+          canDeleteCol={environments.length > 1}
+          onClose={() => setContextMenu(null)}
+          onDuplicateCol={duplicateEnvironmentColumn}
+          onDeleteCol={removeEnvironmentColumn}
+          onDuplicateRow={duplicateVariableRow}
+          onDeleteRow={removeVariableRow}
+        />
+      )}
     </div>
   );
 }

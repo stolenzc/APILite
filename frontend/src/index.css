@@ -660,6 +660,20 @@ body {
   margin: 4px 0;
 }
 
+.context-menu-item--disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.context-menu-item--disabled:hover {
+  background: transparent;
+  color: inherit;
+}
+
+.env-context-menu {
+  z-index: 200;
+}
+
 /* Collection sidebar toggle */
 .sidebar-toggle {
   position: fixed;
@@ -1524,8 +1538,14 @@ body {
 }
 
 .env-matrix-col-head {
-  flex-direction: column;
+  flex-direction: row;
+  align-items: center;
   min-width: 140px;
+}
+
+.env-matrix-col-head input {
+  flex: 1;
+  min-width: 0;
 }
 
 .env-matrix-row-head {
@@ -1549,12 +1569,6 @@ body {
 
 .env-drag-handle:active {
   cursor: grabbing;
-}
-
-.env-col-delete {
-  font-size: 11px !important;
-  padding: 4px 8px !important;
-  align-self: flex-start;
 }
 
 .env-matrix-add-col {

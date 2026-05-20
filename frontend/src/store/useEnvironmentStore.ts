@@ -3,6 +3,7 @@ import { nanoid } from 'nanoid';
 import { invoke } from '@tauri-apps/api/core';
 import { isTauri } from '../tauri/setupMenu';
 import { resolveVariableMap } from '../utils/envInterpolation';
+import { t } from '../i18n';
 
 /** One column = one environment (e.g. Default, Staging). */
 export interface EnvColumn {
@@ -42,9 +43,11 @@ interface EnvironmentState {
   /** Alias of `addEnvironmentColumn` (legacy / external callers). */
   addEnvironment: () => void;
   removeEnvironmentColumn: (id: string) => void;
+  duplicateEnvironmentColumn: (id: string) => void;
   renameEnvironmentColumn: (id: string, name: string) => void;
   addVariableRow: () => void;
   removeVariableRow: (rowId: string) => void;
+  duplicateVariableRow: (rowId: string) => void;
   updateVariableKey: (rowId: string, key: string) => void;
   updateCell: (rowId: string, envId: string, value: string) => void;
   reorderVariableRows: (activeId: string, overId: string) => void;
@@ -74,9 +77,11 @@ function defaultState(): Omit<
   | 'addEnvironmentColumn'
   | 'addEnvironment'
   | 'removeEnvironmentColumn'
+  | 'duplicateEnvironmentColumn'
   | 'renameEnvironmentColumn'
   | 'addVariableRow'
   | 'removeVariableRow'
+  | 'duplicateVariableRow'
   | 'updateVariableKey'
   | 'updateCell'
   | 'reorderVariableRows'
@@ -99,9 +104,11 @@ function migrateV1(parsed: { environments?: LegacyEnv[]; activeEnvironmentId?: s
   | 'addEnvironmentColumn'
   | 'addEnvironment'
   | 'removeEnvironmentColumn'
+  | 'duplicateEnvironmentColumn'
   | 'renameEnvironmentColumn'
   | 'addVariableRow'
   | 'removeVariableRow'
+  | 'duplicateVariableRow'
   | 'updateVariableKey'
   | 'updateCell'
   | 'reorderVariableRows'
@@ -149,9 +156,11 @@ function parsePersistedV2(raw: string): Omit<
   | 'addEnvironmentColumn'
   | 'addEnvironment'
   | 'removeEnvironmentColumn'
+  | 'duplicateEnvironmentColumn'
   | 'renameEnvironmentColumn'
   | 'addVariableRow'
   | 'removeVariableRow'
+  | 'duplicateVariableRow'
   | 'updateVariableKey'
   | 'updateCell'
   | 'reorderVariableRows'
@@ -183,9 +192,11 @@ function load(): Omit<
   | 'addEnvironmentColumn'
   | 'addEnvironment'
   | 'removeEnvironmentColumn'
+  | 'duplicateEnvironmentColumn'
   | 'renameEnvironmentColumn'
   | 'addVariableRow'
   | 'removeVariableRow'
+  | 'duplicateVariableRow'
   | 'updateVariableKey'
   | 'updateCell'
   | 'reorderVariableRows'
@@ -287,6 +298,25 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => {
         return next;
       }),
 
+    duplicateEnvironmentColumn: (id) =>
+      set((s) => {
+        const idx = s.environments.findIndex((e) => e.id === id);
+        if (idx === -1) return s;
+        const src = s.environments[idx];
+        const newId = nanoid();
+        const label = (src.name || 'Environment').trim() || 'Environment';
+        const col: EnvColumn = { id: newId, name: `${label} ${t('env.copySuffix')}` };
+        const environments = [...s.environments];
+        environments.splice(idx + 1, 0, col);
+        const variables = s.variables.map((row) => ({
+          ...row,
+          valuesByEnvId: { ...row.valuesByEnvId, [newId]: row.valuesByEnvId[id] ?? '' },
+        }));
+        const next = { ...s, environments, variables, activeEnvironmentId: newId };
+        save(next);
+        return next;
+      }),
+
     renameEnvironmentColumn: (id, name) =>
       set((s) => {
         const environments = s.environments.map((e) =>
@@ -310,6 +340,23 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => {
     removeVariableRow: (rowId) =>
       set((s) => {
         const next = { ...s, variables: s.variables.filter((r) => r.id !== rowId) };
+        save(next);
+        return next;
+      }),
+
+    duplicateVariableRow: (rowId) =>
+      set((s) => {
+        const idx = s.variables.findIndex((r) => r.id === rowId);
+        if (idx === -1) return s;
+        const src = s.variables[idx];
+        const row: EnvVariableRow = {
+          id: nanoid(),
+          key: src.key,
+          valuesByEnvId: { ...src.valuesByEnvId },
+        };
+        const variables = [...s.variables];
+        variables.splice(idx + 1, 0, row);
+        const next = { ...s, variables };
         save(next);
         return next;
       }),
