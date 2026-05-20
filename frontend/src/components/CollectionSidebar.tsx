@@ -299,9 +299,9 @@ function TreeNode({ node, depth = 0 }: { node: CollectionNode; depth?: number })
         }}
         onMouseDown={handleMouseDown}
       >
-        <span className="tree-icon">
-          {isFolder ? (node.collapsed ? '▶' : '▼') : '●'}
-        </span>
+        {isFolder && (
+          <span className="tree-icon">{node.collapsed ? '▶' : '▼'}</span>
+        )}
         {isFolder ? (
           <span className="tree-folder">📁</span>
         ) : (
