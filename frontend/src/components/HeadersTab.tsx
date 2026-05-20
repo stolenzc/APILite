@@ -3,11 +3,13 @@ import { useStore } from '../store/useStore';
 import type { KeyValue } from '../types';
 import { matchHeaders } from '../constants';
 import { t } from '../i18n';
+import { EnvVarField } from './EnvVarField';
 
 export default function HeadersTab() {
   const { updateHeader, addHeader, removeHeader } = useStore();
   const headers = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.headers ?? []);
   const [activeDropdown, setActiveDropdown] = useState<number | null>(null);
+  const [envSuggestRow, setEnvSuggestRow] = useState<number | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -63,20 +65,25 @@ export default function HeadersTab() {
             <tr key={i}>
               <td><input type="checkbox" checked={h.enabled} onChange={e => updateHeader(i, 'enabled' as never, e.target.checked as never)} /></td>
               <td className="autocomplete-wrapper">
-                <input
+                <EnvVarField
                   type="text"
                   placeholder={t('kv.key')}
                   value={h.key}
-                  onChange={e => {
-                    updateHeader(i, 'key', e.target.value);
-                    if (e.target.value) setActiveDropdown(i);
-                    setActiveIndex(0);
+                  onValueChange={(val) => {
+                    updateHeader(i, 'key', val);
+                    if (val) setActiveDropdown(i);
+                    else setActiveDropdown(null);
                   }}
-                  onFocus={e => { if (e.target.value) setActiveDropdown(i); }}
-                  onKeyDown={e => handleKeyDown(e, i)}
-                  autoComplete="off"
+                  onSuggestOpenChange={(open) => {
+                    if (open) setEnvSuggestRow(i);
+                    else if (envSuggestRow === i) setEnvSuggestRow(null);
+                  }}
+                  onFocus={(e) => {
+                    if (e.target.value && envSuggestRow !== i) setActiveDropdown(i);
+                  }}
+                  onKeyDown={(e) => handleKeyDown(e, i)}
                 />
-                {activeDropdown === i && suggestions.length > 0 && (
+                {activeDropdown === i && envSuggestRow !== i && suggestions.length > 0 && (
                   <div ref={dropdownRef} className="autocomplete-dropdown">
                     {suggestions.map((s, si) => (
                       <div
@@ -91,7 +98,14 @@ export default function HeadersTab() {
                   </div>
                 )}
               </td>
-              <td><input type="text" placeholder={t('kv.value')} value={h.value} onChange={e => updateHeader(i, 'value', e.target.value)} /></td>
+              <td>
+                <EnvVarField
+                  type="text"
+                  placeholder={t('kv.value')}
+                  value={h.value}
+                  onValueChange={(val) => updateHeader(i, 'value', val)}
+                />
+              </td>
               <td><button className="remove-btn" onClick={() => removeHeader(i)} title={t('kv.remove')}>×</button></td>
             </tr>
           ))}

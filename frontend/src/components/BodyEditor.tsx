@@ -1,9 +1,10 @@
-import { useRef, useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import { matchesShortcut, useSettingsStore } from '../store/useSettings';
 import type { BodyType, RawContentType } from '../types';
 import { t } from '../i18n';
 import { formatJson, isJson } from '../utils/jsonUtils';
+import { EnvVarField } from './EnvVarField';
 
 function isSendRequestShortcut(e: React.KeyboardEvent): boolean {
   return matchesShortcut(e, useSettingsStore.getState().shortcuts.sendRequest);
@@ -56,7 +57,6 @@ function BinaryBody() {
 function JsonBody() {
   const body = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.body ?? '');
   const setBody = useStore((s) => s.setBody);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (isSendRequestShortcut(e)) {
@@ -66,8 +66,7 @@ function JsonBody() {
 
     if (e.key === 'Tab' && !e.ctrlKey && !e.metaKey) {
       e.preventDefault();
-      const ta = textareaRef.current;
-      if (!ta) return;
+      const ta = e.currentTarget;
       const start = ta.selectionStart;
       const end = ta.selectionEnd;
       const before = body.substring(0, start);
@@ -86,8 +85,7 @@ function JsonBody() {
     }
 
     if (e.key === 'Enter' && !e.metaKey && !e.ctrlKey) {
-      const ta = textareaRef.current;
-      if (!ta) return;
+      const ta = e.currentTarget;
       const start = ta.selectionStart;
       const lineStart = body.lastIndexOf('\n', start - 1) + 1;
       const linePrefix = body.substring(lineStart, start).match(/^(\s*)/)?.[1] ?? '';
@@ -121,12 +119,21 @@ function JsonBody() {
       }
     }
 
-    const autoClosePairs: [string, string][] = [['{', '}'], ['[', ']'], ['"', '"']];
+    const autoClosePairs: [string, string][] = [['[', ']'], ['"', '"']];
     if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
-      const ta = textareaRef.current;
-      if (!ta) return;
+      const ta = e.currentTarget;
       const start = ta.selectionStart;
       const charAfter = body[start];
+      if (e.key === '{') {
+        const charBefore = body[start - 1];
+        if (charBefore === '{') return;
+        if (charAfter === '}') {
+          e.preventDefault();
+          setTimeout(() => { ta.selectionStart = ta.selectionEnd = start + 1; }, 0);
+          return;
+        }
+        return;
+      }
       for (const [open, close] of autoClosePairs) {
         if (e.key === open) {
           if (charAfter === close) {
@@ -155,16 +162,15 @@ function JsonBody() {
   };
 
   return (
-    <textarea
-      ref={textareaRef}
+    <EnvVarField
+      as="textarea"
       className="body-editor body-editor-flex json-textarea"
       value={body}
-      onChange={e => setBody(e.target.value)}
+      onValueChange={setBody}
       onKeyDown={handleKeyDown}
       placeholder={t('body.json.placeholder')}
       spellCheck={false}
       autoCapitalize="off"
-      autoComplete="off"
       autoCorrect="off"
     />
   );
@@ -183,10 +189,11 @@ function RawContentEditor({ rawContentType }: { rawContentType: RawContentType }
   };
 
   return (
-    <textarea
+    <EnvVarField
+      as="textarea"
       className="body-editor body-editor-flex"
       value={body}
-      onChange={e => setBody(e.target.value)}
+      onValueChange={setBody}
       onKeyDown={handleKeyDown}
       placeholder={placeholderKey ? t(placeholderKey) : ''}
       spellCheck={false}
@@ -221,11 +228,12 @@ function UrlencodedBody() {
           {t('body.useParamsLink')}
         </span>
       </p>
-      <textarea
+      <EnvVarField
+        as="textarea"
         className="body-editor body-editor-flex"
         value={body}
-        onChange={e => setBody(e.target.value)}
-        onKeyDown={e => { if (isSendRequestShortcut(e)) e.preventDefault(); }}
+        onValueChange={setBody}
+        onKeyDown={(e) => { if (isSendRequestShortcut(e)) e.preventDefault(); }}
         placeholder="key1=value1&key2=value2"
         spellCheck={false}
       />
@@ -299,7 +307,7 @@ export default function BodyEditor() {
       </div>
 
       {/* Content area */}
-      <div style={{ flex: 1, overflow: 'auto', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      <div className="body-editor-content">
         {bodyType === 'none' && <NoneBody />}
         {bodyType === 'binary' && <BinaryBody />}
         {bodyType === 'raw' && rawContentType === 'json' && <JsonBody />}
