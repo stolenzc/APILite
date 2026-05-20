@@ -327,20 +327,20 @@ export default function BodyEditor() {
             ))}
           </select>
         )}
-        {isJsonBody && body.length > 0 && (
-          <span className={`json-status ${jsonValid ? 'valid' : 'invalid'}`}>
-            {jsonValid ? t('body.json.valid') : t('body.json.invalid')}
-          </span>
-        )}
         {isJsonBody && (
-          <button className="body-toolbar-btn" onClick={handleFormat} disabled={!body}>
-            {t('body.json.format')}
-          </button>
-        )}
-        {isJsonBody && (
-          <button className="body-toolbar-btn" onClick={handleMinify} disabled={!body}>
-            {t('body.json.minify')}
-          </button>
+          <div className="body-json-toolbar">
+            {body.length > 0 && (
+              <span className={`json-status ${jsonValid ? 'valid' : 'invalid'}`}>
+                {jsonValid ? t('body.json.valid') : t('body.json.invalid')}
+              </span>
+            )}
+            <button className="body-toolbar-btn" onClick={handleFormat} disabled={!body}>
+              {t('body.json.format')}
+            </button>
+            <button className="body-toolbar-btn" onClick={handleMinify} disabled={!body}>
+              {t('body.json.minify')}
+            </button>
+          </div>
         )}
       </div>
 
