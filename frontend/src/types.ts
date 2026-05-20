@@ -52,6 +52,9 @@ export type CollectionNode = CollectionFolder | CollectionRequest;
 
 export interface HistoryEntry {
   id: string;
+  /** Unix ms — used for retention and sorting. */
+  timestamp: number;
+  /** Locale display string derived from timestamp. */
   time: string;
   method: HttpMethod;
   url: string;

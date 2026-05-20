@@ -1,6 +1,7 @@
 import { useSettingsStore } from '../store/useSettings';
 
 export const COLLECTIONS_SUBDIR = 'collections';
+export const HISTORIES_SUBDIR = 'histories';
 export const ENVIRONMENTS_FILE = 'environments.json';
 
 /** Join path segments using the separator style of the base path. */
@@ -39,3 +40,4 @@ export function getEnvironmentsFilePath(): string {
   const root = getDataDir();
   return root ? joinPath(root, ENVIRONMENTS_FILE) : '';
 }
+

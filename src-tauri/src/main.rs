@@ -2,14 +2,12 @@
 
 mod collections;
 mod environments;
+mod histories;
 mod storage;
 mod curl_export;
 mod curl_parser;
-mod history;
 mod http_client;
 mod proxy_config;
-
-use history::HistoryStore;
 use std::collections::HashMap;
 use tauri::Emitter;
 
@@ -54,30 +52,33 @@ async fn send_request(
 }
 
 #[tauri::command]
-fn add_history_entry(
-    method: String,
-    url: String,
-    status: u16,
-    time: String,
-    state: tauri::State<HistoryStore>,
-) {
-    state.add(history::HistoryEntry {
-        id: String::new(),
-        time,
-        method,
-        url,
-        status,
-    });
+fn histories_load(data_dir: String, max_age_days: u32) -> Result<Option<String>, String> {
+    histories::load(&data_dir, max_age_days)
 }
 
 #[tauri::command]
-fn get_history(state: tauri::State<HistoryStore>) -> Vec<history::HistoryEntry> {
-    state.get()
+fn histories_load_page(
+    data_dir: String,
+    max_age_days: u32,
+    offset: usize,
+    limit: usize,
+) -> Result<histories::HistoryPageResult, String> {
+    histories::load_page(&data_dir, max_age_days, offset, limit)
 }
 
 #[tauri::command]
-fn clear_history(state: tauri::State<HistoryStore>) {
-    state.clear();
+fn histories_sync(
+    data_dir: String,
+    updates: HashMap<String, String>,
+    keep_days: Vec<String>,
+    max_age_days: u32,
+) -> Result<(), String> {
+    histories::sync(&data_dir, updates, keep_days, max_age_days)
+}
+
+#[tauri::command]
+fn histories_clear(data_dir: String) -> Result<(), String> {
+    histories::clear(&data_dir)
 }
 
 #[tauri::command]
@@ -138,7 +139,6 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
-        .manage(HistoryStore::new())
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 api.prevent_close();
@@ -149,11 +149,12 @@ fn main() {
             parse_curl,
             to_curl,
             send_request,
-            add_history_entry,
-            get_history,
-            clear_history,
             get_default_data_dir,
             ensure_data_dir,
+            histories_load,
+            histories_load_page,
+            histories_sync,
+            histories_clear,
             environments_load,
             environments_save,
             load_collections,

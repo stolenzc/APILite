@@ -36,6 +36,10 @@ export default function App() {
     });
   }, [dataDir]);
 
+  useEffect(() => {
+    useStore.getState().syncHistoryRetention();
+  }, []);
+
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [toast, setToast] = useState('');
   const [saveModalOpen, setSaveModalOpen] = useState(false);

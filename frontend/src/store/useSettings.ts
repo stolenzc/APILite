@@ -39,9 +39,13 @@ export interface AppSettings {
   responseHeight: number;
   historyHeight: number;
   historyCollapsed: boolean;
-  /** Local data root: contains `collections/` and `environments.json`. */
+  /** Local data root: contains `collections/`, `histories/`, and `environments.json`. */
   dataDir: string;
   autoCompleteProtocol: boolean;
+  /** Drop history entries older than this many days. */
+  historyMaxAgeDays: number;
+  /** Maximum number of history entries to keep (newest first). */
+  historyMaxCount: number;
 }
 
 export const defaultSettings: AppSettings = {
@@ -53,7 +57,24 @@ export const defaultSettings: AppSettings = {
   historyCollapsed: true,
   dataDir: '',
   autoCompleteProtocol: true,
+  historyMaxAgeDays: 30,
+  historyMaxCount: 1000,
 };
+
+const HISTORY_AGE_MIN = 1;
+const HISTORY_AGE_MAX = 3650;
+const HISTORY_COUNT_MIN = 50;
+const HISTORY_COUNT_MAX = 10000;
+
+function clampHistoryMaxAgeDays(days: number): number {
+  if (!Number.isFinite(days)) return defaultSettings.historyMaxAgeDays;
+  return Math.min(HISTORY_AGE_MAX, Math.max(HISTORY_AGE_MIN, Math.round(days)));
+}
+
+function clampHistoryMaxCount(count: number): number {
+  if (!Number.isFinite(count)) return defaultSettings.historyMaxCount;
+  return Math.min(HISTORY_COUNT_MAX, Math.max(HISTORY_COUNT_MIN, Math.round(count)));
+}
 
 function migrateShortcuts(shortcuts: Partial<ShortcutConfig> & Record<string, string>): ShortcutConfig {
   const currentMod = isMac ? 'Cmd' : 'Ctrl';
@@ -80,6 +101,12 @@ function loadSettings(): AppSettings {
         ...parsed,
         shortcuts: migrateShortcuts({ ...defaultShortcuts, ...parsed.shortcuts }),
         dataDir: migrateStoragePath(parsed),
+        historyMaxAgeDays: clampHistoryMaxAgeDays(
+          parsed.historyMaxAgeDays ?? defaultSettings.historyMaxAgeDays,
+        ),
+        historyMaxCount: clampHistoryMaxCount(
+          parsed.historyMaxCount ?? defaultSettings.historyMaxCount,
+        ),
       };
     }
   } catch { /* ignore */ }
@@ -105,6 +132,8 @@ interface SettingsState extends AppSettings {
   setHistoryCollapsed: (collapsed: boolean) => void;
   setDataDir: (dir: string) => void;
   setAutoCompleteProtocol: (auto: boolean) => void;
+  setHistoryMaxAgeDays: (days: number) => void;
+  setHistoryMaxCount: (count: number) => void;
 }
 
 export const useSettingsStore = create<SettingsState>((set) => {
@@ -147,11 +176,14 @@ export const useSettingsStore = create<SettingsState>((set) => {
       return next;
     }),
 
-    resetSettings: () => set(() => {
+    resetSettings: () => {
       saveSettings(defaultSettings);
       applyI18nLocale(defaultSettings.locale);
-      return { ...defaultSettings, settingsOpen: true };
-    }),
+      import('./useStore').then(({ useStore }) => {
+        useStore.getState().syncHistoryRetention();
+      });
+      set({ ...defaultSettings, settingsOpen: true });
+    },
 
     setResponseHeight: (responseHeight) => set(state => {
       const next = { ...state, responseHeight };
@@ -180,6 +212,30 @@ export const useSettingsStore = create<SettingsState>((set) => {
     setAutoCompleteProtocol: (autoCompleteProtocol) => set(state => {
       const next = { ...state, autoCompleteProtocol };
       saveSettings(next);
+      return next;
+    }),
+
+    setHistoryMaxAgeDays: (historyMaxAgeDays) => set(state => {
+      const next = {
+        ...state,
+        historyMaxAgeDays: clampHistoryMaxAgeDays(historyMaxAgeDays),
+      };
+      saveSettings(next);
+      import('./useStore').then(({ useStore }) => {
+        useStore.getState().syncHistoryRetention();
+      });
+      return next;
+    }),
+
+    setHistoryMaxCount: (historyMaxCount) => set(state => {
+      const next = {
+        ...state,
+        historyMaxCount: clampHistoryMaxCount(historyMaxCount),
+      };
+      saveSettings(next);
+      import('./useStore').then(({ useStore }) => {
+        useStore.getState().syncHistoryRetention();
+      });
       return next;
     }),
   };

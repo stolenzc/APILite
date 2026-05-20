@@ -90,6 +90,8 @@ const messages: Record<Locale, Record<string, string>> = {
     // History
     'history.label': 'History',
     'history.clear': 'Clear',
+    'history.loadMore': 'Load more',
+    'history.loadingMore': 'Loading…',
     'history.requestRaw': 'Request (raw)',
     'history.responseRaw': 'Response (raw)',
 
@@ -101,6 +103,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'settings.storage.title': 'Local storage',
     'settings.storage.hint': 'Choose a folder for app data. The following are created automatically:',
     'settings.storage.collections': 'API collections',
+    'settings.storage.histories': 'request history',
     'settings.storage.environments': 'environment variables',
     'settings.storage.select': 'Choose folder',
     'settings.storage.clear': 'Reset to default',
@@ -108,6 +111,11 @@ const messages: Record<Locale, Record<string, string>> = {
     'settings.request': 'Request',
     'settings.autoProtocol': 'Auto-complete http://',
     'settings.language': 'Language',
+    'settings.history.title': 'History retention',
+    'settings.history.hint':
+      'History is saved locally. Entries older than the age limit or beyond the max count are removed automatically.',
+    'settings.history.maxAgeDays': 'Keep (days)',
+    'settings.history.maxCount': 'Max entries',
 
     // Shortcut labels
     'shortcut.sendRequest': 'Send Request',
@@ -229,6 +237,8 @@ const messages: Record<Locale, Record<string, string>> = {
     // History
     'history.label': '历史记录',
     'history.clear': '清空',
+    'history.loadMore': '加载更多',
+    'history.loadingMore': '加载中…',
     'history.requestRaw': '请求（原始）',
     'history.responseRaw': '响应（原始）',
 
@@ -240,6 +250,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'settings.storage.title': '本地存储',
     'settings.storage.hint': '选择用于保存应用数据的文件夹，将自动创建以下内容：',
     'settings.storage.collections': 'API 集合',
+    'settings.storage.histories': '请求历史',
     'settings.storage.environments': '环境变量',
     'settings.storage.select': '选择文件夹',
     'settings.storage.clear': '恢复默认',
@@ -247,6 +258,11 @@ const messages: Record<Locale, Record<string, string>> = {
     'settings.request': '请求',
     'settings.autoProtocol': '自动补全 http://',
     'settings.language': '语言',
+    'settings.history.title': '历史记录保留',
+    'settings.history.hint':
+      '历史记录保存在本地。超出保留天数或超过条数上限的旧记录会自动清理。',
+    'settings.history.maxAgeDays': '保留天数',
+    'settings.history.maxCount': '最多条数',
 
     // Shortcut labels
     'shortcut.sendRequest': '发送请求',

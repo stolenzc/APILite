@@ -5,7 +5,8 @@ import { themes } from '../themes';
 import { t, getAvailableLocales } from '../i18n';
 import type { ShortcutConfig } from '../store/useSettings';
 import { useModalOverlayDismiss } from '../utils/modalOverlayDismiss';
-import { COLLECTIONS_SUBDIR, ENVIRONMENTS_FILE } from '../utils/storagePaths';
+import { COLLECTIONS_SUBDIR, ENVIRONMENTS_FILE, HISTORIES_SUBDIR } from '../utils/storagePaths';
+import { HISTORY_DAY_FILE_PATTERN } from '../utils/historyStorage';
 
 const SHORTCUT_LABELS: Record<keyof ShortcutConfig, string> = {
   sendRequest: 'shortcut.sendRequest',
@@ -27,6 +28,8 @@ export default function SettingsPanel() {
     shortcuts, updateShortcut, resetShortcuts, resetSettings,
     autoCompleteProtocol, setAutoCompleteProtocol,
     dataDir, setDataDir,
+    historyMaxAgeDays, setHistoryMaxAgeDays,
+    historyMaxCount, setHistoryMaxCount,
   } = useSettingsStore();
   const overlayDismiss = useModalOverlayDismiss(() => setSettingsOpen(false));
 
@@ -97,6 +100,7 @@ export default function SettingsPanel() {
           <p className="settings-storage-hint">{t('settings.storage.hint')}</p>
           <ul className="settings-storage-layout">
             <li><code>{COLLECTIONS_SUBDIR}/</code> — {t('settings.storage.collections')}</li>
+            <li><code>{HISTORIES_SUBDIR}/{HISTORY_DAY_FILE_PATTERN}</code> — {t('settings.storage.histories')}</li>
             <li><code>{ENVIRONMENTS_FILE}</code> — {t('settings.storage.environments')}</li>
           </ul>
           <div className="settings-storage-dir">
@@ -126,6 +130,33 @@ export default function SettingsPanel() {
                 </button>
               )}
             </div>
+          </div>
+        </div>
+
+        <div className="settings-section">
+          <h4>{t('settings.history.title')}</h4>
+          <p className="settings-history-hint">{t('settings.history.hint')}</p>
+          <div className="settings-history-retention">
+            <label className="settings-history-field">
+              <span>{t('settings.history.maxAgeDays')}</span>
+              <input
+                type="number"
+                min={1}
+                max={3650}
+                value={historyMaxAgeDays}
+                onChange={(e) => setHistoryMaxAgeDays(Number(e.target.value))}
+              />
+            </label>
+            <label className="settings-history-field">
+              <span>{t('settings.history.maxCount')}</span>
+              <input
+                type="number"
+                min={50}
+                max={10000}
+                value={historyMaxCount}
+                onChange={(e) => setHistoryMaxCount(Number(e.target.value))}
+              />
+            </label>
           </div>
         </div>
 

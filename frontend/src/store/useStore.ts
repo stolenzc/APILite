@@ -5,6 +5,16 @@ import type { RawContentType } from '../types';
 import { inferRawContentType } from '../utils/curlUtils';
 import { parseParamsFromUrl, urlWithParams } from '../utils/urlQuery';
 import { dispatchFocusUrl } from '../utils/focusUrl';
+import {
+  applyHistoryRetentionToStorage,
+  formatHistoryDisplayTime,
+  getHistoryRetention,
+  clearPersistedHistory,
+  loadHistoryPage,
+  loadInitialHistoryPage,
+  persistHistoryAppend,
+  pruneHistory,
+} from '../utils/historyStorage';
 
 const defaultParams: KeyValue[] = [];
 const defaultHeaders: KeyValue[] = [];
@@ -39,6 +49,8 @@ interface AppState {
   activeTab: 'params' | 'headers' | 'body';
   responseTab: 'body' | 'headers' | 'raw';
   history: HistoryEntry[];
+  historyHasMore: boolean;
+  historyLoadingMore: boolean;
 
   // Tab management
   createTab: () => void;
@@ -80,8 +92,10 @@ interface AppState {
   setLoading: (loading: boolean) => void;
 
   // History actions
-  addHistory: (entry: Omit<HistoryEntry, 'id' | 'time'>) => void;
+  addHistory: (entry: Omit<HistoryEntry, 'id' | 'time' | 'timestamp'>) => void;
+  loadMoreHistory: () => Promise<void>;
   clearHistory: () => void;
+  syncHistoryRetention: () => void;
 
   // Reset
   resetRequest: () => void;
@@ -150,12 +164,16 @@ function applyParsedToRequest(req: HttpRequest, parsed: {
   };
 }
 
+const initialHistoryPage = loadInitialHistoryPage();
+
 export const useStore = create<AppState>((set, get) => ({
   tabs: [],
   activeTabId: null,
   activeTab: 'params',
   responseTab: 'body',
-  history: [],
+  history: initialHistoryPage.entries,
+  historyHasMore: initialHistoryPage.hasMore,
+  historyLoadingMore: false,
 
   createTab: () => {
     set(state => {
@@ -382,15 +400,58 @@ export const useStore = create<AppState>((set, get) => ({
   setResponse: (response) => set(state => updateActiveTab(state, { response })),
   setLoading: (loading) => set(state => updateActiveTab(state, { loading })),
 
-  addHistory: (entry) =>
-    set((state) => ({
-      history: [
-        { ...entry, id: nanoid(), time: new Date().toLocaleTimeString() },
-        ...state.history,
-      ].slice(0, 50),
-    })),
+  addHistory: (entry) => {
+    const timestamp = Date.now();
+    const newEntry: HistoryEntry = {
+      ...entry,
+      id: nanoid(),
+      timestamp,
+      time: formatHistoryDisplayTime(timestamp),
+    };
+    set((state) => {
+      const next = pruneHistory([newEntry, ...state.history], getHistoryRetention());
+      return { history: next };
+    });
+    void persistHistoryAppend(newEntry).catch((err) =>
+      console.error('Failed to persist history entry:', err),
+    );
+  },
 
-  clearHistory: () => set({ history: [] }),
+  loadMoreHistory: async () => {
+    const { history, historyHasMore, historyLoadingMore } = get();
+    if (!historyHasMore || historyLoadingMore) return;
+    set({ historyLoadingMore: true });
+    try {
+      const page = await loadHistoryPage(history.length);
+      const existingIds = new Set(history.map((e) => e.id));
+      const fresh = page.entries.filter((e) => !existingIds.has(e.id));
+      set((state) => ({
+        history: [...state.history, ...fresh],
+        historyHasMore: page.hasMore,
+        historyLoadingMore: false,
+      }));
+    } catch (err) {
+      console.error('Failed to load more history:', err);
+      set({ historyLoadingMore: false });
+    }
+  },
+
+  clearHistory: () => {
+    clearPersistedHistory();
+    set({ history: [], historyHasMore: false, historyLoadingMore: false });
+  },
+
+  syncHistoryRetention: () => {
+    void applyHistoryRetentionToStorage()
+      .then((page) => {
+        set({
+          history: page.entries,
+          historyHasMore: page.hasMore,
+          historyLoadingMore: false,
+        });
+      })
+      .catch((err) => console.error('Failed to sync history retention:', err));
+  },
 
   resetRequest: () => set(state => updateActiveTab(state, { request: { ...defaultRequest }, name: 'Untitled' })),
 }));

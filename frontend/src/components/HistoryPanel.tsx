@@ -14,8 +14,10 @@ const METHOD_COLORS: Record<string, string> = {
 };
 
 export default function HistoryPanel() {
-  const { history, clearHistory } = useStore();
-  const { historyCollapsed, setHistoryCollapsed, historyHeight, setHistoryHeight } = useSettingsStore();
+  const { history, historyHasMore, historyLoadingMore, loadMoreHistory, clearHistory } =
+    useStore();
+  const { historyCollapsed, setHistoryCollapsed, historyHeight, setHistoryHeight } =
+    useSettingsStore();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -43,6 +45,11 @@ export default function HistoryPanel() {
     setExpandedId((prev) => (prev === id ? null : id));
   };
 
+  const handleLoadMore = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    void loadMoreHistory();
+  };
+
   return (
     <div
       ref={panelRef}
@@ -63,7 +70,8 @@ export default function HistoryPanel() {
         style={{ cursor: 'pointer' }}
       >
         <span>
-          {historyCollapsed ? '▶' : '▼'} {t('history.label')} ({history.length})
+          {historyCollapsed ? '▶' : '▼'} {t('history.label')} ({history.length}
+          {historyHasMore ? '+' : ''})
         </span>
         {!historyCollapsed && (
           <button
@@ -129,6 +137,18 @@ export default function HistoryPanel() {
               </li>
             );
           })}
+          {historyHasMore && (
+            <li className="history-load-more-row">
+              <button
+                type="button"
+                className="btn btn-secondary history-load-more-btn"
+                disabled={historyLoadingMore}
+                onClick={handleLoadMore}
+              >
+                {historyLoadingMore ? t('history.loadingMore') : t('history.loadMore')}
+              </button>
+            </li>
+          )}
         </ul>
       )}
     </div>
