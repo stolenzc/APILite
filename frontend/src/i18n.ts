@@ -10,6 +10,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'app.collections.comingSoon': 'Collections coming in next update',
     'app.settings': 'Settings',
     'app.toggleCollections': 'Toggle collections sidebar',
+    'app.toggleCurlPanel': 'Toggle cURL panel',
     'app.response.placeholder': 'Send a request to see the response',
     'app.noTab': 'No open request. Click + to create a tab, or open one from Collections.',
 
@@ -22,6 +23,16 @@ const messages: Record<Locale, Record<string, string>> = {
     'url.cancel': 'Cancel',
     'url.copy': 'Copy to Clipboard',
     'url.curlParseError': 'Failed to parse cURL',
+
+    // cURL panel
+    'curl.title': 'cURL',
+    'curl.copy': 'Copy',
+    'curl.copied': 'cURL copied to clipboard',
+    'curl.copyFailed': 'Failed to copy',
+    'curl.empty': 'Enter a URL to generate cURL',
+    'curl.generating': 'Generating…',
+    'curl.expand': 'Expand cURL panel',
+    'curl.collapse': 'Collapse cURL panel',
 
     // Tabs
     'tab.params': 'Params',
@@ -126,7 +137,7 @@ const messages: Record<Locale, Record<string, string>> = {
     // Shortcut labels
     'shortcut.sendRequest': 'Send Request',
     'shortcut.saveRequest': 'Save Request',
-    'shortcut.exportCurl': 'Export cURL',
+    'shortcut.exportCurl': 'Toggle cURL Panel',
     'shortcut.focusUrl': 'Focus URL Bar',
     'shortcut.focusCollectionSearch': 'Focus Collection Search',
     'shortcut.toggleSettings': 'Open Settings',
@@ -164,6 +175,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'app.collections.comingSoon': '集合功能即将推出',
     'app.settings': '设置',
     'app.toggleCollections': '显示或隐藏集合侧边栏',
+    'app.toggleCurlPanel': '显示或隐藏 cURL 面板',
     'app.response.placeholder': '发送请求以查看响应',
     'app.noTab': '当前没有打开的请求。点击 + 新建标签页，或从集合中打开。',
 
@@ -176,6 +188,16 @@ const messages: Record<Locale, Record<string, string>> = {
     'url.cancel': '取消',
     'url.copy': '复制到剪贴板',
     'url.curlParseError': 'cURL 解析失败',
+
+    // cURL panel
+    'curl.title': 'cURL',
+    'curl.copy': '复制',
+    'curl.copied': '已复制 cURL 到剪贴板',
+    'curl.copyFailed': '复制失败',
+    'curl.empty': '输入 URL 后生成 cURL',
+    'curl.generating': '生成中…',
+    'curl.expand': '展开 cURL 面板',
+    'curl.collapse': '收起 cURL 面板',
 
     // Tabs
     'tab.params': '参数',
@@ -280,7 +302,7 @@ const messages: Record<Locale, Record<string, string>> = {
     // Shortcut labels
     'shortcut.sendRequest': '发送请求',
     'shortcut.saveRequest': '保存请求',
-    'shortcut.exportCurl': '导出 cURL',
+    'shortcut.exportCurl': '切换 cURL 面板',
     'shortcut.focusUrl': '聚焦地址栏',
     'shortcut.focusCollectionSearch': '聚焦集合搜索',
     'shortcut.toggleSettings': '打开设置',

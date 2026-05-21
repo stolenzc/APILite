@@ -41,6 +41,9 @@ export interface AppSettings {
   responseHeight: number;
   historyHeight: number;
   historyCollapsed: boolean;
+  curlPanelOpen: boolean;
+  curlPanelWidth: number;
+  curlPanelCollapsed: boolean;
   /** Local data root: contains `collections/`, `histories/`, and `environments.json`. */
   dataDir: string;
   autoCompleteProtocol: boolean;
@@ -57,6 +60,9 @@ export const defaultSettings: AppSettings = {
   responseHeight: 300,
   historyHeight: 250,
   historyCollapsed: true,
+  curlPanelOpen: true,
+  curlPanelWidth: 360,
+  curlPanelCollapsed: false,
   dataDir: '',
   autoCompleteProtocol: true,
   historyMaxAgeDays: 30,
@@ -132,6 +138,9 @@ interface SettingsState extends AppSettings {
   setResponseHeight: (height: number) => void;
   setHistoryHeight: (height: number) => void;
   setHistoryCollapsed: (collapsed: boolean) => void;
+  setCurlPanelOpen: (open: boolean) => void;
+  setCurlPanelWidth: (width: number) => void;
+  setCurlPanelCollapsed: (collapsed: boolean) => void;
   setDataDir: (dir: string) => void;
   setAutoCompleteProtocol: (auto: boolean) => void;
   setHistoryMaxAgeDays: (days: number) => void;
@@ -201,6 +210,24 @@ export const useSettingsStore = create<SettingsState>((set) => {
 
     setHistoryCollapsed: (historyCollapsed) => set(state => {
       const next = { ...state, historyCollapsed };
+      saveSettings(next);
+      return next;
+    }),
+
+    setCurlPanelOpen: (curlPanelOpen) => set(state => {
+      const next = { ...state, curlPanelOpen };
+      saveSettings(next);
+      return next;
+    }),
+
+    setCurlPanelWidth: (curlPanelWidth) => set(state => {
+      const next = { ...state, curlPanelWidth: Math.round(curlPanelWidth) };
+      saveSettings(next);
+      return next;
+    }),
+
+    setCurlPanelCollapsed: (curlPanelCollapsed) => set(state => {
+      const next = { ...state, curlPanelCollapsed };
       saveSettings(next);
       return next;
     }),
@@ -315,6 +342,12 @@ export function initKeyboardShortcuts(): () => void {
     if (matchesShortcutCombo(e, shortcuts.focusCollectionSearch)) {
       e.preventDefault();
       window.dispatchEvent(new CustomEvent('app:focus-collection-search'));
+      return;
+    }
+
+    if (matchesShortcutCombo(e, shortcuts.exportCurl)) {
+      e.preventDefault();
+      window.dispatchEvent(new CustomEvent('app:toggle-curl-panel'));
       return;
     }
 

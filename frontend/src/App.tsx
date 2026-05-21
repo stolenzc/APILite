@@ -18,6 +18,8 @@ import HistoryPanel from './components/HistoryPanel';
 import SettingsPanel from './components/SettingsPanel';
 import ResizableSplitter from './components/ResizableSplitter';
 import CollectionSidebar from './components/CollectionSidebar';
+import CurlPanel from './components/CurlPanel';
+import VerticalResizableSplitter from './components/VerticalResizableSplitter';
 import TabBar from './components/TabBar';
 import SaveRequestModal from './components/SaveRequestModal';
 import { isTauri, setupTauriMenu } from './tauri/setupMenu';
@@ -30,7 +32,20 @@ export default function App() {
   const hasRequestTab = useStore(
     (s) => s.activeTabId != null && s.tabs.some((t) => t.id === s.activeTabId),
   );
-  const { theme, locale, settingsOpen, setSettingsOpen, responseHeight, dataDir, shortcuts } = useSettingsStore();
+  const {
+    theme,
+    locale,
+    settingsOpen,
+    setSettingsOpen,
+    responseHeight,
+    dataDir,
+    shortcuts,
+    curlPanelOpen,
+    setCurlPanelOpen,
+    curlPanelWidth,
+    setCurlPanelWidth,
+    curlPanelCollapsed,
+  } = useSettingsStore();
 
   useEffect(() => {
     void bootstrapLocalStorage().catch((err) => {
@@ -45,6 +60,21 @@ export default function App() {
     };
     window.addEventListener('app:focus-collection-search', onFocusCollectionSearch);
     return () => window.removeEventListener('app:focus-collection-search', onFocusCollectionSearch);
+  }, []);
+
+  useEffect(() => {
+    const onToggleCurlPanel = () => {
+      const { curlPanelOpen: open, setCurlPanelOpen: setOpen, setCurlPanelCollapsed } =
+        useSettingsStore.getState();
+      if (!open) {
+        setOpen(true);
+        setCurlPanelCollapsed(false);
+        return;
+      }
+      setOpen(false);
+    };
+    window.addEventListener('app:toggle-curl-panel', onToggleCurlPanel);
+    return () => window.removeEventListener('app:toggle-curl-panel', onToggleCurlPanel);
   }, []);
 
   useEffect(() => {
@@ -223,12 +253,27 @@ export default function App() {
       <div className="app-header">
         <img src="/logo.png" alt="APILite" style={{ height: 28, borderRadius: 6 }} />
         <button className="btn btn-icon" onClick={() => setSidebarOpen(!sidebarOpen)} title={t('app.toggleCollections')}>☰</button>
+        <button
+          className="btn btn-icon"
+          onClick={() => {
+            if (!curlPanelOpen) {
+              setCurlPanelOpen(true);
+              useSettingsStore.getState().setCurlPanelCollapsed(false);
+            } else {
+              setCurlPanelOpen(false);
+            }
+          }}
+          title={`${t('app.toggleCurlPanel')} (${shortcuts.exportCurl})`}
+        >
+          {'>_'}
+        </button>
         <button className="btn btn-icon" onClick={() => setSettingsOpen(!settingsOpen)} title={`${t('app.settings')} (${shortcuts.toggleSettings})`}>⚙</button>
         <RequestEnvToolbar />
       </div>
       <div className="app-body">
         <div className="main-content">
         {sidebarOpen && <CollectionSidebar />}
+        <div className="main-center">
         <div className="main-workspace">
           <TabBar />
           <div className="main-workspace-body">
@@ -258,6 +303,17 @@ export default function App() {
               <div className="workspace-empty">{t('app.noTab')}</div>
             )}
           </div>
+        </div>
+        {curlPanelOpen && (
+          <>
+            <VerticalResizableSplitter
+              width={curlPanelWidth}
+              onWidthChange={setCurlPanelWidth}
+              disabled={curlPanelCollapsed}
+            />
+            <CurlPanel />
+          </>
+        )}
         </div>
         </div>
         <div className="app-history-dock">

@@ -1,22 +1,17 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import { useSettingsStore } from '../store/useSettings';
 import { invoke } from '@tauri-apps/api/core';
-import type { HttpMethod, HttpRequest, KeyValue } from '../types';
+import type { HttpMethod } from '../types';
 import { t } from '../i18n';
 import { formatRawHttpResponse } from '../utils/httpUtils';
-import {
-  hasHttpProtocol,
-  interpolateEnvVars,
-  interpolateKeyValues,
-} from '../utils/envInterpolation';
+import { hasHttpProtocol, interpolateEnvVars } from '../utils/envInterpolation';
 import { useEnvironmentStore } from '../store/useEnvironmentStore';
 import { isCurlCommand } from '../utils/curlUtils';
 import { showToast } from '../utils/toast';
 import { focusUrlInput } from '../utils/focusUrl';
-import { useModalOverlayDismiss } from '../utils/modalOverlayDismiss';
 import { EnvVarField } from './EnvVarField';
-import { resolveOutboundBody } from '../utils/requestBody';
+import { kvToMap, resolveOutboundRequest } from '../utils/outboundRequest';
 
 const METHODS: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
 
@@ -32,8 +27,6 @@ export default function UrlBar() {
   const requestMethod = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.method ?? 'GET');
   const requestUrl = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.url ?? '');
   const loading = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.loading ?? false);
-  const [exportCurl, setExportCurl] = useState<string | null>(null);
-  const exportCurlOverlayDismiss = useModalOverlayDismiss(() => setExportCurl(null));
 
   useEffect(() => {
     const onFocusUrl = () => focusUrlInput();
@@ -147,42 +140,12 @@ export default function UrlBar() {
     }
   };
 
-  const handleExportCurl = async () => {
-    const req = (() => {
-      const s = useStore.getState();
-      const tab = s.tabs.find((t) => t.id === s.activeTabId);
-      return tab?.request ?? null;
-    })();
-    if (!req?.url?.trim()) return;
-
-    const autoProtocol = useSettingsStore.getState().autoCompleteProtocol;
-    try {
-      const vars = useEnvironmentStore.getState().getActiveVarMap();
-      const resolved = resolveOutboundRequest(req, vars, autoProtocol);
-      const curl: string = await invoke('to_curl', {
-        method: req.method,
-        url: resolved.finalUrl,
-        headers: kvToMap(resolved.headers),
-        bodyType: resolved.effectiveBodyType,
-        body: resolved.body,
-        formFields: resolved.formFields,
-        binaryFilePath: resolved.binaryFile?.filePath ?? null,
-        binaryFileName: resolved.binaryFile?.fileName ?? null,
-        binaryDataBase64: resolved.binaryFile?.fileDataBase64 ?? null,
-      });
-      setExportCurl(curl);
-    } catch (err) {
-      alert(`Failed to generate curl: ${err}`);
-    }
-  };
-
   return (
-    <>
-      <div className="url-bar">
-        <select className="method-select" value={requestMethod} onChange={e => setMethod(e.target.value as HttpMethod)}>
-          {METHODS.map(m => <option key={m} value={m}>{m}</option>)}
-        </select>
-        <div className="url-bar-url-field">
+    <div className="url-bar">
+      <select className="method-select" value={requestMethod} onChange={e => setMethod(e.target.value as HttpMethod)}>
+        {METHODS.map(m => <option key={m} value={m}>{m}</option>)}
+      </select>
+      <div className="url-bar-url-field">
         <EnvVarField
           className="url-input"
           type="text"
@@ -205,51 +168,12 @@ export default function UrlBar() {
           }}
           suggestListId="url-env-suggest-list"
         />
-        </div>
-        <button className="btn btn-icon" title={t('url.export.title')} onClick={handleExportCurl}>→_</button>
-        <button className="btn btn-send" disabled={loading} onClick={handleSend}>{loading ? t('url.sending') : t('url.send')}</button>
       </div>
-
-      {exportCurl !== null && (
-        <div className="modal-overlay" {...exportCurlOverlayDismiss}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <h3>{t('url.export.title')}</h3>
-            <div className="copy-area">{exportCurl}</div>
-            <div className="modal-actions">
-              <button className="btn btn-secondary" onClick={() => setExportCurl(null)}>{t('url.cancel')}</button>
-              <button className="btn btn-send" onClick={async () => {
-                try { await navigator.clipboard.writeText(exportCurl); } catch { /* ignore */ }
-                setExportCurl(null);
-              }}>{t('url.copy')}</button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
+      <button className="btn btn-send" disabled={loading} onClick={handleSend}>
+        {loading ? t('url.sending') : t('url.send')}
+      </button>
+    </div>
   );
-}
-
-/** Resolve env placeholders for outbound HTTP and cURL export (not for editor UI). */
-function resolveOutboundRequest(
-  req: HttpRequest,
-  vars: Record<string, string>,
-  autoProtocol: boolean,
-) {
-  const interpolatedUrl = interpolateEnvVars(req.url, vars);
-  const headers = interpolateKeyValues(req.headers, vars);
-  let finalUrl = interpolatedUrl;
-  if (autoProtocol) finalUrl = ensureProtocol(finalUrl);
-
-  const outbound = resolveOutboundBody(req, vars);
-  return { finalUrl, headers, ...outbound };
-}
-
-function kvToMap(kvs: KeyValue[]): Record<string, string> {
-  const map: Record<string, string> = {};
-  for (const kv of kvs) {
-    if (kv.key && kv.enabled) map[kv.key] = kv.value;
-  }
-  return map;
 }
 
 function ensureProtocol(url: string): string {
