@@ -20,7 +20,7 @@ export default function ParamsTab() {
       <table className="kv-table">
         <thead>
           <tr>
-            <th style={{ width: 30 }}></th>
+            <th style={{ width: 44 }}></th>
             <th>{t('kv.key')}</th>
             <th>{t('kv.value')}</th>
             <th style={{ width: 30 }}></th>
@@ -29,7 +29,7 @@ export default function ParamsTab() {
         <tbody>
           {params.map((p: KeyValue, i: number) => (
             <tr key={i}>
-              <td><input type="checkbox" checked={p.enabled} onChange={e => updateParam(i, 'enabled', e.target.checked)} /></td>
+              <td className="kv-table-checkbox-cell"><input type="checkbox" checked={p.enabled} onChange={e => updateParam(i, 'enabled', e.target.checked)} /></td>
               <td>
                 <EnvVarField
                   type="text"

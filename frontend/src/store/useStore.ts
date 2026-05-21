@@ -73,7 +73,7 @@ interface AppState {
   updateParam: (index: number, field: 'key' | 'value' | 'enabled', val: string | boolean) => void;
   addParam: () => void;
   removeParam: (index: number) => void;
-  updateHeader: (index: number, field: 'key' | 'value', val: string) => void;
+  updateHeader: (index: number, field: 'key' | 'value' | 'enabled', val: string | boolean) => void;
   addHeader: () => void;
   removeHeader: (index: number) => void;
   setBodyType: (bodyType: HttpRequest['bodyType']) => void;
@@ -350,7 +350,7 @@ export const useStore = create<AppState>((set, get) => ({
     });
   }),
 
-  updateHeader: (index, field, val) => set(state => {
+  updateHeader: (index: number, field: 'key' | 'value' | 'enabled', val: string | boolean) => set(state => {
     const req = activeRequest(state);
     if (!req) return state;
     const headers = [...req.headers];

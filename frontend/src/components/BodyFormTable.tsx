@@ -74,7 +74,7 @@ export default function BodyFormTable(props: Props) {
       <table className="kv-table body-form-table">
         <thead>
           <tr>
-            <th style={{ width: 30 }} />
+            <th style={{ width: 44 }} />
             <th>{t('kv.key')}</th>
             {isFormData && <th style={{ width: 100 }}>{t('body.fieldType')}</th>}
             <th>{isFormData ? t('body.fieldValue') : t('kv.value')}</th>
@@ -87,7 +87,7 @@ export default function BodyFormTable(props: Props) {
             const fileName = isFormData ? (row as FormField).fileName : undefined;
             return (
               <tr key={i}>
-                <td>
+                <td className="kv-table-checkbox-cell">
                   <input
                     type="checkbox"
                     checked={row.enabled}

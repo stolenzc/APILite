@@ -175,9 +175,9 @@ export default function SettingsPanel() {
           >
             <input
               type="checkbox"
+              className="kv-checkbox-lg"
               checked={autoCompleteProtocol}
               onChange={e => setAutoCompleteProtocol(e.target.checked)}
-              style={{ accentColor: 'var(--accent)', cursor: 'pointer' }}
             />
             {t('settings.autoProtocol')}
           </label>

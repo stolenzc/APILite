@@ -54,7 +54,7 @@ export default function HeadersTab() {
       <table className="kv-table">
         <thead>
           <tr>
-            <th style={{ width: 30 }}></th>
+            <th style={{ width: 44 }}></th>
             <th>{t('kv.key')}</th>
             <th>{t('kv.value')}</th>
             <th style={{ width: 30 }}></th>
@@ -63,7 +63,7 @@ export default function HeadersTab() {
         <tbody>
           {headers.map((h: KeyValue, i: number) => (
             <tr key={i}>
-              <td><input type="checkbox" checked={h.enabled} onChange={e => updateHeader(i, 'enabled' as never, e.target.checked as never)} /></td>
+              <td className="kv-table-checkbox-cell"><input type="checkbox" checked={h.enabled} onChange={e => updateHeader(i, 'enabled', e.target.checked)} /></td>
               <td className="autocomplete-wrapper">
                 <EnvVarField
                   type="text"

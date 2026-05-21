@@ -1140,8 +1140,22 @@ body {
   border-bottom: 1px solid rgba(42, 58, 94, 0.5);
 }
 
-.kv-table input[type="checkbox"] {
+.kv-table input[type="checkbox"],
+input[type="checkbox"].kv-checkbox-lg {
   accent-color: var(--accent);
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  min-height: 20px;
+  cursor: pointer;
+  margin: 0;
+  vertical-align: middle;
+}
+
+.kv-table-checkbox-cell {
+  width: 44px;
+  text-align: center;
+  vertical-align: middle;
 }
 
 .kv-table input[type="text"] {
