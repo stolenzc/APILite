@@ -417,6 +417,7 @@ function ContextMenu({ nodeId, isFolder, onStartRename }: { nodeId: string; isFo
 }
 
 export default function CollectionSidebar() {
+  const collectionSidebarWidth = useSettingsStore((s) => s.collectionSidebarWidth);
   const { collections, addCollection, activeNodeId, revealNode } = useCollectionStore();
   const focusCollectionSearch = useSettingsStore((s) => s.shortcuts.focusCollectionSearch);
   const activeTabCollectionId = useStore(
@@ -449,7 +450,10 @@ export default function CollectionSidebar() {
   }, [activeNodeId, searching, visibleCollections]);
 
   return (
-    <div className="sidebar">
+    <aside
+      className="sidebar"
+      style={{ width: collectionSidebarWidth, minWidth: collectionSidebarWidth }}
+    >
       <section className="sidebar-section sidebar-section-collections">
         <div className="sidebar-section-header">
           <span>{t('collection.title')}</span>
@@ -482,7 +486,6 @@ export default function CollectionSidebar() {
           ))}
         </div>
       </section>
-
-    </div>
+    </aside>
   );
 }

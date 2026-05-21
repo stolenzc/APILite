@@ -45,6 +45,8 @@ export default function App() {
     curlPanelWidth,
     setCurlPanelWidth,
     curlPanelCollapsed,
+    collectionSidebarWidth,
+    setCollectionSidebarWidth,
   } = useSettingsStore();
 
   useEffect(() => {
@@ -272,7 +274,18 @@ export default function App() {
       </div>
       <div className="app-body">
         <div className="main-content">
-        {sidebarOpen && <CollectionSidebar />}
+        {sidebarOpen && (
+          <>
+            <CollectionSidebar />
+            <VerticalResizableSplitter
+              side="left"
+              width={collectionSidebarWidth}
+              onWidthChange={setCollectionSidebarWidth}
+              minWidth={180}
+              maxWidth={560}
+            />
+          </>
+        )}
         <div className="main-center">
         <div className="main-workspace">
           <TabBar />

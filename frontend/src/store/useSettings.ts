@@ -41,6 +41,7 @@ export interface AppSettings {
   responseHeight: number;
   historyHeight: number;
   historyCollapsed: boolean;
+  collectionSidebarWidth: number;
   curlPanelOpen: boolean;
   curlPanelWidth: number;
   curlPanelCollapsed: boolean;
@@ -60,6 +61,7 @@ export const defaultSettings: AppSettings = {
   responseHeight: 300,
   historyHeight: 250,
   historyCollapsed: true,
+  collectionSidebarWidth: 260,
   curlPanelOpen: true,
   curlPanelWidth: 360,
   curlPanelCollapsed: false,
@@ -138,6 +140,7 @@ interface SettingsState extends AppSettings {
   setResponseHeight: (height: number) => void;
   setHistoryHeight: (height: number) => void;
   setHistoryCollapsed: (collapsed: boolean) => void;
+  setCollectionSidebarWidth: (width: number) => void;
   setCurlPanelOpen: (open: boolean) => void;
   setCurlPanelWidth: (width: number) => void;
   setCurlPanelCollapsed: (collapsed: boolean) => void;
@@ -210,6 +213,12 @@ export const useSettingsStore = create<SettingsState>((set) => {
 
     setHistoryCollapsed: (historyCollapsed) => set(state => {
       const next = { ...state, historyCollapsed };
+      saveSettings(next);
+      return next;
+    }),
+
+    setCollectionSidebarWidth: (collectionSidebarWidth) => set(state => {
+      const next = { ...state, collectionSidebarWidth: Math.round(collectionSidebarWidth) };
       saveSettings(next);
       return next;
     }),
