@@ -70,7 +70,7 @@ interface AppState {
   setUrl: (url: string) => void;
   syncParamsFromUrl: () => void;
   syncUrlFromParams: () => void;
-  updateParam: (index: number, field: 'key' | 'value', val: string) => void;
+  updateParam: (index: number, field: 'key' | 'value' | 'enabled', val: string | boolean) => void;
   addParam: () => void;
   removeParam: (index: number) => void;
   updateHeader: (index: number, field: 'key' | 'value', val: string) => void;
@@ -322,12 +322,17 @@ export const useStore = create<AppState>((set, get) => ({
     return updateActiveTab(state, { request: { ...req, url: urlWithParams(req.url, req.params) } });
   }),
 
-  updateParam: (index, field, val) => set(state => {
+  updateParam: (index: number, field: 'key' | 'value' | 'enabled', val: string | boolean) => set(state => {
     const req = activeRequest(state);
     if (!req) return state;
     const params = [...req.params];
     params[index] = { ...params[index], [field]: val };
-    return withUnsaved(state, { request: { ...req, params } });
+    const request = {
+      ...req,
+      params,
+      url: urlWithParams(req.url, params),
+    };
+    return withUnsaved(state, { request });
   }),
 
   addParam: () => set(state => {
@@ -339,7 +344,10 @@ export const useStore = create<AppState>((set, get) => ({
   removeParam: (index) => set(state => {
     const req = activeRequest(state);
     if (!req) return state;
-    return withUnsaved(state, { request: { ...req, params: req.params.filter((_p: KeyValue, i: number) => i !== index) } });
+    const params = req.params.filter((_p: KeyValue, i: number) => i !== index);
+    return withUnsaved(state, {
+      request: { ...req, params, url: urlWithParams(req.url, params) },
+    });
   }),
 
   updateHeader: (index, field, val) => set(state => {

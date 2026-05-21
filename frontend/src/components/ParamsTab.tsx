@@ -29,7 +29,7 @@ export default function ParamsTab() {
         <tbody>
           {params.map((p: KeyValue, i: number) => (
             <tr key={i}>
-              <td><input type="checkbox" checked={p.enabled} onChange={e => updateParam(i, 'enabled' as never, e.target.checked as never)} onBlur={handleBlur} /></td>
+              <td><input type="checkbox" checked={p.enabled} onChange={e => updateParam(i, 'enabled', e.target.checked)} /></td>
               <td>
                 <EnvVarField
                   type="text"
