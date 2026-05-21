@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface Props {
   width: number;
@@ -18,7 +18,8 @@ export default function VerticalResizableSplitter({
   minWidth = 200,
   maxWidth = 720,
 }: Props) {
-  const dragging = useRef(false);
+  const [dragging, setDragging] = useState(false);
+  const draggingRef = useRef(false);
   const startX = useRef(0);
   const startWidth = useRef(0);
 
@@ -32,7 +33,8 @@ export default function VerticalResizableSplitter({
       e.preventDefault();
       startX.current = e.clientX;
       startWidth.current = width;
-      dragging.current = true;
+      draggingRef.current = true;
+      setDragging(true);
       document.body.style.cursor = 'col-resize';
       document.body.style.userSelect = 'none';
     },
@@ -41,7 +43,7 @@ export default function VerticalResizableSplitter({
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      if (!dragging.current) return;
+      if (!draggingRef.current) return;
       const delta = side === 'left' ? e.clientX - startX.current : startX.current - e.clientX;
       const maxW = getMaxWidth();
       const newWidth = Math.max(minWidth, Math.min(maxW, startWidth.current + delta));
@@ -49,8 +51,9 @@ export default function VerticalResizableSplitter({
     };
 
     const handleMouseUp = () => {
-      if (!dragging.current) return;
-      dragging.current = false;
+      if (!draggingRef.current) return;
+      draggingRef.current = false;
+      setDragging(false);
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
     };
@@ -65,11 +68,9 @@ export default function VerticalResizableSplitter({
 
   return (
     <div
-      className={`splitter splitter-v ${disabled ? 'splitter-v-disabled' : ''}`}
+      className={`splitter-v ${disabled ? 'splitter-v-disabled' : ''} ${dragging ? 'splitter-dragging' : ''}`}
       onMouseDown={handleMouseDown}
       aria-hidden
-    >
-      <div className="splitter-handle splitter-handle-v" />
-    </div>
+    />
   );
 }

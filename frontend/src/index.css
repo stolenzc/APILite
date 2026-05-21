@@ -1679,23 +1679,36 @@ body {
   background: white;
 }
 
+/* Vertical splitters (collection sidebar, cURL panel) — match history drag handle */
 .splitter-v {
-  width: 8px;
+  width: 4px;
   height: auto;
   align-self: stretch;
-  cursor: col-resize;
   flex-shrink: 0;
+  cursor: col-resize;
+  background: transparent;
+  transition: background 0.15s;
+  position: relative;
+}
+
+.splitter-v::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -4px;
+  right: -4px;
+}
+
+.splitter-v:hover,
+.splitter-v.splitter-dragging {
+  background: var(--accent);
 }
 
 .splitter-v-disabled {
   cursor: default;
   pointer-events: none;
   opacity: 0.35;
-}
-
-.splitter-handle-v {
-  width: 3px;
-  height: 40px;
 }
 
 /* Modal */
