@@ -6,7 +6,7 @@ import { t } from '../i18n';
 import { EnvVarField } from './EnvVarField';
 
 export default function HeadersTab() {
-  const { updateHeader, addHeader, removeHeader } = useStore();
+  const { updateHeader, removeHeader } = useStore();
   const headers = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.headers ?? []);
   const [activeDropdown, setActiveDropdown] = useState<number | null>(null);
   const [envSuggestRow, setEnvSuggestRow] = useState<number | null>(null);
@@ -111,9 +111,6 @@ export default function HeadersTab() {
           ))}
         </tbody>
       </table>
-      <div className="add-row">
-        <button className="add-row-btn" onClick={addHeader}>{t('kv.addHeader')}</button>
-      </div>
     </div>
   );
 }

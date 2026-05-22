@@ -56,8 +56,6 @@ const messages: Record<Locale, Record<string, string>> = {
     'env.unnamed': '(unnamed)',
     'kv.key': 'Key',
     'kv.value': 'Value',
-    'kv.addParam': '+ Add Parameter',
-    'kv.addHeader': '+ Add Header',
     'kv.remove': 'Remove',
 
     // Body
@@ -87,8 +85,6 @@ const messages: Record<Locale, Record<string, string>> = {
     'body.fieldType.text': 'Text',
     'body.fieldType.file': 'File',
     'body.fieldValue': 'Value',
-    'body.addFormField': 'Add field',
-    'body.addUrlEncodedField': 'Add field',
     'body.placeholder.json': '{\n  "key": "value"\n}',
     'body.placeholder.xml': '<?xml version="1.0" encoding="UTF-8"?>\n<root>\n  <key>value</key>\n</root>',
     'body.placeholder.text': 'Enter text content...',
@@ -223,8 +219,6 @@ const messages: Record<Locale, Record<string, string>> = {
     'env.unnamed': '（未命名）',
     'kv.key': '键',
     'kv.value': '值',
-    'kv.addParam': '+ 添加参数',
-    'kv.addHeader': '+ 添加请求头',
     'kv.remove': '移除',
 
     // Body
@@ -254,8 +248,6 @@ const messages: Record<Locale, Record<string, string>> = {
     'body.fieldType.text': '文本',
     'body.fieldType.file': '文件',
     'body.fieldValue': '值',
-    'body.addFormField': '添加字段',
-    'body.addUrlEncodedField': '添加字段',
     'body.placeholder.json': '{\n  "key": "value"\n}',
     'body.placeholder.xml': '<?xml version="1.0" encoding="UTF-8"?>\n<root>\n  <key>value</key>\n</root>',
     'body.placeholder.text': '输入文本内容...',

@@ -244,7 +244,6 @@ function FormBody() {
     setFormFieldType,
     setFormFieldFile,
     clearFormFieldFile,
-    addFormField,
     removeFormField,
   } = useStore();
 
@@ -256,7 +255,6 @@ function FormBody() {
       onSetFieldType={setFormFieldType}
       onSetFile={setFormFieldFile}
       onClearFile={clearFormFieldFile}
-      onAdd={addFormField}
       onRemove={removeFormField}
     />
   );
@@ -266,14 +264,13 @@ function UrlencodedBody() {
   const urlEncodedFields = useStore(
     (s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.urlEncodedFields ?? [],
   );
-  const { updateUrlEncodedField, addUrlEncodedField, removeUrlEncodedField } = useStore();
+  const { updateUrlEncodedField, removeUrlEncodedField } = useStore();
 
   return (
     <BodyFormTable
       mode="urlencoded"
       fields={urlEncodedFields}
       onUpdate={updateUrlEncodedField}
-      onAdd={addUrlEncodedField}
       onRemove={removeUrlEncodedField}
     />
   );

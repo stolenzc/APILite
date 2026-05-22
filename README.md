@@ -132,7 +132,7 @@ When you type a URL with a query string (e.g., `?key1=val1&key2=val2`), APILite 
 
 Switch to the **Params** tab to:
 
-- **Add** a parameter by clicking "+ Add Parameter"
+- **Add** a parameter by typing in the last empty key/value row (a new empty row appears automatically)
 - **Edit** a parameter by typing in the key/value cells
 - **Remove** a parameter by clicking the × button
 - **Enable/Disable** a parameter using the checkbox

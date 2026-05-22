@@ -11,6 +11,7 @@ import type {
 } from '../types';
 import type { RawContentType } from '../types';
 import { cloneHttpRequest, emptyFormField, emptyKeyValue, normalizeHttpRequest } from '../utils/normalizeRequest';
+import { withTrailingEmptyRow, withTrailingFormFieldRow } from '../utils/kvRows';
 import { inferRawContentType } from '../utils/curlUtils';
 import { parseParamsFromUrl, urlWithParams } from '../utils/urlQuery';
 import { dispatchFocusUrl } from '../utils/focusUrl';
@@ -71,10 +72,8 @@ interface AppState {
   syncParamsFromUrl: () => void;
   syncUrlFromParams: () => void;
   updateParam: (index: number, field: 'key' | 'value' | 'enabled', val: string | boolean) => void;
-  addParam: () => void;
   removeParam: (index: number) => void;
   updateHeader: (index: number, field: 'key' | 'value' | 'enabled', val: string | boolean) => void;
-  addHeader: () => void;
   removeHeader: (index: number) => void;
   setBodyType: (bodyType: HttpRequest['bodyType']) => void;
   setRawContentType: (rawContentType: RawContentType) => void;
@@ -86,10 +85,8 @@ interface AppState {
     file: { fileName: string; filePath?: string; fileDataBase64?: string; value?: string },
   ) => void;
   clearFormFieldFile: (index: number) => void;
-  addFormField: () => void;
   removeFormField: (index: number) => void;
   updateUrlEncodedField: (index: number, field: 'key' | 'value' | 'enabled', val: string | boolean) => void;
-  addUrlEncodedField: () => void;
   removeUrlEncodedField: (index: number) => void;
   setBinaryFile: (file: BinaryBodyFile | null) => void;
   applyParsedCurl: (parsed: {
@@ -299,12 +296,15 @@ export const useStore = create<AppState>((set, get) => ({
   setUrl: (url) => set(state => {
     const req = activeRequest(state);
     if (!req) return state;
-    const params = parseParamsFromUrl(url);
+    const parsed = parseParamsFromUrl(url);
+    const params = parsed.length > 0
+      ? withTrailingEmptyRow(parsed, emptyKeyValue)
+      : req.params;
     return withUnsaved(state, {
       request: {
         ...req,
         url,
-        params: params.length > 0 ? params : req.params,
+        params,
       },
     });
   }),
@@ -312,7 +312,7 @@ export const useStore = create<AppState>((set, get) => ({
   syncParamsFromUrl: () => set(state => {
     const req = activeRequest(state);
     if (!req) return state;
-    const params = parseParamsFromUrl(req.url);
+    const params = withTrailingEmptyRow(parseParamsFromUrl(req.url), emptyKeyValue);
     return updateActiveTab(state, { request: { ...req, params } });
   }),
 
@@ -325,8 +325,10 @@ export const useStore = create<AppState>((set, get) => ({
   updateParam: (index: number, field: 'key' | 'value' | 'enabled', val: string | boolean) => set(state => {
     const req = activeRequest(state);
     if (!req) return state;
-    const params = [...req.params];
-    params[index] = { ...params[index], [field]: val };
+    const params = withTrailingEmptyRow(
+      req.params.map((p, i) => (i === index ? { ...p, [field]: val } : p)),
+      emptyKeyValue,
+    );
     const request = {
       ...req,
       params,
@@ -335,16 +337,13 @@ export const useStore = create<AppState>((set, get) => ({
     return withUnsaved(state, { request });
   }),
 
-  addParam: () => set(state => {
-    const req = activeRequest(state);
-    if (!req) return state;
-    return withUnsaved(state, { request: { ...req, params: [...req.params, { key: '', value: '', enabled: true }] } });
-  }),
-
   removeParam: (index) => set(state => {
     const req = activeRequest(state);
     if (!req) return state;
-    const params = req.params.filter((_p: KeyValue, i: number) => i !== index);
+    const params = withTrailingEmptyRow(
+      req.params.filter((_p: KeyValue, i: number) => i !== index),
+      emptyKeyValue,
+    );
     return withUnsaved(state, {
       request: { ...req, params, url: urlWithParams(req.url, params) },
     });
@@ -353,21 +352,21 @@ export const useStore = create<AppState>((set, get) => ({
   updateHeader: (index: number, field: 'key' | 'value' | 'enabled', val: string | boolean) => set(state => {
     const req = activeRequest(state);
     if (!req) return state;
-    const headers = [...req.headers];
-    headers[index] = { ...headers[index], [field]: val };
+    const headers = withTrailingEmptyRow(
+      req.headers.map((h, i) => (i === index ? { ...h, [field]: val } : h)),
+      emptyKeyValue,
+    );
     return withUnsaved(state, { request: { ...req, headers } });
-  }),
-
-  addHeader: () => set(state => {
-    const req = activeRequest(state);
-    if (!req) return state;
-    return withUnsaved(state, { request: { ...req, headers: [...req.headers, { key: '', value: '', enabled: true }] } });
   }),
 
   removeHeader: (index) => set(state => {
     const req = activeRequest(state);
     if (!req) return state;
-    return withUnsaved(state, { request: { ...req, headers: req.headers.filter((_h: KeyValue, i: number) => i !== index) } });
+    const headers = withTrailingEmptyRow(
+      req.headers.filter((_h: KeyValue, i: number) => i !== index),
+      emptyKeyValue,
+    );
+    return withUnsaved(state, { request: { ...req, headers } });
   }),
 
   setBodyType: (bodyType) => set(state => {
@@ -389,8 +388,10 @@ export const useStore = create<AppState>((set, get) => ({
   updateFormField: (index, field, val) => set(state => {
     const req = activeRequest(state);
     if (!req) return state;
-    const formFields = [...req.formFields];
-    formFields[index] = { ...formFields[index], [field]: val } as FormField;
+    const formFields = withTrailingFormFieldRow(
+      req.formFields.map((f, i) => (i === index ? { ...f, [field]: val } as FormField : f)),
+      emptyFormField,
+    );
     return withUnsaved(state, { request: { ...req, formFields } });
   }),
 
@@ -407,7 +408,9 @@ export const useStore = create<AppState>((set, get) => ({
       row.value = row.fileName ?? '';
     }
     formFields[index] = row;
-    return withUnsaved(state, { request: { ...req, formFields } });
+    return withUnsaved(state, {
+      request: { ...req, formFields: withTrailingFormFieldRow(formFields, emptyFormField) },
+    });
   }),
 
   setFormFieldFile: (index, file) => set(state => {
@@ -422,7 +425,9 @@ export const useStore = create<AppState>((set, get) => ({
       fileDataBase64: file.fileDataBase64,
       value: file.value ?? file.fileName,
     };
-    return withUnsaved(state, { request: { ...req, formFields } });
+    return withUnsaved(state, {
+      request: { ...req, formFields: withTrailingFormFieldRow(formFields, emptyFormField) },
+    });
   }),
 
   clearFormFieldFile: (index) => set(state => {
@@ -436,52 +441,39 @@ export const useStore = create<AppState>((set, get) => ({
       filePath: undefined,
       fileDataBase64: undefined,
     };
-    return withUnsaved(state, { request: { ...req, formFields } });
-  }),
-
-  addFormField: () => set(state => {
-    const req = activeRequest(state);
-    if (!req) return state;
     return withUnsaved(state, {
-      request: { ...req, formFields: [...req.formFields, emptyFormField()] },
+      request: { ...req, formFields: withTrailingFormFieldRow(formFields, emptyFormField) },
     });
   }),
 
   removeFormField: (index) => set(state => {
     const req = activeRequest(state);
     if (!req) return state;
-    const formFields = req.formFields.filter((_f, i) => i !== index);
-    return withUnsaved(state, {
-      request: { ...req, formFields: formFields.length ? formFields : [emptyFormField()] },
-    });
+    const formFields = withTrailingFormFieldRow(
+      req.formFields.filter((_f, i) => i !== index),
+      emptyFormField,
+    );
+    return withUnsaved(state, { request: { ...req, formFields } });
   }),
 
   updateUrlEncodedField: (index, field, val) => set(state => {
     const req = activeRequest(state);
     if (!req) return state;
-    const urlEncodedFields = [...req.urlEncodedFields];
-    urlEncodedFields[index] = { ...urlEncodedFields[index], [field]: val } as KeyValue;
+    const urlEncodedFields = withTrailingEmptyRow(
+      req.urlEncodedFields.map((f, i) => (i === index ? { ...f, [field]: val } as KeyValue : f)),
+      emptyKeyValue,
+    );
     return withUnsaved(state, { request: { ...req, urlEncodedFields } });
-  }),
-
-  addUrlEncodedField: () => set(state => {
-    const req = activeRequest(state);
-    if (!req) return state;
-    return withUnsaved(state, {
-      request: { ...req, urlEncodedFields: [...req.urlEncodedFields, emptyKeyValue()] },
-    });
   }),
 
   removeUrlEncodedField: (index) => set(state => {
     const req = activeRequest(state);
     if (!req) return state;
-    const urlEncodedFields = req.urlEncodedFields.filter((_f, i) => i !== index);
-    return withUnsaved(state, {
-      request: {
-        ...req,
-        urlEncodedFields: urlEncodedFields.length ? urlEncodedFields : [emptyKeyValue()],
-      },
-    });
+    const urlEncodedFields = withTrailingEmptyRow(
+      req.urlEncodedFields.filter((_f, i) => i !== index),
+      emptyKeyValue,
+    );
+    return withUnsaved(state, { request: { ...req, urlEncodedFields } });
   }),
 
   setBinaryFile: (binaryFile) => set(state => {

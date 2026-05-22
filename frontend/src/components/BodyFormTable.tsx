@@ -9,7 +9,6 @@ type UrlEncodedMode = {
   mode: 'urlencoded';
   fields: KeyValue[];
   onUpdate: (index: number, field: 'key' | 'value' | 'enabled', val: string | boolean) => void;
-  onAdd: () => void;
   onRemove: (index: number) => void;
 };
 
@@ -23,7 +22,6 @@ type FormDataMode = {
     file: { fileName: string; filePath?: string; fileDataBase64?: string; value?: string },
   ) => void;
   onClearFile: (index: number) => void;
-  onAdd: () => void;
   onRemove: (index: number) => void;
 };
 
@@ -164,11 +162,6 @@ export default function BodyFormTable(props: Props) {
           })}
         </tbody>
       </table>
-      <div className="add-row">
-        <button type="button" className="add-row-btn" onClick={props.onAdd}>
-          {isFormData ? t('body.addFormField') : t('body.addUrlEncodedField')}
-        </button>
-      </div>
     </div>
   );
 }

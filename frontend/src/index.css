@@ -1187,27 +1187,6 @@ input[type="checkbox"].kv-checkbox-lg {
   color: var(--error);
 }
 
-.add-row {
-  display: flex;
-  justify-content: center;
-  padding: 8px;
-}
-
-.add-row-btn {
-  background: none;
-  border: 1px dashed var(--border-color);
-  color: var(--text-muted);
-  padding: 6px 16px;
-  font-size: 12px;
-  cursor: pointer;
-  border-radius: 4px;
-}
-
-.add-row-btn:hover {
-  color: var(--text-secondary);
-  border-color: var(--text-muted);
-}
-
 /* Body Editor */
 .body-editor {
   width: 100%;

@@ -4,7 +4,7 @@ import { t } from '../i18n';
 import { EnvVarField } from './EnvVarField';
 
 export default function ParamsTab() {
-  const { updateParam, addParam, removeParam, syncUrlFromParams } = useStore();
+  const { updateParam, removeParam, syncUrlFromParams } = useStore();
   const params = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.params ?? []);
 
   const handleChange = (index: number, field: 'key' | 'value', val: string) => {
@@ -53,9 +53,6 @@ export default function ParamsTab() {
           ))}
         </tbody>
       </table>
-      <div className="add-row">
-        <button className="add-row-btn" onClick={addParam}>{t('kv.addParam')}</button>
-      </div>
     </div>
   );
 }

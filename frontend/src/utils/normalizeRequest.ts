@@ -1,4 +1,5 @@
 import type { FormField, HttpRequest, KeyValue } from '../types';
+import { withTrailingEmptyRow, withTrailingFormFieldRow } from './kvRows';
 
 export function emptyKeyValue(): KeyValue {
   return { key: '', value: '', enabled: true };
@@ -13,15 +14,25 @@ export function normalizeHttpRequest(req: Partial<HttpRequest> & Pick<HttpReques
   return {
     method: req.method,
     url: req.url,
-    params: req.params?.length ? req.params.map((p) => ({ ...p })) : [emptyKeyValue()],
-    headers: req.headers?.length ? req.headers.map((h) => ({ ...h })) : [emptyKeyValue()],
+    params: withTrailingEmptyRow(
+      req.params?.length ? req.params.map((p) => ({ ...p })) : [],
+      emptyKeyValue,
+    ),
+    headers: withTrailingEmptyRow(
+      req.headers?.length ? req.headers.map((h) => ({ ...h })) : [],
+      emptyKeyValue,
+    ),
     bodyType: req.bodyType ?? 'none',
     rawContentType: req.rawContentType ?? 'json',
     body: req.body ?? '',
-    formFields: req.formFields?.length ? req.formFields.map((f) => ({ ...f })) : [emptyFormField()],
-    urlEncodedFields: req.urlEncodedFields?.length
-      ? req.urlEncodedFields.map((f) => ({ ...f }))
-      : [emptyKeyValue()],
+    formFields: withTrailingFormFieldRow(
+      req.formFields?.length ? req.formFields.map((f) => ({ ...f })) : [],
+      emptyFormField,
+    ),
+    urlEncodedFields: withTrailingEmptyRow(
+      req.urlEncodedFields?.length ? req.urlEncodedFields.map((f) => ({ ...f })) : [],
+      emptyKeyValue,
+    ),
     binaryFile: req.binaryFile ? { ...req.binaryFile } : null,
   };
 }
