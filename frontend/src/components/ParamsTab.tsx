@@ -16,7 +16,7 @@ export default function ParamsTab() {
   };
 
   return (
-    <div>
+    <div className="kv-table-wrap">
       <table className="kv-table">
         <thead>
           <tr>

@@ -62,7 +62,7 @@ export default function BodyFormTable(props: Props) {
   const isFormData = props.mode === 'form-data';
 
   return (
-    <div className="body-form-table-wrap">
+    <div className="body-form-table-wrap kv-table-wrap">
       <input
         ref={fileInputRef}
         type="file"

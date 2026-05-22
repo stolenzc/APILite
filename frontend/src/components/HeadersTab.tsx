@@ -50,7 +50,7 @@ export default function HeadersTab() {
   }, []);
 
   return (
-    <div>
+    <div className="kv-table-wrap">
       <table className="kv-table">
         <thead>
           <tr>

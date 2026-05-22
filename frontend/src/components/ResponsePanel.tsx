@@ -54,6 +54,7 @@ export default function ResponsePanel() {
             <pre>{formattedBody}</pre>
           )
         ) : responseTab === 'headers' ? (
+          <div className="kv-table-wrap">
           <table className="kv-table">
             <thead><tr><th>{t('kv.key')}</th><th>{t('kv.value')}</th></tr></thead>
             <tbody>
@@ -62,6 +63,7 @@ export default function ResponsePanel() {
               ))}
             </tbody>
           </table>
+          </div>
         ) : (
           <pre className="response-raw">{rawHttp}</pre>
         )}
