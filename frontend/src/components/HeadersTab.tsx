@@ -49,6 +49,10 @@ export default function HeadersTab() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [activeDropdown, suggestions.length]);
+
   return (
     <div className="kv-table-wrap">
       <table className="kv-table">
@@ -71,15 +75,14 @@ export default function HeadersTab() {
                   value={h.key}
                   onValueChange={(val) => {
                     updateHeader(i, 'key', val);
-                    if (val) setActiveDropdown(i);
-                    else setActiveDropdown(null);
+                    if (envSuggestRow !== i) setActiveDropdown(i);
                   }}
                   onSuggestOpenChange={(open) => {
                     if (open) setEnvSuggestRow(i);
                     else if (envSuggestRow === i) setEnvSuggestRow(null);
                   }}
-                  onFocus={(e) => {
-                    if (e.target.value && envSuggestRow !== i) setActiveDropdown(i);
+                  onFocus={() => {
+                    if (envSuggestRow !== i) setActiveDropdown(i);
                   }}
                   onKeyDown={(e) => handleKeyDown(e, i)}
                 />
