@@ -12,6 +12,7 @@ import type {
 import type { RawContentType } from '../types';
 import { cloneHttpRequest, emptyFormField, emptyKeyValue, normalizeHttpRequest } from '../utils/normalizeRequest';
 import { withTrailingEmptyRow, withTrailingFormFieldRow } from '../utils/kvRows';
+import { requestsEqual } from '../utils/requestEquality';
 import { inferRawContentType } from '../utils/curlUtils';
 import { parseParamsFromUrl, urlWithParams } from '../utils/urlQuery';
 import { dispatchFocusUrl } from '../utils/focusUrl';
@@ -42,6 +43,8 @@ export interface RequestTab {
   sourceType: TabSource;
   sourcePath: string;
   unsaved: boolean;
+  /** Request snapshot when opened or last saved; used to clear unsaved after revert. */
+  savedRequest: HttpRequest | null;
   collectionId: string | null; // id of the collection node, for Cmd+S auto-save
 }
 
@@ -122,6 +125,7 @@ function newEmptyTab(): RequestTab {
     sourceType: 'temporary',
     sourcePath: '',
     unsaved: false,
+    savedRequest: cloneHttpRequest(defaultRequest),
     collectionId: null,
   };
 }
@@ -139,10 +143,19 @@ function activeRequest(state: AppState): HttpRequest | null {
   return tab?.request ?? null;
 }
 
-// Mark active tab as unsaved
-function withUnsaved(state: AppState, update: Partial<RequestTab>): AppState {
-  if (!state.activeTabId || !activeRequest(state)) return state;
-  return updateActiveTab(state, { ...update, unsaved: true });
+function computeUnsaved(tab: RequestTab, request: HttpRequest): boolean {
+  if (!tab.savedRequest) return true;
+  return !requestsEqual(request, tab.savedRequest);
+}
+
+function withRequestUpdate(state: AppState, request: HttpRequest): AppState {
+  if (!state.activeTabId) return state;
+  const tab = state.tabs.find((t) => t.id === state.activeTabId);
+  if (!tab) return state;
+  return updateActiveTab(state, {
+    request,
+    unsaved: computeUnsaved(tab, request),
+  });
 }
 
 function applyParsedToRequest(req: HttpRequest, parsed: {
@@ -242,6 +255,7 @@ export const useStore = create<AppState>((set, get) => ({
                 sourceType: 'collection' as const,
                 collectionId,
                 request: cloneHttpRequest(req),
+                savedRequest: cloneHttpRequest(req),
                 unsaved: false,
               }
             : t,
@@ -258,6 +272,7 @@ export const useStore = create<AppState>((set, get) => ({
       sourceType: 'collection',
       sourcePath: collectionPath,
       unsaved: false,
+      savedRequest: cloneHttpRequest(req),
       collectionId,
     };
     return { tabs: [...state.tabs, tab], activeTabId: tab.id };
@@ -269,28 +284,38 @@ export const useStore = create<AppState>((set, get) => ({
     ),
   })),
 
-  linkActiveTabToCollection: (collectionId, name, sourcePath) => set(state =>
-    updateActiveTab(state, {
+  linkActiveTabToCollection: (collectionId, name, sourcePath) => set(state => {
+    const tab = state.tabs.find((t) => t.id === state.activeTabId);
+    if (!tab) return state;
+    return updateActiveTab(state, {
       collectionId,
       name,
       sourcePath,
       sourceType: 'collection',
       unsaved: false,
-    }),
-  ),
-
-  markUnsaved: () => set(state => {
-    const tab = state.tabs.find(t => t.id === state.activeTabId);
-    if (!tab || tab.sourceType !== 'collection') return state;
-    return updateActiveTab(state, { unsaved: true });
+      savedRequest: cloneHttpRequest(tab.request),
+    });
   }),
 
-  clearUnsaved: () => set(state => updateActiveTab(state, { unsaved: false })),
+  markUnsaved: () => set(state => {
+    const tab = state.tabs.find((t) => t.id === state.activeTabId);
+    if (!tab) return state;
+    return updateActiveTab(state, { unsaved: computeUnsaved(tab, tab.request) });
+  }),
+
+  clearUnsaved: () => set(state => {
+    const tab = state.tabs.find((t) => t.id === state.activeTabId);
+    if (!tab) return state;
+    return updateActiveTab(state, {
+      unsaved: false,
+      savedRequest: cloneHttpRequest(tab.request),
+    });
+  }),
 
   setMethod: (method) => set(state => {
     const req = activeRequest(state);
     if (!req) return state;
-    return withUnsaved(state, { request: { ...req, method } });
+    return withRequestUpdate(state, { ...req, method });
   }),
 
   setUrl: (url) => set(state => {
@@ -300,26 +325,20 @@ export const useStore = create<AppState>((set, get) => ({
     const params = parsed.length > 0
       ? withTrailingEmptyRow(parsed, emptyKeyValue)
       : req.params;
-    return withUnsaved(state, {
-      request: {
-        ...req,
-        url,
-        params,
-      },
-    });
+    return withRequestUpdate(state, { ...req, url, params });
   }),
 
   syncParamsFromUrl: () => set(state => {
     const req = activeRequest(state);
     if (!req) return state;
     const params = withTrailingEmptyRow(parseParamsFromUrl(req.url), emptyKeyValue);
-    return updateActiveTab(state, { request: { ...req, params } });
+    return withRequestUpdate(state, { ...req, params });
   }),
 
   syncUrlFromParams: () => set(state => {
     const req = activeRequest(state);
     if (!req) return state;
-    return updateActiveTab(state, { request: { ...req, url: urlWithParams(req.url, req.params) } });
+    return withRequestUpdate(state, { ...req, url: urlWithParams(req.url, req.params) });
   }),
 
   updateParam: (index: number, field: 'key' | 'value' | 'enabled', val: string | boolean) => set(state => {
@@ -334,7 +353,7 @@ export const useStore = create<AppState>((set, get) => ({
       params,
       url: urlWithParams(req.url, params),
     };
-    return withUnsaved(state, { request });
+    return withRequestUpdate(state, request);
   }),
 
   removeParam: (index) => set(state => {
@@ -344,9 +363,7 @@ export const useStore = create<AppState>((set, get) => ({
       req.params.filter((_p: KeyValue, i: number) => i !== index),
       emptyKeyValue,
     );
-    return withUnsaved(state, {
-      request: { ...req, params, url: urlWithParams(req.url, params) },
-    });
+    return withRequestUpdate(state, { ...req, params, url: urlWithParams(req.url, params) });
   }),
 
   updateHeader: (index: number, field: 'key' | 'value' | 'enabled', val: string | boolean) => set(state => {
@@ -356,7 +373,7 @@ export const useStore = create<AppState>((set, get) => ({
       req.headers.map((h, i) => (i === index ? { ...h, [field]: val } : h)),
       emptyKeyValue,
     );
-    return withUnsaved(state, { request: { ...req, headers } });
+    return withRequestUpdate(state, { ...req, headers });
   }),
 
   removeHeader: (index) => set(state => {
@@ -366,23 +383,23 @@ export const useStore = create<AppState>((set, get) => ({
       req.headers.filter((_h: KeyValue, i: number) => i !== index),
       emptyKeyValue,
     );
-    return withUnsaved(state, { request: { ...req, headers } });
+    return withRequestUpdate(state, { ...req, headers });
   }),
 
   setBodyType: (bodyType) => set(state => {
     const req = activeRequest(state);
     if (!req) return state;
-    return withUnsaved(state, { request: { ...req, bodyType } });
+    return withRequestUpdate(state, { ...req, bodyType });
   }),
   setRawContentType: (rawContentType) => set(state => {
     const req = activeRequest(state);
     if (!req) return state;
-    return withUnsaved(state, { request: { ...req, rawContentType } });
+    return withRequestUpdate(state, { ...req, rawContentType });
   }),
   setBody: (body) => set(state => {
     const req = activeRequest(state);
     if (!req) return state;
-    return withUnsaved(state, { request: { ...req, body } });
+    return withRequestUpdate(state, { ...req, body });
   }),
 
   updateFormField: (index, field, val) => set(state => {
@@ -392,7 +409,7 @@ export const useStore = create<AppState>((set, get) => ({
       req.formFields.map((f, i) => (i === index ? { ...f, [field]: val } as FormField : f)),
       emptyFormField,
     );
-    return withUnsaved(state, { request: { ...req, formFields } });
+    return withRequestUpdate(state, { ...req, formFields });
   }),
 
   setFormFieldType: (index, fieldType) => set(state => {
@@ -408,8 +425,9 @@ export const useStore = create<AppState>((set, get) => ({
       row.value = row.fileName ?? '';
     }
     formFields[index] = row;
-    return withUnsaved(state, {
-      request: { ...req, formFields: withTrailingFormFieldRow(formFields, emptyFormField) },
+    return withRequestUpdate(state, {
+      ...req,
+      formFields: withTrailingFormFieldRow(formFields, emptyFormField),
     });
   }),
 
@@ -425,8 +443,9 @@ export const useStore = create<AppState>((set, get) => ({
       fileDataBase64: file.fileDataBase64,
       value: file.value ?? file.fileName,
     };
-    return withUnsaved(state, {
-      request: { ...req, formFields: withTrailingFormFieldRow(formFields, emptyFormField) },
+    return withRequestUpdate(state, {
+      ...req,
+      formFields: withTrailingFormFieldRow(formFields, emptyFormField),
     });
   }),
 
@@ -441,8 +460,9 @@ export const useStore = create<AppState>((set, get) => ({
       filePath: undefined,
       fileDataBase64: undefined,
     };
-    return withUnsaved(state, {
-      request: { ...req, formFields: withTrailingFormFieldRow(formFields, emptyFormField) },
+    return withRequestUpdate(state, {
+      ...req,
+      formFields: withTrailingFormFieldRow(formFields, emptyFormField),
     });
   }),
 
@@ -453,7 +473,7 @@ export const useStore = create<AppState>((set, get) => ({
       req.formFields.filter((_f, i) => i !== index),
       emptyFormField,
     );
-    return withUnsaved(state, { request: { ...req, formFields } });
+    return withRequestUpdate(state, { ...req, formFields });
   }),
 
   updateUrlEncodedField: (index, field, val) => set(state => {
@@ -463,7 +483,7 @@ export const useStore = create<AppState>((set, get) => ({
       req.urlEncodedFields.map((f, i) => (i === index ? { ...f, [field]: val } as KeyValue : f)),
       emptyKeyValue,
     );
-    return withUnsaved(state, { request: { ...req, urlEncodedFields } });
+    return withRequestUpdate(state, { ...req, urlEncodedFields });
   }),
 
   removeUrlEncodedField: (index) => set(state => {
@@ -473,28 +493,31 @@ export const useStore = create<AppState>((set, get) => ({
       req.urlEncodedFields.filter((_f, i) => i !== index),
       emptyKeyValue,
     );
-    return withUnsaved(state, { request: { ...req, urlEncodedFields } });
+    return withRequestUpdate(state, { ...req, urlEncodedFields });
   }),
 
   setBinaryFile: (binaryFile) => set(state => {
     const req = activeRequest(state);
     if (!req) return state;
-    return withUnsaved(state, { request: { ...req, binaryFile } });
+    return withRequestUpdate(state, { ...req, binaryFile });
   }),
 
   applyParsedCurl: (parsed) => set(state => {
     if (!state.activeTabId) {
       const tab = newEmptyTab();
+      const request = applyParsedToRequest(tab.request, parsed);
       return {
-        tabs: [{ ...tab, request: applyParsedToRequest(tab.request, parsed), unsaved: true }],
+        tabs: [{ ...tab, request, unsaved: computeUnsaved(tab, request) }],
         activeTabId: tab.id,
       };
     }
+    const tab = state.tabs.find((t) => t.id === state.activeTabId);
     const req = activeRequest(state);
-    if (!req) return state;
+    if (!tab || !req) return state;
+    const request = applyParsedToRequest(req, parsed);
     return updateActiveTab(state, {
-      request: applyParsedToRequest(req, parsed),
-      unsaved: true,
+      request,
+      unsaved: computeUnsaved(tab, request),
     });
   }),
   setActiveTab: (activeTab) => set({ activeTab }),
@@ -556,7 +579,16 @@ export const useStore = create<AppState>((set, get) => ({
       .catch((err) => console.error('Failed to sync history retention:', err));
   },
 
-  resetRequest: () => set(state => updateActiveTab(state, { request: { ...defaultRequest }, name: 'Untitled' })),
+  resetRequest: () => set(state => {
+    const tab = state.tabs.find((t) => t.id === state.activeTabId);
+    if (!tab) return state;
+    const request = { ...defaultRequest };
+    return updateActiveTab(state, {
+      request,
+      name: 'Untitled',
+      unsaved: computeUnsaved(tab, request),
+    });
+  }),
 }));
 
 // Selector: get the active tab
