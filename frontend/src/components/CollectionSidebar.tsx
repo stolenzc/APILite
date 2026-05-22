@@ -300,6 +300,13 @@ function TreeNode({ node, depth = 0 }: { node: CollectionNode; depth?: number })
           setDropHint(null);
         }}
         onMouseDown={handleMouseDown}
+        title={
+          isFolder
+            ? node.collapsed
+              ? t('collection.folderExpandHint')
+              : t('collection.folderCollapseHint')
+            : undefined
+        }
       >
         {isFolder && (
           <span className="tree-icon">{node.collapsed ? '▶' : '▼'}</span>
@@ -436,12 +443,21 @@ export default function CollectionSidebar() {
 
   const searching = searchQuery.trim().length > 0;
 
+  /** Only clear search when switching tabs (or collections reload): if the new active node is hidden by the current filter. Never clear while the user is typing (that would use stale activeTabCollectionId with changing visibleCollections). */
+  useEffect(() => {
+    if (!activeTabCollectionId) return;
+    setSearchQuery((q) => {
+      const trimmed = q.trim();
+      if (!trimmed) return q;
+      const filtered = filterCollectionTree(collections, q);
+      if (!nodeInTree(filtered, activeTabCollectionId)) return '';
+      return q;
+    });
+  }, [activeTabCollectionId, collections]);
+
   useEffect(() => {
     if (!activeNodeId) return;
-    if (searching && !nodeInTree(visibleCollections, activeNodeId)) {
-      setSearchQuery('');
-      return;
-    }
+    if (searching && !nodeInTree(visibleCollections, activeNodeId)) return;
     requestAnimationFrame(() => {
       document
         .querySelector(`[data-collection-node-id="${CSS.escape(activeNodeId)}"]`)

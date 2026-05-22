@@ -158,6 +158,8 @@ const messages: Record<Locale, Record<string, string>> = {
     'collection.empty': 'No collections yet',
     'collection.searchPlaceholder': 'Search collections, folders, requests by name or URL…',
     'collection.searchNoResults': 'No matches',
+    'collection.folderCollapseHint': 'Click to collapse this folder and all nested folders',
+    'collection.folderExpandHint': 'Click to expand',
     'collection.rename.placeholder': 'Enter name...',
     'collection.rename.confirm': 'Confirm',
 
@@ -323,6 +325,8 @@ const messages: Record<Locale, Record<string, string>> = {
     'collection.empty': '暂无集合',
     'collection.searchPlaceholder': '按集合、文件夹、请求名称或 URL 搜索…',
     'collection.searchNoResults': '没有匹配项',
+    'collection.folderCollapseHint': '单击折叠此文件夹及所有子文件夹',
+    'collection.folderExpandHint': '单击展开',
     'collection.rename.placeholder': '输入名称...',
     'collection.rename.confirm': '确认',
 

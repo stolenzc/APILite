@@ -147,6 +147,33 @@ function updateNode(nodes: CollectionNode[], id: string, update: Partial<Collect
   });
 }
 
+/** Set collapsed on folder and every nested folder (persisted state for subtree). */
+function collapseFolderAndDescendants(folder: CollectionFolder): CollectionFolder {
+  return {
+    ...folder,
+    collapsed: true,
+    children: folder.children.map((c) =>
+      c.type === 'folder' ? collapseFolderAndDescendants(c) : c,
+    ),
+  };
+}
+
+function collapseSubtreeInTree(nodes: CollectionNode[], folderId: string): CollectionNode[] {
+  return nodes.map((n) => {
+    if (n.type !== 'folder') return n;
+    if (n.id === folderId) return collapseFolderAndDescendants(n);
+    return { ...n, children: collapseSubtreeInTree(n.children, folderId) };
+  });
+}
+
+function expandFolderInTree(nodes: CollectionNode[], folderId: string): CollectionNode[] {
+  return nodes.map((n) => {
+    if (n.type !== 'folder') return n;
+    if (n.id === folderId) return { ...n, collapsed: false };
+    return { ...n, children: expandFolderInTree(n.children, folderId) };
+  });
+}
+
 function duplicateNode(node: CollectionNode): CollectionNode {
   if (node.type === 'folder') {
     const copy: CollectionFolder = {
@@ -421,7 +448,9 @@ export const useCollectionStore = create<CollectionStore>((set, get) => ({
   toggleCollapse: (id) => {
     const { node } = findNode(get().collections, id);
     if (!node || node.type !== 'folder') return;
-    const collections = updateNode([...get().collections], id, { collapsed: !node.collapsed });
+    const collections = node.collapsed
+      ? expandFolderInTree([...get().collections], id)
+      : collapseSubtreeInTree([...get().collections], id);
     set({ collections });
     void persistForNodeId(id, collections).catch(err =>
       console.error('Failed to save collapse state:', err),
