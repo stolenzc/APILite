@@ -96,6 +96,7 @@ function migrateShortcuts(shortcuts: Partial<ShortcutConfig> & Record<string, st
   const currentMod = isMac ? 'Cmd' : 'Ctrl';
   const oldMod = isMac ? 'Ctrl' : 'Cmd';
   const merged: Partial<ShortcutConfig> & Record<string, string> = { ...defaultShortcuts, ...shortcuts };
+  // Pre-toggleCurlPanel settings stored the cURL shortcut as exportCurl.
   const legacyExportCurl = shortcuts.exportCurl?.trim();
   if (legacyExportCurl && !shortcuts.toggleCurlPanel?.trim()) {
     merged.toggleCurlPanel = legacyExportCurl;
@@ -482,8 +483,4 @@ export function buildCombo(e: KeyboardEvent | React.KeyboardEvent): string {
   }
 
   return parts.join('+');
-}
-
-export function matchesShortcut(e: KeyboardEvent | React.KeyboardEvent, shortcut: string): boolean {
-  return matchesShortcutCombo(e, shortcut);
 }

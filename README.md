@@ -25,6 +25,8 @@
   - [Building from Source](#building-from-source)
   - [Project Structure](#project-structure)
 - [Interface Overview](#interface-overview)
+- [Environments](#environments)
+- [Saving Requests to Collections](#saving-requests-to-collections)
 - [Making Requests](#making-requests)
   - [Sending a Request](#sending-a-request)
   - [URL Input](#url-input)
@@ -44,7 +46,7 @@
   - [Theme](#theme)
   - [Local Storage](#local-storage)
   - [History Retention](#history-retention)
-  - [Resizable Splitter](#resizable-splitter)
+  - [Resizable Splitters](#resizable-splitters)
   - [Keyboard Shortcuts](#keyboard-shortcuts)
 
 ---
@@ -80,26 +82,44 @@ APILite/
 ├── frontend/            # React + TypeScript frontend
 │   └── src/
 │       ├── App.tsx
-│       ├── components/      # UI components
+│       ├── components/      # UI (TitleBar, tabs, panels, modals, …)
 │       ├── store/           # Zustand state management
 │       ├── i18n.ts          # Internationalization
 │       ├── themes.ts        # Theme definitions
 │       └── constants.ts     # Header suggestions
-└── docs/                # Documentation
 ```
 
 ---
 
 ## Interface Overview
 
-The APILite interface consists of three main areas:
+| Area                    | Description                                                                                                                                 |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Title bar**           | Panel toggles: collections (left), history (bottom), cURL (right), and settings (⚙). On macOS the bar sits in the overlay title-bar region. |
+| **Tab bar**             | Request tabs, **+** for a new tab, environment dropdown and manage (⚙).                                                                     |
+| **Collections sidebar** | Optional left panel — tree of collections, folders, and saved requests.                                                                     |
+| **URL bar**             | HTTP method, URL, **Send**.                                                                                                                 |
+| **Request editor**      | **Params**, **Headers**, **Body** tabs.                                                                                                     |
+| **Response panel**      | Status, duration, body / headers / raw HTTP. A loading overlay appears while a request is in flight.                                        |
+| **cURL panel**          | Optional right panel — live cURL for the current request with **Copy**.                                                                     |
+| **History panel**       | Optional bottom dock — persisted history; drag the top edge to resize.                                                                      |
 
-1. **Header Bar** — Contains the application name and a settings button (⚙).
-2. **Collections** — Lists all collections and folders.
-3. **URL Bar** — HTTP method selector, URL input, cURL import/export buttons, and the Send button.
-4. **Request Editor** — Tabbed panel with Params, Headers, and Body tabs.
-5. **Response Panel** — Shows the response status code, duration, body, and headers.
-6. **History Panel** — Lists recent requests for quick re-use.
+Thin drag handles (same style as the history dock) resize the response area, collection sidebar, cURL panel, and history height.
+
+---
+
+## Environments
+
+Pick an environment from the dropdown on the **tab bar**. Use `{{variable_name}}` in the URL, params, headers, or body; values are resolved when you send. Click **⚙** beside the dropdown to edit variables (multiple environments, `{{other_var}}` references within the same environment).
+
+---
+
+## Saving Requests to Collections
+
+1. Configure the request, then press **⌘ S** / **Ctrl+S** (or save from the collection sidebar when applicable).
+2. Enter a **request name**.
+3. In the folder browser, expand folders with **▶** / **▾**, click a folder to select it, then **Save** (or double-click a folder to save immediately).
+4. Create folders first in the collections sidebar if the tree is empty.
 
 ---
 
@@ -191,6 +211,9 @@ After sending a request, the response panel displays:
 - **Duration** — Response time in milliseconds
 - **Body Tab** — Response content with automatic JSON formatting
 - **Headers Tab** — Response headers in a key-value table
+- **Raw Tab** — Full raw HTTP response
+
+While a request is running, a semi-transparent overlay with a spinner covers the response area (previous content stays visible underneath).
 
 ---
 
@@ -198,36 +221,28 @@ After sending a request, the response panel displays:
 
 ### Import cURL
 
-1. Click the **`{}`** button next to the URL bar.
-2. Paste a complete cURL command in the dialog.
-3. Click **Import**.
-
-APILite parses the command and fills in:
+Paste a complete `curl …` command into the **URL** field (or paste with the URL field focused). APILite detects `curl` and parses:
 
 - HTTP method (`-X`)
 - URL
 - Headers (`-H`)
 - Request body (`-d`, `--data`, `--data-raw`, `--data-binary`, `--data-urlencode`)
 
+Press **Enter** in the URL field after pasting if the command was not applied automatically.
+
 ### Export cURL
 
-1. Configure your request (method, URL, params, headers, body).
-2. Click the **`→_`** button next to the URL bar.
-3. View and copy the generated cURL command.
+1. Open the **cURL** panel from the title bar (right panel icon).
+2. Edit the request — the command updates automatically.
+3. Click **Copy** in the panel.
 
-The export automatically includes:
-
-- Method (`-X`) for non-GET requests
-- URL with all parameters
-- Headers (`-H`)
-- Request body (`-d`, `--data-binary`, or `-F` for form-data file fields)
-- Auto-generated `Content-Type` header for JSON/XML body types when missing
+Generated cURL includes method (`-X`) when needed, full URL, headers (`-H`), body (`-d`, `--data-binary`, or `-F` for file fields), and `Content-Type` for JSON/XML when missing.
 
 ---
 
 ## Request History
 
-The history panel at the bottom of the window records sent requests:
+Toggle the bottom history dock from the title bar or **Ctrl+`**. The panel records sent requests:
 
 - **Time** — When the request was sent
 - **Method** — Color-coded HTTP method badge
@@ -240,7 +255,7 @@ Expand a row to view the raw request and response. Click **Load more** to fetch 
 
 ## Settings
 
-Open settings by clicking the ⚙ icon or pressing **⌘ ,** (macOS) / **Ctrl+,** (Windows & Linux).
+Open settings from the title bar **⚙** or **⌘ ,** (macOS) / **Ctrl+,** (Windows & Linux).
 
 ### Language
 
@@ -270,28 +285,29 @@ Choose a folder for app data (default `~/.APILite`). The app creates:
 
 Set maximum age (days) and maximum entry count. Older or excess entries are pruned from disk automatically.
 
-### Resizable Splitter
+### Resizable Splitters
 
-Drag the handle between the request editor and response panel to resize the response area (min 100px). The height is saved automatically.
+Drag the thin bar between the request editor and response panel to resize the response area (min 100px; height is saved). Similar handles resize the collection sidebar, cURL panel, and history dock.
 
 ### Keyboard Shortcuts
 
-Configure custom keyboard shortcuts for common actions. Click **Reset Shortcuts** to restore defaults, or **Reset All** to clear all settings.
+Configure shortcuts in **Settings**. **Reset Shortcuts** restores defaults; **Reset All** clears all settings.
 
-Defaults use **⌘ (Command)** on macOS and **Ctrl** on Windows and Linux (the app picks the platform modifier automatically). In the Tauri desktop build, the same combinations appear on the menu bar (**APILite** / **Tab**) and only apply while this app is focused.
+Most defaults use **⌘** on macOS and **Ctrl** on Windows/Linux. **Toggle History** always uses physical **Ctrl+`** (not Command on Mac). Menu bar items (**APILite** / **Tab**) mirror some actions in the Tauri build and only apply while the app is focused.
 
-| Action                  | macOS   | Windows / Linux      |
-| ----------------------- | ------- | -------------------- |
-| Send Request            | ⌘ Enter | Ctrl+Enter           |
-| Save Request            | ⌘ S     | Ctrl+S               |
-| Import cURL             | ⌘ ⇧ I   | Ctrl+Shift+I         |
-| Export cURL             | ⌘ ⇧ E   | Ctrl+Shift+E         |
-| Focus URL Bar           | ⌘ L     | Ctrl+L               |
-| Focus Collection Search | ⌘ ⇧ F   | Ctrl+Shift+F         |
-| Open Settings           | ⌘ ,     | Ctrl+,               |
-| New Tab                 | ⌘ T     | Ctrl+T               |
-| Close Tab               | ⌘ W     | Ctrl+W               |
-| Previous Tab            | ⌘ ⌥ ←   | Ctrl+Alt+Left Arrow  |
-| Next Tab                | ⌘ ⌥ →   | Ctrl+Alt+Right Arrow |
+| Action                     | macOS   | Windows / Linux      |
+| -------------------------- | ------- | -------------------- |
+| Send Request               | ⌘ Enter | Ctrl+Enter           |
+| Save Request               | ⌘ S     | Ctrl+S               |
+| Toggle Collections Sidebar | ⌘ B     | Ctrl+B               |
+| Toggle History Panel       | Ctrl+`  | Ctrl+`               |
+| Toggle cURL Panel          | ⌘ ⌥ B   | Ctrl+Alt+B           |
+| Focus URL Bar              | ⌘ L     | Ctrl+L               |
+| Focus Collection Search    | ⌘ ⇧ F   | Ctrl+Shift+F         |
+| Open Settings              | ⌘ ,     | Ctrl+,               |
+| New Tab                    | ⌘ T     | Ctrl+T               |
+| Close Tab                  | ⌘ W     | Ctrl+W               |
+| Previous Tab               | ⌘ ⌥ ←   | Ctrl+Alt+Left Arrow  |
+| Next Tab                   | ⌘ ⌥ →   | Ctrl+Alt+Right Arrow |
 
 All shortcuts can be customized in **Settings**.

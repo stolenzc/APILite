@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import { useStore } from '../store/useStore';
-import { matchesShortcut, useSettingsStore } from '../store/useSettings';
+import { matchesShortcutCombo, useSettingsStore } from '../store/useSettings';
 import type { BodyType, RawContentType } from '../types';
 import { t } from '../i18n';
 import { formatJson, isJson } from '../utils/jsonUtils';
@@ -10,7 +10,7 @@ import { pickFilePath, readBrowserFileAsBase64 } from '../utils/filePicker';
 import { isTauri } from '../tauri/setupMenu';
 
 function isSendRequestShortcut(e: React.KeyboardEvent): boolean {
-  return matchesShortcut(e, useSettingsStore.getState().shortcuts.sendRequest);
+  return matchesShortcutCombo(e, useSettingsStore.getState().shortcuts.sendRequest);
 }
 
 const BODY_TYPES: { value: BodyType; label: string }[] = [

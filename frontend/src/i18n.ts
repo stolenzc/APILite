@@ -5,7 +5,6 @@ export const defaultLocale: Locale = 'en';
 const messages: Record<Locale, Record<string, string>> = {
   en: {
     // App
-    'app.name': 'APILite',
     'app.settings': 'Settings',
     'app.toggleCollections': 'Toggle collections sidebar',
     'app.toggleCurlPanel': 'Toggle cURL panel',
@@ -168,7 +167,6 @@ const messages: Record<Locale, Record<string, string>> = {
   },
   zh: {
     // App
-    'app.name': 'APILite',
     'app.settings': '设置',
     'app.toggleCollections': '显示或隐藏集合侧边栏',
     'app.toggleCurlPanel': '显示或隐藏 cURL 面板',
