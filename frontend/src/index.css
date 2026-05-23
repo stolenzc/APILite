@@ -1862,6 +1862,176 @@ input[type="checkbox"].kv-checkbox-lg {
   overflow: auto;
 }
 
+.modal.modal--save-request {
+  min-width: min(560px, 94vw);
+  width: min(680px, 94vw);
+  min-height: min(520px, 88vh);
+  max-height: 88vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 28px;
+}
+
+.save-request-modal-overlay {
+  z-index: 110;
+}
+
+.save-request-field-label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.save-request-field-label:not(:first-of-type) {
+  margin-top: 14px;
+}
+
+.save-request-name-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 8px 10px;
+  font-size: 13px;
+  outline: none;
+}
+
+.save-request-name-input:focus {
+  border-color: var(--accent);
+}
+
+.save-request-browser {
+  flex: 1;
+  min-height: 320px;
+  max-height: min(58vh, 520px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-primary);
+  padding: 6px 4px;
+  scrollbar-gutter: stable;
+}
+
+.save-request-browser-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 280px;
+  padding: 32px 20px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+  gap: 8px;
+}
+
+.save-request-browser-hint {
+  font-size: 12px;
+  line-height: 1.5;
+  max-width: 280px;
+}
+
+.save-request-tree-row-wrap {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin: 1px 4px;
+  border-radius: 4px;
+}
+
+.save-request-tree-row-wrap:hover {
+  background: var(--bg-input);
+}
+
+.save-request-tree-row-wrap--selected {
+  background: color-mix(in srgb, var(--accent) 14%, var(--bg-tertiary));
+}
+
+.save-request-tree-row-wrap--selected:hover {
+  background: color-mix(in srgb, var(--accent) 18%, var(--bg-tertiary));
+}
+
+.save-request-tree-expand {
+  flex-shrink: 0;
+  width: 22px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.save-request-tree-expand:hover {
+  background: color-mix(in srgb, var(--bg-tertiary) 80%, var(--accent));
+  color: var(--text-primary);
+}
+
+.save-request-tree-expand--leaf {
+  display: inline-block;
+  cursor: default;
+  pointer-events: none;
+}
+
+.save-request-tree-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 6px 8px 6px 2px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  user-select: none;
+}
+
+.save-request-tree-row-wrap--selected .save-request-tree-row {
+  color: var(--accent);
+}
+
+.save-request-tree-folder {
+  flex-shrink: 0;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.save-request-tree-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.modal.modal--save-request h3 {
+  flex-shrink: 0;
+  margin-bottom: 14px;
+}
+
+.modal.modal--save-request .modal-actions {
+  flex-shrink: 0;
+  margin-top: 16px;
+}
+
 .modal.modal--env-matrix {
   flex-shrink: 0;
   min-width: min(720px, 94vw);

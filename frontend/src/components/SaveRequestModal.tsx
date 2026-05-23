@@ -1,29 +1,96 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import { useCollectionStore } from '../store/useCollection';
 import type { CollectionFolder, CollectionNode } from '../types';
 import { t } from '../i18n';
 import { useModalOverlayDismiss } from '../utils/modalOverlayDismiss';
 
-interface TreeNode {
-  id: string;
-  name: string;
-  depth: number;
-  isLast: boolean;
-  prefixParts: { connector: string; padding: string }[];
+function folderChildren(nodes: CollectionNode[]): CollectionFolder[] {
+  return nodes.filter((n) => n.type === 'folder') as CollectionFolder[];
 }
 
-function buildTree(nodes: CollectionNode[], depth = 0, parentPrefix: { connector: string; padding: string }[] = []): TreeNode[] {
-  const result: TreeNode[] = [];
-  const folders = nodes.filter(n => n.type === 'folder') as CollectionFolder[];
-  folders.forEach((node, i) => {
-    const isLast = i === folders.length - 1;
-    const connector = isLast ? '└─ ' : '├─ ';
-    const padding = isLast ? '   ' : '│  ';
-    const prefixParts = depth === 0 ? [] : [...parentPrefix, { connector, padding }];
-    result.push({ id: node.id, name: node.name, depth, isLast, prefixParts });
-    result.push(...buildTree(node.children, depth + 1, prefixParts));
-  });
-  return result;
+function hasFolderChildren(folder: CollectionFolder): boolean {
+  return folderChildren(folder.children).length > 0;
+}
+
+interface FolderTreeProps {
+  nodes: CollectionNode[];
+  depth: number;
+  expandedIds: Set<string>;
+  onToggleExpand: (id: string) => void;
+  selectedFolderId: string | null;
+  onSelectFolder: (id: string) => void;
+  onSave: () => void;
+}
+
+function SaveFolderTree({
+  nodes,
+  depth,
+  expandedIds,
+  onToggleExpand,
+  selectedFolderId,
+  onSelectFolder,
+  onSave,
+}: FolderTreeProps) {
+  const folders = folderChildren(nodes);
+  if (folders.length === 0) return null;
+
+  return (
+    <>
+      {folders.map((folder) => {
+        const expandable = hasFolderChildren(folder);
+        const expanded = expandedIds.has(folder.id);
+        const selected = folder.id === selectedFolderId;
+
+        return (
+          <div key={folder.id} className="save-request-tree-branch" role="none">
+            <div
+              className={`save-request-tree-row-wrap${selected ? ' save-request-tree-row-wrap--selected' : ''}`}
+              style={{ paddingLeft: 8 + depth * 18 }}
+              role="treeitem"
+              aria-expanded={expandable ? expanded : undefined}
+              aria-selected={selected}
+            >
+              {expandable ? (
+                <button
+                  type="button"
+                  className="save-request-tree-expand"
+                  aria-label={expanded ? t('saveRequest.collapse') : t('saveRequest.expand')}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleExpand(folder.id);
+                  }}
+                >
+                  {expanded ? '▾' : '▶'}
+                </button>
+              ) : (
+                <span className="save-request-tree-expand save-request-tree-expand--leaf" aria-hidden />
+              )}
+              <button
+                type="button"
+                className="save-request-tree-row"
+                onClick={() => onSelectFolder(folder.id)}
+                onDoubleClick={onSave}
+              >
+                <span className="save-request-tree-folder" aria-hidden>📁</span>
+                <span className="save-request-tree-name">{folder.name}</span>
+              </button>
+            </div>
+            {expandable && expanded && (
+              <SaveFolderTree
+                nodes={folder.children}
+                depth={depth + 1}
+                expandedIds={expandedIds}
+                onToggleExpand={onToggleExpand}
+                selectedFolderId={selectedFolderId}
+                onSelectFolder={onSelectFolder}
+                onSave={onSave}
+              />
+            )}
+          </div>
+        );
+      })}
+    </>
+  );
 }
 
 interface Props {
@@ -33,145 +100,81 @@ interface Props {
 }
 
 export default function SaveRequestModal({ onClose, onSave, defaultName }: Props) {
-  const collections = useCollectionStore(s => s.collections);
+  const collections = useCollectionStore((s) => s.collections);
   const [name, setName] = useState(defaultName);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
   const overlayDismiss = useModalOverlayDismiss(onClose);
-  const tree = buildTree(collections);
 
-  useEffect(() => {
-    if (tree.length > 0 && selectedFolderId === null) {
-      setSelectedFolderId(tree[0].id);
-    }
-  }, [tree, selectedFolderId]);
+  const hasFolders = folderChildren(collections).length > 0;
 
-  // Close dropdown on outside click
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setDropdownOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
+  const onToggleExpand = useCallback((id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }, []);
 
-  const selectedNode = tree.find(n => n.id === selectedFolderId);
-
   const handleSubmit = () => {
+    if (!selectedFolderId) return;
     onSave(selectedFolderId, name || 'Untitled');
     onClose();
   };
 
   return (
-    <div className="modal-overlay" {...overlayDismiss}>
-      <div className="modal" onClick={e => e.stopPropagation()} style={{ minWidth: 400 }}>
+    <div className="modal-overlay save-request-modal-overlay" {...overlayDismiss}>
+      <div className="modal modal--save-request" onClick={(e) => e.stopPropagation()}>
         <h3>{t('saveRequest.title')}</h3>
-        <div style={{ marginBottom: 12 }}>
-          <label style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>
-            {t('saveRequest.name')}
-          </label>
-          <input
-            type="text"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') handleSubmit(); }}
-            autoFocus
-            style={{
-              width: '100%',
-              background: 'var(--bg-input)',
-              color: 'var(--text-primary)',
-              border: '1px solid var(--border-color)',
-              borderRadius: 4,
-              padding: '8px 10px',
-              fontSize: 13,
-              outline: 'none',
-            }}
-          />
-        </div>
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>
-            {t('saveRequest.folder')}
-          </label>
-          <div ref={dropdownRef} style={{ position: 'relative' }}>
-            <div
-              onClick={() => setDropdownOpen(!dropdownOpen)}
-              style={{
-                width: '100%',
-                background: 'var(--bg-input)',
-                color: selectedNode ? 'var(--text-primary)' : 'var(--text-muted)',
-                border: '1px solid var(--border-color)',
-                borderRadius: 4,
-                padding: '8px 10px',
-                fontSize: 13,
-                fontFamily: 'var(--font-mono)',
-                cursor: 'pointer',
-                userSelect: 'none',
-              }}
-            >
-              {selectedNode ? (
-                <span>
-                  {selectedNode.prefixParts.map((p, i) => (
-                    <span key={i} style={{ color: 'var(--text-muted)' }}>{p.connector}</span>
-                  ))}
-                  {selectedNode.name}
-                </span>
-              ) : t('saveRequest.noFolders')}
+
+        <label className="save-request-field-label" htmlFor="save-request-name">
+          {t('saveRequest.name')}
+        </label>
+        <input
+          id="save-request-name"
+          type="text"
+          className="save-request-name-input"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') handleSubmit();
+          }}
+          autoFocus
+        />
+
+        <label className="save-request-field-label">{t('saveRequest.folder')}</label>
+        <div className="save-request-browser" role="tree" aria-label={t('saveRequest.folder')}>
+          {!hasFolders ? (
+            <div className="save-request-browser-empty">
+              <p>{t('saveRequest.noFolders')}</p>
+              <p className="save-request-browser-hint">{t('saveRequest.createFolderHint')}</p>
             </div>
-            {dropdownOpen && tree.length > 0 && (
-              <div style={{
-                position: 'absolute',
-                top: '100%',
-                left: 0,
-                right: 0,
-                marginTop: 2,
-                background: 'var(--bg-secondary)',
-                border: '1px solid var(--border-color)',
-                borderRadius: 4,
-                maxHeight: 240,
-                overflowY: 'auto',
-                zIndex: 100,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-              }}>
-                {tree.map(node => (
-                  <div
-                    key={node.id}
-                    onClick={() => {
-                      setSelectedFolderId(node.id);
-                      setDropdownOpen(false);
-                    }}
-                    style={{
-                      padding: '6px 10px',
-                      fontSize: 13,
-                      fontFamily: 'var(--font-mono)',
-                      cursor: 'pointer',
-                      background: node.id === selectedFolderId ? 'var(--bg-tertiary)' : 'transparent',
-                      color: node.id === selectedFolderId ? 'var(--accent)' : 'var(--text-primary)',
-                      whiteSpace: 'nowrap',
-                    }}
-                    onMouseEnter={e => { if (node.id !== selectedFolderId) (e.currentTarget as HTMLElement).style.background = 'var(--bg-input)'; }}
-                    onMouseLeave={e => { if (node.id !== selectedFolderId) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
-                  >
-                    {node.prefixParts.map((p, i) => (
-                      <span key={i} style={{ color: 'var(--text-muted)' }}>{p.connector}</span>
-                    ))}
-                    {node.name}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          {tree.length === 0 && (
-            <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
-              {t('saveRequest.createFolderHint')}
-            </p>
+          ) : (
+            <SaveFolderTree
+              nodes={collections}
+              depth={0}
+              expandedIds={expandedIds}
+              onToggleExpand={onToggleExpand}
+              selectedFolderId={selectedFolderId}
+              onSelectFolder={setSelectedFolderId}
+              onSave={handleSubmit}
+            />
           )}
         </div>
+
         <div className="modal-actions">
-          <button className="btn btn-secondary" onClick={onClose}>{t('url.cancel')}</button>
-          <button className="btn btn-send" onClick={handleSubmit} disabled={tree.length === 0}>{t('saveRequest.save')}</button>
+          <button type="button" className="btn btn-secondary" onClick={onClose}>
+            {t('url.cancel')}
+          </button>
+          <button
+            type="button"
+            className="btn btn-send"
+            onClick={handleSubmit}
+            disabled={!hasFolders || !selectedFolderId}
+          >
+            {t('saveRequest.save')}
+          </button>
         </div>
       </div>
     </div>
