@@ -52,8 +52,6 @@ export default function ResizableSplitter() {
     <div
       className="splitter"
       onMouseDown={handleMouseDown}
-    >
-      <div className="splitter-handle" />
-    </div>
+    />
   );
 }

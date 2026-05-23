@@ -8,7 +8,7 @@ import { useCollectionStore, getCollectionPath } from './store/useCollection';
 import { applyTheme } from './themes';
 import { setLocale, getLocale, t } from './i18n';
 import UrlBar from './components/UrlBar';
-import RequestEnvToolbar from './components/RequestEnvToolbar';
+import TitleBar from './components/TitleBar';
 import ParamsTab from './components/ParamsTab';
 import HeadersTab from './components/HeadersTab';
 import EnvironmentModal from './components/EnvironmentModal';
@@ -35,18 +35,16 @@ export default function App() {
   const {
     theme,
     locale,
-    settingsOpen,
-    setSettingsOpen,
     responseHeight,
     dataDir,
-    shortcuts,
     curlPanelOpen,
-    setCurlPanelOpen,
     curlPanelWidth,
     setCurlPanelWidth,
     curlPanelCollapsed,
+    collectionSidebarOpen,
     collectionSidebarWidth,
     setCollectionSidebarWidth,
+    setCollectionSidebarOpen,
   } = useSettingsStore();
 
   useEffect(() => {
@@ -57,7 +55,7 @@ export default function App() {
 
   useEffect(() => {
     const onFocusCollectionSearch = () => {
-      setSidebarOpen(true);
+      setCollectionSidebarOpen(true);
       requestAnimationFrame(() => focusCollectionSearchInput());
     };
     window.addEventListener('app:focus-collection-search', onFocusCollectionSearch);
@@ -83,7 +81,6 @@ export default function App() {
     useStore.getState().syncHistoryRetention();
   }, []);
 
-  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [toast, setToast] = useState('');
   const [saveModalOpen, setSaveModalOpen] = useState(false);
 
@@ -252,29 +249,10 @@ export default function App() {
 
   return (
     <>
-      <div className="app-header">
-        <img src="/logo.png" alt="APILite" style={{ height: 28, borderRadius: 6 }} />
-        <button className="btn btn-icon" onClick={() => setSidebarOpen(!sidebarOpen)} title={t('app.toggleCollections')}>☰</button>
-        <button
-          className="btn btn-icon"
-          onClick={() => {
-            if (!curlPanelOpen) {
-              setCurlPanelOpen(true);
-              useSettingsStore.getState().setCurlPanelCollapsed(false);
-            } else {
-              setCurlPanelOpen(false);
-            }
-          }}
-          title={`${t('app.toggleCurlPanel')} (${shortcuts.exportCurl})`}
-        >
-          {'>_'}
-        </button>
-        <button className="btn btn-icon" onClick={() => setSettingsOpen(!settingsOpen)} title={`${t('app.settings')} (${shortcuts.toggleSettings})`}>⚙</button>
-        <RequestEnvToolbar />
-      </div>
+      <TitleBar />
       <div className="app-body">
         <div className="main-content">
-        {sidebarOpen && (
+        {collectionSidebarOpen && (
           <>
             <CollectionSidebar />
             <VerticalResizableSplitter

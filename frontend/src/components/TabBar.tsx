@@ -1,5 +1,6 @@
 import { useStore } from '../store/useStore';
 import { methodColors } from '../constants';
+import RequestEnvToolbar from './RequestEnvToolbar';
 
 export default function TabBar() {
   const { tabs, activeTabId, switchTab, closeTab, createTab } = useStore();
@@ -7,13 +8,17 @@ export default function TabBar() {
   if (tabs.length === 0) {
     return (
       <div className="tab-bar">
-        <button className="tab-add" onClick={createTab} title="New Tab">+</button>
+        <div className="tab-bar-tabs">
+          <button className="tab-add" onClick={createTab} title="New Tab">+</button>
+        </div>
+        <RequestEnvToolbar />
       </div>
     );
   }
 
   return (
     <div className="tab-bar">
+      <div className="tab-bar-tabs">
       {tabs.map(tab => {
         const isActive = tab.id === activeTabId;
         const method = tab.request.method;
@@ -37,6 +42,8 @@ export default function TabBar() {
         );
       })}
       <button className="tab-add" onClick={createTab} title="New Tab">+</button>
+      </div>
+      <RequestEnvToolbar />
     </div>
   );
 }

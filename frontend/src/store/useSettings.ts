@@ -11,6 +11,9 @@ export interface ShortcutConfig {
   focusUrl: string;
   focusCollectionSearch: string;
   toggleSettings: string;
+  toggleHistory: string;
+  toggleCollectionSidebar: string;
+  toggleCurlPanel: string;
   newTab: string;
   closeTab: string;
   prevTab: string;
@@ -28,6 +31,9 @@ export const defaultShortcuts: ShortcutConfig = {
   focusUrl: `${mod}+L`,
   focusCollectionSearch: `${mod}+Shift+F`,
   toggleSettings: `${mod}+,`,
+  toggleHistory: 'Ctrl+`',
+  toggleCollectionSidebar: `${mod}+B`,
+  toggleCurlPanel: `${mod}+Alt+B`,
   newTab: `${mod}+T`,
   closeTab: `${mod}+W`,
   prevTab: `${mod}+Alt+ArrowLeft`,
@@ -41,6 +47,7 @@ export interface AppSettings {
   responseHeight: number;
   historyHeight: number;
   historyCollapsed: boolean;
+  collectionSidebarOpen: boolean;
   collectionSidebarWidth: number;
   curlPanelOpen: boolean;
   curlPanelWidth: number;
@@ -61,6 +68,7 @@ export const defaultSettings: AppSettings = {
   responseHeight: 300,
   historyHeight: 250,
   historyCollapsed: true,
+  collectionSidebarOpen: true,
   collectionSidebarWidth: 260,
   curlPanelOpen: true,
   curlPanelWidth: 360,
@@ -94,6 +102,12 @@ function migrateShortcuts(shortcuts: Partial<ShortcutConfig> & Record<string, st
   for (const key of Object.keys(defaultShortcuts) as (keyof ShortcutConfig)[]) {
     const raw = merged[key]?.trim();
     const value = raw || defaultShortcuts[key];
+    if (key === 'toggleHistory') {
+      migrated[key] = value === `${currentMod}+\`` || value === `${oldMod}+\``
+        ? defaultShortcuts.toggleHistory
+        : value;
+      continue;
+    }
     migrated[key] = value.startsWith(oldMod + '+')
       ? value.replace(oldMod + '+', currentMod + '+')
       : value;
@@ -140,6 +154,7 @@ interface SettingsState extends AppSettings {
   setResponseHeight: (height: number) => void;
   setHistoryHeight: (height: number) => void;
   setHistoryCollapsed: (collapsed: boolean) => void;
+  setCollectionSidebarOpen: (open: boolean) => void;
   setCollectionSidebarWidth: (width: number) => void;
   setCurlPanelOpen: (open: boolean) => void;
   setCurlPanelWidth: (width: number) => void;
@@ -217,6 +232,12 @@ export const useSettingsStore = create<SettingsState>((set) => {
       return next;
     }),
 
+    setCollectionSidebarOpen: (collectionSidebarOpen) => set(state => {
+      const next = { ...state, collectionSidebarOpen };
+      saveSettings(next);
+      return next;
+    }),
+
     setCollectionSidebarWidth: (collectionSidebarWidth) => set(state => {
       const next = { ...state, collectionSidebarWidth: Math.round(collectionSidebarWidth) };
       saveSettings(next);
@@ -289,6 +310,19 @@ function isToggleSettingsKey(e: KeyboardEvent | React.KeyboardEvent): boolean {
   return mod && !e.shiftKey && !e.altKey && (e.key === ',' || e.code === 'Comma');
 }
 
+/** Physical Ctrl+` (not Cmd); macOS Option does not alter this key. */
+function isToggleHistoryKey(e: KeyboardEvent | React.KeyboardEvent): boolean {
+  return e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey
+    && (e.key === '`' || e.code === 'Backquote');
+}
+
+/** Cmd+Opt+B / Ctrl+Alt+B — use physical KeyB; Option on Mac changes e.key away from "b". */
+function isToggleCurlPanelKey(e: KeyboardEvent | React.KeyboardEvent): boolean {
+  if (e.shiftKey || e.code !== 'KeyB') return false;
+  if (isMac) return e.metaKey && e.altKey && !e.ctrlKey;
+  return e.ctrlKey && e.altKey && !e.metaKey;
+}
+
 export function matchesShortcutCombo(
   e: KeyboardEvent | React.KeyboardEvent,
   shortcut: string,
@@ -297,6 +331,11 @@ export function matchesShortcutCombo(
   if (!trimmed) return false;
   if (buildCombo(e) === trimmed) return true;
   if (trimmed === defaultShortcuts.toggleSettings && isToggleSettingsKey(e)) return true;
+  if ((trimmed === defaultShortcuts.toggleHistory || trimmed.startsWith('Ctrl+`'))
+    && isToggleHistoryKey(e)) {
+    return true;
+  }
+  if (trimmed === defaultShortcuts.toggleCurlPanel && isToggleCurlPanelKey(e)) return true;
   return false;
 }
 
@@ -354,9 +393,29 @@ export function initKeyboardShortcuts(): () => void {
       return;
     }
 
-    if (matchesShortcutCombo(e, shortcuts.exportCurl)) {
+    if (matchesShortcutCombo(e, shortcuts.toggleHistory)) {
       e.preventDefault();
-      window.dispatchEvent(new CustomEvent('app:toggle-curl-panel'));
+      const { historyCollapsed, setHistoryCollapsed } = useSettingsStore.getState();
+      setHistoryCollapsed(!historyCollapsed);
+      return;
+    }
+
+    if (matchesShortcutCombo(e, shortcuts.exportCurl) || matchesShortcutCombo(e, shortcuts.toggleCurlPanel)) {
+      e.preventDefault();
+      const { curlPanelOpen, setCurlPanelOpen, setCurlPanelCollapsed } = useSettingsStore.getState();
+      if (!curlPanelOpen) {
+        setCurlPanelOpen(true);
+        setCurlPanelCollapsed(false);
+      } else {
+        setCurlPanelOpen(false);
+      }
+      return;
+    }
+
+    if (matchesShortcutCombo(e, shortcuts.toggleCollectionSidebar)) {
+      e.preventDefault();
+      const { collectionSidebarOpen, setCollectionSidebarOpen } = useSettingsStore.getState();
+      setCollectionSidebarOpen(!collectionSidebarOpen);
       return;
     }
 
@@ -395,6 +454,11 @@ export function initKeyboardShortcuts(): () => void {
 
 function normalizeKey(e: KeyboardEvent | React.KeyboardEvent): string {
   if (e.key === ',' || e.code === 'Comma') return ',';
+  if (e.key === '`' || e.code === 'Backquote') return '`';
+  const letter = e.code.match(/^Key([A-Z])$/);
+  if (letter) return letter[1];
+  const digit = e.code.match(/^Digit([0-9])$/);
+  if (digit) return digit[1];
   if (e.key.length === 1) return e.key.toUpperCase();
   return e.key;
 }

@@ -8,14 +8,12 @@ export default function RequestEnvToolbar() {
   const setEnvModalOpen = useEnvironmentStore((s) => s.setEnvModalOpen);
 
   return (
-    <div className="request-env-toolbar">
-      <span className="request-env-toolbar-label" title={t('env.quickHint')}>
-        {t('env.active')}
-      </span>
+    <div className="request-env-toolbar" title={t('env.quickHint')}>
       <select
         className="request-env-select"
         value={activeEnvironmentId}
         onChange={(e) => setActiveEnvironmentId(e.target.value)}
+        aria-label={t('env.active')}
       >
         {environments.map((e) => (
           <option key={e.id} value={e.id}>
@@ -23,8 +21,14 @@ export default function RequestEnvToolbar() {
           </option>
         ))}
       </select>
-      <button type="button" className="btn btn-secondary request-env-manage" onClick={() => setEnvModalOpen(true)}>
-        {t('env.manage')}
+      <button
+        type="button"
+        className="btn btn-icon request-env-settings"
+        onClick={() => setEnvModalOpen(true)}
+        title={t('env.manage')}
+        aria-label={t('env.manage')}
+      >
+        ⚙
       </button>
     </div>
   );
