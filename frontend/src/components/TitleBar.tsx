@@ -1,5 +1,5 @@
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { useSettingsStore } from '../store/useSettings';
+import { toggleCurlPanelVisibility, useSettingsStore } from '../store/useSettings';
 import { t } from '../i18n';
 import { isTauri } from '../tauri/setupMenu';
 import { PanelBottomIcon, PanelLeftIcon, PanelRightIcon } from './PanelToggleIcons';
@@ -10,8 +10,6 @@ export default function TitleBar() {
     settingsOpen,
     setSettingsOpen,
     curlPanelOpen,
-    setCurlPanelOpen,
-    setCurlPanelCollapsed,
     collectionSidebarOpen,
     setCollectionSidebarOpen,
     historyCollapsed,
@@ -23,15 +21,6 @@ export default function TitleBar() {
     if (!isTauri()) return;
     e.preventDefault();
     void getCurrentWindow().startDragging();
-  };
-
-  const toggleCurl = () => {
-    if (!curlPanelOpen) {
-      setCurlPanelOpen(true);
-      setCurlPanelCollapsed(false);
-    } else {
-      setCurlPanelOpen(false);
-    }
   };
 
   return (
@@ -64,7 +53,7 @@ export default function TitleBar() {
         <button
           type="button"
           className="btn btn-icon app-titlebar-btn"
-          onClick={toggleCurl}
+          onClick={toggleCurlPanelVisibility}
           title={`${t('app.toggleCurlPanel')} (${shortcuts.toggleCurlPanel})`}
           aria-label={t('app.toggleCurlPanel')}
           aria-pressed={curlPanelOpen}

@@ -7,7 +7,6 @@ import { migrateStoragePath } from '../utils/storagePaths';
 export interface ShortcutConfig {
   sendRequest: string;
   saveRequest: string;
-  exportCurl: string;
   focusUrl: string;
   focusCollectionSearch: string;
   toggleSettings: string;
@@ -27,7 +26,6 @@ const mod = isMac ? 'Cmd' : 'Ctrl';
 export const defaultShortcuts: ShortcutConfig = {
   sendRequest: `${mod}+Enter`,
   saveRequest: `${mod}+S`,
-  exportCurl: `${mod}+Shift+E`,
   focusUrl: `${mod}+L`,
   focusCollectionSearch: `${mod}+Shift+F`,
   toggleSettings: `${mod}+,`,
@@ -97,7 +95,11 @@ function clampHistoryMaxCount(count: number): number {
 function migrateShortcuts(shortcuts: Partial<ShortcutConfig> & Record<string, string>): ShortcutConfig {
   const currentMod = isMac ? 'Cmd' : 'Ctrl';
   const oldMod = isMac ? 'Ctrl' : 'Cmd';
-  const merged = { ...defaultShortcuts, ...shortcuts };
+  const merged: Partial<ShortcutConfig> & Record<string, string> = { ...defaultShortcuts, ...shortcuts };
+  const legacyExportCurl = shortcuts.exportCurl?.trim();
+  if (legacyExportCurl && !shortcuts.toggleCurlPanel?.trim()) {
+    merged.toggleCurlPanel = legacyExportCurl;
+  }
   const migrated = { ...defaultShortcuts };
   for (const key of Object.keys(defaultShortcuts) as (keyof ShortcutConfig)[]) {
     const raw = merged[key]?.trim();
@@ -305,6 +307,16 @@ export function toggleSettingsPanel() {
   useSettingsStore.getState().setSettingsOpen(!open);
 }
 
+export function toggleCurlPanelVisibility() {
+  const { curlPanelOpen, setCurlPanelOpen, setCurlPanelCollapsed } = useSettingsStore.getState();
+  if (!curlPanelOpen) {
+    setCurlPanelOpen(true);
+    setCurlPanelCollapsed(false);
+  } else {
+    setCurlPanelOpen(false);
+  }
+}
+
 function isToggleSettingsKey(e: KeyboardEvent | React.KeyboardEvent): boolean {
   const mod = isMac ? e.metaKey : e.ctrlKey;
   return mod && !e.shiftKey && !e.altKey && (e.key === ',' || e.code === 'Comma');
@@ -400,15 +412,9 @@ export function initKeyboardShortcuts(): () => void {
       return;
     }
 
-    if (matchesShortcutCombo(e, shortcuts.exportCurl) || matchesShortcutCombo(e, shortcuts.toggleCurlPanel)) {
+    if (matchesShortcutCombo(e, shortcuts.toggleCurlPanel)) {
       e.preventDefault();
-      const { curlPanelOpen, setCurlPanelOpen, setCurlPanelCollapsed } = useSettingsStore.getState();
-      if (!curlPanelOpen) {
-        setCurlPanelOpen(true);
-        setCurlPanelCollapsed(false);
-      } else {
-        setCurlPanelOpen(false);
-      }
+      toggleCurlPanelVisibility();
       return;
     }
 

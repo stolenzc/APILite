@@ -60,22 +60,7 @@ export default function App() {
     };
     window.addEventListener('app:focus-collection-search', onFocusCollectionSearch);
     return () => window.removeEventListener('app:focus-collection-search', onFocusCollectionSearch);
-  }, []);
-
-  useEffect(() => {
-    const onToggleCurlPanel = () => {
-      const { curlPanelOpen: open, setCurlPanelOpen: setOpen, setCurlPanelCollapsed } =
-        useSettingsStore.getState();
-      if (!open) {
-        setOpen(true);
-        setCurlPanelCollapsed(false);
-        return;
-      }
-      setOpen(false);
-    };
-    window.addEventListener('app:toggle-curl-panel', onToggleCurlPanel);
-    return () => window.removeEventListener('app:toggle-curl-panel', onToggleCurlPanel);
-  }, []);
+  }, [setCollectionSidebarOpen]);
 
   useEffect(() => {
     useStore.getState().syncHistoryRetention();

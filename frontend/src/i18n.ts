@@ -6,8 +6,6 @@ const messages: Record<Locale, Record<string, string>> = {
   en: {
     // App
     'app.name': 'APILite',
-    'app.collections': 'Collections',
-    'app.collections.comingSoon': 'Collections coming in next update',
     'app.settings': 'Settings',
     'app.toggleCollections': 'Toggle collections sidebar',
     'app.toggleCurlPanel': 'Toggle cURL panel',
@@ -17,12 +15,9 @@ const messages: Record<Locale, Record<string, string>> = {
 
     // URL Bar
     'url.placeholder': 'Enter request URL or paste curl command',
-    'url.export': 'Export cURL',
     'url.send': 'Send',
     'url.sending': 'Sending...',
-    'url.export.title': 'Export cURL',
     'url.cancel': 'Cancel',
-    'url.copy': 'Copy to Clipboard',
     'url.curlParseError': 'Failed to parse cURL',
 
     // cURL panel
@@ -134,7 +129,6 @@ const messages: Record<Locale, Record<string, string>> = {
     // Shortcut labels
     'shortcut.sendRequest': 'Send Request',
     'shortcut.saveRequest': 'Save Request',
-    'shortcut.exportCurl': 'Toggle cURL Panel',
     'shortcut.focusUrl': 'Focus URL Bar',
     'shortcut.focusCollectionSearch': 'Focus Collection Search',
     'shortcut.toggleSettings': 'Open Settings',
@@ -173,8 +167,6 @@ const messages: Record<Locale, Record<string, string>> = {
   zh: {
     // App
     'app.name': 'APILite',
-    'app.collections': '集合',
-    'app.collections.comingSoon': '集合功能即将推出',
     'app.settings': '设置',
     'app.toggleCollections': '显示或隐藏集合侧边栏',
     'app.toggleCurlPanel': '显示或隐藏 cURL 面板',
@@ -184,12 +176,9 @@ const messages: Record<Locale, Record<string, string>> = {
 
     // URL Bar
     'url.placeholder': '输入请求 URL 或粘贴 curl 命令',
-    'url.export': '导出 cURL',
     'url.send': '发送',
     'url.sending': '发送中...',
-    'url.export.title': '导出 cURL',
     'url.cancel': '取消',
-    'url.copy': '复制到剪贴板',
     'url.curlParseError': 'cURL 解析失败',
 
     // cURL panel
@@ -301,7 +290,6 @@ const messages: Record<Locale, Record<string, string>> = {
     // Shortcut labels
     'shortcut.sendRequest': '发送请求',
     'shortcut.saveRequest': '保存请求',
-    'shortcut.exportCurl': '切换 cURL 面板',
     'shortcut.focusUrl': '聚焦地址栏',
     'shortcut.focusCollectionSearch': '聚焦集合搜索',
     'shortcut.toggleSettings': '打开设置',

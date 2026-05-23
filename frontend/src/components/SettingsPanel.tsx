@@ -11,7 +11,6 @@ import { HISTORY_DAY_FILE_PATTERN } from '../utils/historyStorage';
 const SHORTCUT_LABELS: Record<keyof ShortcutConfig, string> = {
   sendRequest: 'shortcut.sendRequest',
   saveRequest: 'shortcut.saveRequest',
-  exportCurl: 'shortcut.exportCurl',
   focusUrl: 'shortcut.focusUrl',
   focusCollectionSearch: 'shortcut.focusCollectionSearch',
   toggleSettings: 'shortcut.toggleSettings',
