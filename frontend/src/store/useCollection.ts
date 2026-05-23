@@ -108,6 +108,12 @@ export function nodeInTree(nodes: CollectionNode[], id: string): boolean {
   return false;
 }
 
+/** Folder ids from collection root down to `nodeId` (inclusive), for expanding tree UIs. */
+export function folderPathIds(nodes: CollectionNode[], nodeId: string): string[] {
+  const { path } = findNode(nodes, nodeId);
+  return path.filter((n): n is CollectionFolder => n.type === 'folder').map((n) => n.id);
+}
+
 function expandPathToNode(collections: CollectionNode[], nodeId: string): CollectionNode[] {
   const { node, path } = findNode(collections, nodeId);
   if (!node) return collections;

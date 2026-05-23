@@ -6,6 +6,7 @@ import type { CollectionFolder, CollectionNode, CollectionRequest } from '../typ
 import { t } from '../i18n';
 import { methodColors } from '../constants';
 import { useSettingsStore } from '../store/useSettings';
+import TreeChevron from './TreeChevron';
 
 // Global drag state shared across all TreeNodes
 let dragSourceId: string | null = null;
@@ -309,7 +310,9 @@ function TreeNode({ node, depth = 0 }: { node: CollectionNode; depth?: number })
         }
       >
         {isFolder && (
-          <span className="tree-icon">{node.collapsed ? '▶' : '▼'}</span>
+          <span className="tree-icon">
+            <TreeChevron expanded={!node.collapsed} />
+          </span>
         )}
         {isFolder ? (
           <span className="tree-folder">📁</span>

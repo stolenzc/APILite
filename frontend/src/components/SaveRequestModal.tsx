@@ -1,15 +1,77 @@
-import { useState, useCallback } from 'react';
-import { useCollectionStore } from '../store/useCollection';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { useCollectionStore, folderPathIds } from '../store/useCollection';
 import type { CollectionFolder, CollectionNode } from '../types';
 import { t } from '../i18n';
 import { useModalOverlayDismiss } from '../utils/modalOverlayDismiss';
+import { showToast } from '../utils/toast';
+import TreeChevron from './TreeChevron';
 
 function folderChildren(nodes: CollectionNode[]): CollectionFolder[] {
   return nodes.filter((n) => n.type === 'folder') as CollectionFolder[];
 }
 
+function findFolderById(nodes: CollectionNode[], id: string): CollectionFolder | null {
+  for (const n of nodes) {
+    if (n.type === 'folder') {
+      if (n.id === id) return n;
+      const found = findFolderById(n.children, id);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
 function hasFolderChildren(folder: CollectionFolder): boolean {
   return folderChildren(folder.children).length > 0;
+}
+
+type SaveFolderContextMenuState = {
+  folderId: string;
+  x: number;
+  y: number;
+  empty: boolean;
+};
+
+function SaveFolderContextMenu({
+  menu,
+  onClose,
+  onDelete,
+}: {
+  menu: SaveFolderContextMenuState;
+  onClose: () => void;
+  onDelete: (folderId: string) => void;
+}) {
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) onClose();
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [onClose]);
+
+  return (
+    <div
+      ref={menuRef}
+      className="context-menu save-request-context-menu"
+      style={{ left: menu.x, top: menu.y }}
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      <div
+        className={`context-menu-item${menu.empty ? '' : ' context-menu-item--disabled'}`}
+        title={!menu.empty ? t('saveRequest.deleteFolderNotEmpty') : undefined}
+        onClick={() => {
+          if (menu.empty) {
+            onDelete(menu.folderId);
+            onClose();
+          }
+        }}
+      >
+        {t('saveRequest.delete')}
+      </div>
+    </div>
+  );
 }
 
 interface FolderTreeProps {
@@ -20,6 +82,7 @@ interface FolderTreeProps {
   selectedFolderId: string | null;
   onSelectFolder: (id: string) => void;
   onSave: () => void;
+  onFolderContextMenu: (folder: CollectionFolder, e: React.MouseEvent) => void;
 }
 
 function SaveFolderTree({
@@ -30,6 +93,7 @@ function SaveFolderTree({
   selectedFolderId,
   onSelectFolder,
   onSave,
+  onFolderContextMenu,
 }: FolderTreeProps) {
   const folders = folderChildren(nodes);
   if (folders.length === 0) return null;
@@ -49,6 +113,7 @@ function SaveFolderTree({
               role="treeitem"
               aria-expanded={expandable ? expanded : undefined}
               aria-selected={selected}
+              onContextMenu={(e) => onFolderContextMenu(folder, e)}
             >
               {expandable ? (
                 <button
@@ -60,7 +125,7 @@ function SaveFolderTree({
                     onToggleExpand(folder.id);
                   }}
                 >
-                  {expanded ? '▾' : '▶'}
+                  <TreeChevron expanded={expanded} />
                 </button>
               ) : (
                 <span className="save-request-tree-expand save-request-tree-expand--leaf" aria-hidden />
@@ -84,6 +149,7 @@ function SaveFolderTree({
                 selectedFolderId={selectedFolderId}
                 onSelectFolder={onSelectFolder}
                 onSave={onSave}
+                onFolderContextMenu={onFolderContextMenu}
               />
             )}
           </div>
@@ -101,12 +167,23 @@ interface Props {
 
 export default function SaveRequestModal({ onClose, onSave, defaultName }: Props) {
   const collections = useCollectionStore((s) => s.collections);
+  const addCollection = useCollectionStore((s) => s.addCollection);
+  const addFolder = useCollectionStore((s) => s.addFolder);
+  const deleteNode = useCollectionStore((s) => s.deleteNode);
   const [name, setName] = useState(defaultName);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
+  const [contextMenu, setContextMenu] = useState<SaveFolderContextMenuState | null>(null);
   const overlayDismiss = useModalOverlayDismiss(onClose);
 
-  const hasFolders = folderChildren(collections).length > 0;
+  const rootFolders = folderChildren(collections);
+  const hasFolders = rootFolders.length > 0;
+
+  const expandToNode = useCallback((nodeId: string) => {
+    const tree = useCollectionStore.getState().collections;
+    const pathIds = folderPathIds(tree, nodeId);
+    setExpandedIds((prev) => new Set([...prev, ...pathIds]));
+  }, []);
 
   const onToggleExpand = useCallback((id: string) => {
     setExpandedIds((prev) => {
@@ -116,6 +193,59 @@ export default function SaveRequestModal({ onClose, onSave, defaultName }: Props
       return next;
     });
   }, []);
+
+  const handleNewCollection = useCallback(() => {
+    const id = addCollection();
+    if (!id) return;
+    setSelectedFolderId(id);
+    setExpandedIds((prev) => new Set(prev).add(id));
+  }, [addCollection]);
+
+  const handleNewFolder = useCallback(() => {
+    if (!selectedFolderId) return;
+    const newId = addFolder(selectedFolderId);
+    if (!newId) return;
+    expandToNode(newId);
+    setSelectedFolderId(newId);
+  }, [addFolder, selectedFolderId, expandToNode]);
+
+  const handleCreate = useCallback(() => {
+    if (selectedFolderId) handleNewFolder();
+    else handleNewCollection();
+  }, [selectedFolderId, handleNewFolder, handleNewCollection]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedFolderId(null);
+  }, []);
+
+  const onFolderContextMenu = useCallback((folder: CollectionFolder, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({
+      folderId: folder.id,
+      x: e.clientX,
+      y: e.clientY,
+      empty: folder.children.length === 0,
+    });
+  }, []);
+
+  const handleDeleteFolder = useCallback(
+    (folderId: string) => {
+      const folder = findFolderById(useCollectionStore.getState().collections, folderId);
+      if (!folder || folder.children.length > 0) {
+        showToast(t('saveRequest.deleteFolderNotEmpty'));
+        return;
+      }
+      deleteNode(folderId);
+      if (selectedFolderId === folderId) setSelectedFolderId(null);
+      setExpandedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(folderId);
+        return next;
+      });
+    },
+    [deleteNode, selectedFolderId],
+  );
 
   const handleSubmit = () => {
     if (!selectedFolderId) return;
@@ -143,8 +273,33 @@ export default function SaveRequestModal({ onClose, onSave, defaultName }: Props
           autoFocus
         />
 
-        <label className="save-request-field-label">{t('saveRequest.folder')}</label>
-        <div className="save-request-browser" role="tree" aria-label={t('saveRequest.folder')}>
+        <div className="save-request-folder-header">
+          <label className="save-request-field-label save-request-field-label--inline">
+            {t('saveRequest.folder')}
+          </label>
+          <div className="save-request-browser-toolbar">
+            <button
+              type="button"
+              className="btn btn-secondary save-request-toolbar-btn"
+              onClick={handleCreate}
+            >
+              {selectedFolderId ? t('saveRequest.newFolder') : t('saveRequest.newCollection')}
+            </button>
+          </div>
+        </div>
+
+        <div
+          className="save-request-browser"
+          role="tree"
+          aria-label={t('saveRequest.folder')}
+          onMouseDown={(e) => {
+            const target = e.target as HTMLElement;
+            if (!target.closest('.save-request-tree-row-wrap')) {
+              clearSelection();
+              setContextMenu(null);
+            }
+          }}
+        >
           {!hasFolders ? (
             <div className="save-request-browser-empty">
               <p>{t('saveRequest.noFolders')}</p>
@@ -159,6 +314,7 @@ export default function SaveRequestModal({ onClose, onSave, defaultName }: Props
               selectedFolderId={selectedFolderId}
               onSelectFolder={setSelectedFolderId}
               onSave={handleSubmit}
+              onFolderContextMenu={onFolderContextMenu}
             />
           )}
         </div>
@@ -171,12 +327,20 @@ export default function SaveRequestModal({ onClose, onSave, defaultName }: Props
             type="button"
             className="btn btn-send"
             onClick={handleSubmit}
-            disabled={!hasFolders || !selectedFolderId}
+            disabled={!selectedFolderId}
           >
             {t('saveRequest.save')}
           </button>
         </div>
       </div>
+
+      {contextMenu && (
+        <SaveFolderContextMenu
+          menu={contextMenu}
+          onClose={() => setContextMenu(null)}
+          onDelete={handleDeleteFolder}
+        />
+      )}
     </div>
   );
 }

@@ -757,9 +757,17 @@ body {
 }
 
 .tree-icon {
-  font-size: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
   color: var(--text-muted);
-  min-width: 12px;
+}
+
+.tree-chevron {
+  display: block;
 }
 
 .tree-folder {
@@ -1877,6 +1885,10 @@ input[type="checkbox"].kv-checkbox-lg {
   z-index: 110;
 }
 
+.save-request-context-menu {
+  z-index: 130;
+}
+
 .save-request-field-label {
   display: block;
   font-size: 12px;
@@ -1886,6 +1898,31 @@ input[type="checkbox"].kv-checkbox-lg {
 
 .save-request-field-label:not(:first-of-type) {
   margin-top: 14px;
+}
+
+.save-request-folder-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+  flex-shrink: 0;
+}
+
+.save-request-field-label--inline {
+  margin: 0;
+}
+
+.save-request-browser-toolbar {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.save-request-toolbar-btn {
+  font-size: 12px;
+  padding: 5px 10px;
+  white-space: nowrap;
 }
 
 .save-request-name-input {
@@ -1959,19 +1996,21 @@ input[type="checkbox"].kv-checkbox-lg {
 
 .save-request-tree-expand {
   flex-shrink: 0;
-  width: 22px;
-  height: 28px;
+  width: 20px;
+  height: 20px;
   padding: 0;
   border: none;
   border-radius: 3px;
   background: transparent;
   color: var(--text-muted);
-  font-size: 10px;
-  line-height: 1;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+.save-request-tree-expand .tree-chevron {
+  display: block;
 }
 
 .save-request-tree-expand:hover {
@@ -1980,7 +2019,9 @@ input[type="checkbox"].kv-checkbox-lg {
 }
 
 .save-request-tree-expand--leaf {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   cursor: default;
   pointer-events: none;
 }

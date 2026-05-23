@@ -119,7 +119,7 @@ Pick an environment from the dropdown on the **tab bar**. Use `{{variable_name}}
 1. Configure the request, then press **⌘ S** / **Ctrl+S** (or save from the collection sidebar when applicable).
 2. Enter a **request name**.
 3. In the folder browser, expand folders with **▶** / **▾**, click a folder to select it, then **Save** (or double-click a folder to save immediately).
-4. Create folders first in the collections sidebar if the tree is empty.
+4. Use the toolbar button above the tree: **New collection** when nothing is selected, **New folder** when a folder is selected (click blank area in the tree to deselect).
 
 ---
 
