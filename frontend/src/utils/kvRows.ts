@@ -12,16 +12,17 @@ export function isFormFieldRowEmpty(row: FormField): boolean {
   return !row.value.trim();
 }
 
-/** Postman-style: keep one trailing empty row; append when the last row has content. */
+/**
+ * Postman-style: keep exactly one trailing empty row.
+ * Drops other empty rows (e.g. after clearing input) and appends one when the last row has content.
+ */
 export function withTrailingEmptyRow<T extends Pick<KeyValue, 'key' | 'value'>>(
   rows: T[],
   createEmpty: () => T,
   isEmpty: (row: T) => boolean = isKeyValueRowEmpty,
 ): T[] {
-  if (rows.length === 0) return [createEmpty()];
-  const last = rows[rows.length - 1];
-  if (isEmpty(last)) return rows;
-  return [...rows, createEmpty()];
+  const filled = rows.filter((r) => !isEmpty(r));
+  return [...filled, createEmpty()];
 }
 
 export function withTrailingFormFieldRow(
