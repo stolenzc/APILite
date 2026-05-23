@@ -13,8 +13,6 @@ pub struct HistoryPageResult {
     pub total: usize,
 }
 
-const LEGACY_HISTORY_FILE: &str = "history.json";
-
 fn histories_root(data_dir: &str) -> std::path::PathBuf {
     storage::histories_dir(data_dir)
 }
@@ -39,48 +37,12 @@ fn is_valid_day_key(day: &str) -> bool {
     NaiveDate::parse_from_str(day, "%Y-%m-%d").is_ok()
 }
 
-fn day_key_from_timestamp_ms(ts: i64) -> String {
-    let dt = chrono::DateTime::from_timestamp_millis(ts)
-        .map(|utc| utc.with_timezone(&Local))
-        .unwrap_or_else(Local::now);
-    dt.format("%Y-%m-%d").to_string()
-}
-
-fn group_entries_by_day(entries: &[Value]) -> HashMap<String, Vec<Value>> {
-    let mut by_day: HashMap<String, Vec<Value>> = HashMap::new();
-    for entry in entries {
-        let ts = entry
-            .get("timestamp")
-            .and_then(|v| v.as_i64())
-            .unwrap_or_else(|| Local::now().timestamp_millis());
-        let day = day_key_from_timestamp_ms(ts);
-        by_day.entry(day).or_default().push(entry.clone());
-    }
-    by_day
-}
-
 fn write_day_file(data_dir: &str, day: &str, data: &str) -> Result<(), String> {
     if !is_valid_day_key(day) {
         return Err(format!("Invalid history day key: {day}"));
     }
     let path = histories_root(data_dir).join(day_file_name(day));
     fs::write(path, data).map_err(|e| e.to_string())
-}
-
-fn migrate_legacy(data_dir: &str) -> Result<(), String> {
-    let legacy = histories_root(data_dir).join(LEGACY_HISTORY_FILE);
-    if !legacy.exists() {
-        return Ok(());
-    }
-    let raw = fs::read_to_string(&legacy).map_err(|e| e.to_string())?;
-    if let Ok(Value::Array(entries)) = serde_json::from_str::<Value>(&raw) {
-        fs::create_dir_all(histories_root(data_dir)).map_err(|e| e.to_string())?;
-        for (day, items) in group_entries_by_day(&entries) {
-            let json = serde_json::to_string(&items).map_err(|e| e.to_string())?;
-            write_day_file(data_dir, &day, &json)?;
-        }
-    }
-    fs::remove_file(&legacy).map_err(|e| e.to_string())
 }
 
 fn prune_stale_files(
@@ -96,10 +58,6 @@ fn prune_stale_files(
     for entry in fs::read_dir(&dir).map_err(|e| e.to_string())? {
         let entry = entry.map_err(|e| e.to_string())?;
         let name = entry.file_name().to_string_lossy().to_string();
-        if name == LEGACY_HISTORY_FILE {
-            let _ = fs::remove_file(entry.path());
-            continue;
-        }
         let Some(date) = parse_day_from_file_name(&name) else {
             continue;
         };
@@ -119,7 +77,6 @@ fn entry_timestamp(entry: &Value) -> i64 {
 }
 
 fn load_all_entries(data_dir: &str, max_age_days: u32) -> Result<Vec<Value>, String> {
-    migrate_legacy(data_dir)?;
     let dir = histories_root(data_dir);
     if !dir.exists() {
         return Ok(Vec::new());
@@ -195,7 +152,6 @@ pub fn sync(
     max_age_days: u32,
 ) -> Result<(), String> {
     fs::create_dir_all(histories_root(data_dir)).map_err(|e| e.to_string())?;
-    migrate_legacy(data_dir)?;
 
     for (day, data) in updates {
         write_day_file(data_dir, &day, &data)?;

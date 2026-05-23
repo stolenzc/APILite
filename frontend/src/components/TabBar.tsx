@@ -23,11 +23,11 @@ export default function TabBar() {
         const isActive = tab.id === activeTabId;
         const method = tab.request.method;
         const truncated = tab.name.length > 20 ? tab.name.slice(0, 20) + '…' : tab.name;
-        const isCollection = tab.sourceType === 'collection';
+        const isFolderTab = tab.sourceType === 'folder';
         return (
           <div
             key={tab.id}
-            className={`tab-item ${isActive ? 'active' : ''}${isCollection ? ' collection' : ''}`}
+            className={`tab-item ${isActive ? 'active' : ''}${isFolderTab ? ' folder-tab' : ''}`}
             onClick={() => switchTab(tab.id)}
           >
             <span className="tab-method" style={{ color: (methodColors as any)[method] }}>

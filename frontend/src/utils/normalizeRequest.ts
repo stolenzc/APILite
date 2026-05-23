@@ -9,7 +9,7 @@ export function emptyFormField(): FormField {
   return { key: '', value: '', enabled: true, fieldType: 'text' };
 }
 
-/** Fill defaults for requests loaded from older collection JSON. */
+/** Fill defaults for requests loaded from older saved-request JSON. */
 export function normalizeHttpRequest(req: Partial<HttpRequest> & Pick<HttpRequest, 'method' | 'url'>): HttpRequest {
   return {
     method: req.method,

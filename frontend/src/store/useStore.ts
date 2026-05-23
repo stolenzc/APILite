@@ -32,7 +32,7 @@ const defaultRequest: HttpRequest = normalizeHttpRequest({
   url: '',
 });
 
-export type TabSource = 'collection' | 'temporary';
+export type TabSource = 'folder' | 'temporary';
 
 export interface RequestTab {
   id: string;
@@ -45,7 +45,7 @@ export interface RequestTab {
   unsaved: boolean;
   /** Request snapshot when opened or last saved; used to clear unsaved after revert. */
   savedRequest: HttpRequest | null;
-  collectionId: string | null; // id of the collection node, for Cmd+S auto-save
+  requestNodeId: string | null; // id of the saved request node in the folder tree, for Cmd+S auto-save
 }
 
 interface AppState {
@@ -63,9 +63,9 @@ interface AppState {
   switchTab: (id: string) => void;
   switchToPreviousTab: () => void;
   switchToNextTab: () => void;
-  openTabFromCollection: (req: HttpRequest, name: string, collectionPath: string, collectionId: string) => void;
-  syncCollectionTabName: (collectionId: string, name: string) => void;
-  linkActiveTabToCollection: (collectionId: string, name: string, sourcePath: string) => void;
+  openTabFromFolder: (req: HttpRequest, name: string, folderPath: string, requestNodeId: string) => void;
+  syncFolderTabName: (requestNodeId: string, name: string) => void;
+  linkActiveTabToFolder: (requestNodeId: string, name: string, sourcePath: string) => void;
   markUnsaved: () => void;
   clearUnsaved: () => void;
 
@@ -126,7 +126,7 @@ function newEmptyTab(): RequestTab {
     sourcePath: '',
     unsaved: false,
     savedRequest: cloneHttpRequest(defaultRequest),
-    collectionId: null,
+    requestNodeId: null,
   };
 }
 
@@ -240,9 +240,8 @@ export const useStore = create<AppState>((set, get) => ({
     return { activeTabId: state.tabs[currentIdx + 1].id };
   }),
 
-  openTabFromCollection: (req, name, collectionPath, collectionId) => set(state => {
-    // If already open, switch to existing tab instead of duplicating
-    const existing = state.tabs.find(t => t.collectionId === collectionId);
+  openTabFromFolder: (req, name, folderPath, requestNodeId) => set(state => {
+    const existing = state.tabs.find(t => t.requestNodeId === requestNodeId);
     if (existing) {
       return {
         activeTabId: existing.id,
@@ -251,9 +250,9 @@ export const useStore = create<AppState>((set, get) => ({
             ? {
                 ...t,
                 name,
-                sourcePath: collectionPath,
-                sourceType: 'collection' as const,
-                collectionId,
+                sourcePath: folderPath,
+                sourceType: 'folder' as const,
+                requestNodeId,
                 request: cloneHttpRequest(req),
                 savedRequest: cloneHttpRequest(req),
                 unsaved: false,
@@ -269,29 +268,29 @@ export const useStore = create<AppState>((set, get) => ({
       request: cloneHttpRequest(req),
       response: null,
       loading: false,
-      sourceType: 'collection',
-      sourcePath: collectionPath,
+      sourceType: 'folder',
+      sourcePath: folderPath,
       unsaved: false,
       savedRequest: cloneHttpRequest(req),
-      collectionId,
+      requestNodeId,
     };
     return { tabs: [...state.tabs, tab], activeTabId: tab.id };
   }),
 
-  syncCollectionTabName: (collectionId, name) => set(state => ({
+  syncFolderTabName: (requestNodeId, name) => set(state => ({
     tabs: state.tabs.map(t =>
-      t.collectionId === collectionId ? { ...t, name } : t,
+      t.requestNodeId === requestNodeId ? { ...t, name } : t,
     ),
   })),
 
-  linkActiveTabToCollection: (collectionId, name, sourcePath) => set(state => {
+  linkActiveTabToFolder: (requestNodeId, name, sourcePath) => set(state => {
     const tab = state.tabs.find((t) => t.id === state.activeTabId);
     if (!tab) return state;
     return updateActiveTab(state, {
-      collectionId,
+      requestNodeId,
       name,
       sourcePath,
-      sourceType: 'collection',
+      sourceType: 'folder',
       unsaved: false,
       savedRequest: cloneHttpRequest(tab.request),
     });

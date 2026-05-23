@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { nanoid } from 'nanoid';
-import { useCollectionStore, getCollectionPath, nodeInTree } from '../store/useCollection';
+import { useFolderStore, getFolderPath, nodeInTree } from '../store/useFolderStore';
 import { useStore } from '../store/useStore';
-import type { CollectionFolder, CollectionNode, CollectionRequest } from '../types';
+import type { TreeFolder, TreeNode, TreeRequest } from '../types';
 import { t } from '../i18n';
 import { methodColors } from '../constants';
 import { useSettingsStore } from '../store/useSettings';
@@ -16,7 +16,7 @@ let dragListenersAttached = false;
 let dragDropTargetId: string | null = null;
 let dragDropPosition: 'before' | 'after' | 'inside' | null = null;
 
-const DRAG_HOVER_EVENT = 'collection-drag-hover';
+const DRAG_HOVER_EVENT = 'folder-drag-hover';
 
 function updateGhostPos(e: MouseEvent) {
   if (dragGhostEl) {
@@ -59,7 +59,7 @@ function notifyDragHover(): void {
   window.dispatchEvent(new CustomEvent(DRAG_HOVER_EVENT));
 }
 
-function requestMatchesSearch(node: CollectionRequest, queryNorm: string): boolean {
+function requestMatchesSearch(node: TreeRequest, queryNorm: string): boolean {
   if (!queryNorm) return true;
   const url = node.request.url.toLowerCase();
   const name = node.name.toLowerCase();
@@ -72,7 +72,7 @@ function folderNameMatches(node: { name: string }, queryNorm: string): boolean {
 }
 
 /** Deep copy folder nodes with collapsed=false so search results stay expanded. */
-function withFoldersExpandedForSearch(nodes: CollectionNode[]): CollectionNode[] {
+function withFoldersExpandedForSearch(nodes: TreeNode[]): TreeNode[] {
   return nodes.map(n => {
     if (n.type === 'request') return n;
     return {
@@ -84,16 +84,16 @@ function withFoldersExpandedForSearch(nodes: CollectionNode[]): CollectionNode[]
 }
 
 /**
- * Filter tree: requests match by name/URL; folders & collection roots match by name.
+ * Filter tree: requests match by name/URL; folders match by name.
  * If a folder name matches, include its full subtree (all descendants).
  */
-function filterCollectionTree(nodes: CollectionNode[], query: string): CollectionNode[] {
+function filterFolderTree(nodes: TreeNode[], query: string): TreeNode[] {
   const q = query.trim();
   if (!q) return nodes;
   const qn = q.toLowerCase();
 
-  const walk = (list: CollectionNode[]): CollectionNode[] => {
-    const out: CollectionNode[] = [];
+  const walk = (list: TreeNode[]): TreeNode[] => {
+    const out: TreeNode[] = [];
     for (const node of list) {
       if (node.type === 'request') {
         if (requestMatchesSearch(node, qn)) out.push(node);
@@ -120,18 +120,18 @@ function filterCollectionTree(nodes: CollectionNode[], query: string): Collectio
   return walk(nodes);
 }
 
-function TreeNode({ node, depth = 0 }: { node: CollectionNode; depth?: number }) {
+function TreeNode({ node, depth = 0 }: { node: TreeNode; depth?: number }) {
   const {
     toggleCollapse, setActiveNode, activeNodeId,
     openContextMenu, closeContextMenu, contextMenu,
     deleteNode, cloneNode, addFolder, addRequest, renameNode, loadRequest,
     moveRequest, moveFolder, pendingRenameNodeId, consumePendingRename,
-  } = useCollectionStore();
-  const { openTabFromCollection } = useStore();
+  } = useFolderStore();
+  const { openTabFromFolder } = useStore();
 
   const isFolder = node.type === 'folder';
-  const isCollectionRoot = isFolder && !!(node as CollectionFolder).fileName;
-  const canDrag = !isCollectionRoot;
+  const isTopLevelFolder = isFolder && !!(node as TreeFolder).fileName;
+  const canDrag = !isTopLevelFolder;
   const isActive = activeNodeId === node.id;
   const [renaming, setRenaming] = useState(false);
   const [editName, setEditName] = useState(node.name);
@@ -183,11 +183,11 @@ function TreeNode({ node, depth = 0 }: { node: CollectionNode; depth?: number })
       setActiveNode(node.id);
       const req = loadRequest(node.id);
       if (req) {
-        const path = getCollectionPath(useCollectionStore.getState().collections, node.id);
-        openTabFromCollection(req, node.name, path, node.id);
+        const path = getFolderPath(useFolderStore.getState().folders, node.id);
+        openTabFromFolder(req, node.name, path, node.id);
       }
     }
-  }, [isFolder, node.id, node.name, toggleCollapse, setActiveNode, loadRequest, openTabFromCollection]);
+  }, [isFolder, node.id, node.name, toggleCollapse, setActiveNode, loadRequest, openTabFromFolder]);
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -288,7 +288,7 @@ function TreeNode({ node, depth = 0 }: { node: CollectionNode; depth?: number })
         ref={nodeRef}
         className={`tree-node ${isActive ? 'active' : ''} ${dragOver ? 'drag-over' : ''} ${dropHint === 'before' ? 'drop-before' : ''} ${dropHint === 'after' ? 'drop-after' : ''}`}
         style={{ paddingLeft: depth * 16 + 8, cursor: canDrag ? 'grab' : 'default' }}
-        data-collection-node-id={node.id}
+        data-folder-node-id={node.id}
         data-folder-id={isFolder ? node.id : undefined}
         data-request-id={!isFolder ? node.id : undefined}
         onClick={handleClick}
@@ -304,8 +304,8 @@ function TreeNode({ node, depth = 0 }: { node: CollectionNode; depth?: number })
         title={
           isFolder
             ? node.collapsed
-              ? t('collection.folderExpandHint')
-              : t('collection.folderCollapseHint')
+              ? t('folder.expandHint')
+              : t('folder.collapseHint')
             : undefined
         }
       >
@@ -335,15 +335,15 @@ function TreeNode({ node, depth = 0 }: { node: CollectionNode; depth?: number })
         )}
         {hovered && !renaming && (
           <span className="tree-actions">
-            <button title={t('collection.addRequest')} onClick={e => {
+            <button title={t('folder.addRequest')} onClick={e => {
               e.stopPropagation();
               const id = nanoid();
               addRequest(node.id, 'New Request', undefined, id);
-              const req = useCollectionStore.getState().loadRequest(id)!;
-              const path = getCollectionPath(useCollectionStore.getState().collections, id);
-              openTabFromCollection(req, 'New Request', path, id);
+              const req = useFolderStore.getState().loadRequest(id)!;
+              const path = getFolderPath(useFolderStore.getState().folders, id);
+              openTabFromFolder(req, 'New Request', path, id);
             }}>+R</button>
-            {isFolder && <button title={t('collection.addFolder')} onClick={e => { e.stopPropagation(); addFolder(node.id); }}>+F</button>}
+            {isFolder && <button title={t('folder.addFolder')} onClick={e => { e.stopPropagation(); addFolder(node.id); }}>+F</button>}
           </span>
         )}
       </div>
@@ -360,8 +360,8 @@ function TreeNode({ node, depth = 0 }: { node: CollectionNode; depth?: number })
 }
 
 function ContextMenu({ nodeId, isFolder, onStartRename }: { nodeId: string; isFolder: boolean; onStartRename: () => void }) {
-  const { closeContextMenu, deleteNode, cloneNode, addFolder, addRequest } = useCollectionStore();
-  const { openTabFromCollection } = useStore();
+  const { closeContextMenu, deleteNode, cloneNode, addFolder, addRequest } = useFolderStore();
+  const { openTabFromFolder } = useStore();
   const menuRef = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
 
@@ -389,36 +389,36 @@ function ContextMenu({ nodeId, isFolder, onStartRename }: { nodeId: string; isFo
       className="context-menu"
       style={{
         position: 'fixed',
-        left: useCollectionStore.getState().contextMenu?.x ?? 0,
-        top: useCollectionStore.getState().contextMenu?.y ?? 0,
+        left: useFolderStore.getState().contextMenu?.x ?? 0,
+        top: useFolderStore.getState().contextMenu?.y ?? 0,
         zIndex: 1000,
       }}
       onContextMenu={e => e.preventDefault()}
     >
       <div className="context-menu-item" onClick={() => action(onStartRename)}>
-        {t('collection.rename')}
+        {t('folder.rename')}
       </div>
       <div className="context-menu-item" onClick={() => action(() => cloneNode(nodeId))}>
-        {t('collection.duplicate')}
+        {t('folder.duplicate')}
       </div>
       <div className="context-menu-item" onClick={() => action(() => deleteNode(nodeId))}>
-        {t('collection.delete')}
+        {t('folder.delete')}
       </div>
       {isFolder && (
         <>
           <div className="context-menu-separator" />
           <div className="context-menu-item" onClick={() => action(() => addFolder(nodeId))}>
-            {t('collection.addFolder')}
+            {t('folder.addFolder')}
           </div>
           <div className="context-menu-item" onClick={() => {
             const id = nanoid();
             closeContextMenu();
             addRequest(nodeId, 'New Request', undefined, id);
-            const req = useCollectionStore.getState().loadRequest(id)!;
-            const path = getCollectionPath(useCollectionStore.getState().collections, id);
-            openTabFromCollection(req, 'New Request', path, id);
+            const req = useFolderStore.getState().loadRequest(id)!;
+            const path = getFolderPath(useFolderStore.getState().folders, id);
+            openTabFromFolder(req, 'New Request', path, id);
           }}>
-            {t('collection.addRequest')}
+            {t('folder.addRequest')}
           </div>
         </>
       )}
@@ -426,67 +426,67 @@ function ContextMenu({ nodeId, isFolder, onStartRename }: { nodeId: string; isFo
   );
 }
 
-export default function CollectionSidebar() {
-  const collectionSidebarWidth = useSettingsStore((s) => s.collectionSidebarWidth);
-  const { collections, addCollection, activeNodeId, revealNode } = useCollectionStore();
-  const focusCollectionSearch = useSettingsStore((s) => s.shortcuts.focusCollectionSearch);
-  const activeTabCollectionId = useStore(
-    (s) => s.tabs.find((t) => t.id === s.activeTabId)?.collectionId ?? null,
+export default function FolderSidebar() {
+  const folderSidebarWidth = useSettingsStore((s) => s.folderSidebarWidth);
+  const { folders, addFolder, activeNodeId, revealNode } = useFolderStore();
+  const focusFolderSearch = useSettingsStore((s) => s.shortcuts.focusFolderSearch);
+  const activeTabRequestNodeId = useStore(
+    (s) => s.tabs.find((t) => t.id === s.activeTabId)?.requestNodeId ?? null,
   );
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    revealNode(activeTabCollectionId);
-  }, [activeTabCollectionId, revealNode]);
+    revealNode(activeTabRequestNodeId);
+  }, [activeTabRequestNodeId, revealNode]);
 
-  const visibleCollections = useMemo(
-    () => filterCollectionTree(collections, searchQuery),
-    [collections, searchQuery],
+  const visibleFolders = useMemo(
+    () => filterFolderTree(folders, searchQuery),
+    [folders, searchQuery],
   );
 
   const searching = searchQuery.trim().length > 0;
 
-  /** Only clear search when switching tabs (or collections reload): if the new active node is hidden by the current filter. Never clear while the user is typing (that would use stale activeTabCollectionId with changing visibleCollections). */
+  /** Only clear search when switching tabs (or folders reload): if the new active node is hidden by the current filter. Never clear while the user is typing (that would use stale activeTabRequestNodeId with changing visibleFolders). */
   useEffect(() => {
-    if (!activeTabCollectionId) return;
+    if (!activeTabRequestNodeId) return;
     setSearchQuery((q) => {
       const trimmed = q.trim();
       if (!trimmed) return q;
-      const filtered = filterCollectionTree(collections, q);
-      if (!nodeInTree(filtered, activeTabCollectionId)) return '';
+      const filtered = filterFolderTree(folders, q);
+      if (!nodeInTree(filtered, activeTabRequestNodeId)) return '';
       return q;
     });
-  }, [activeTabCollectionId, collections]);
+  }, [activeTabRequestNodeId, folders]);
 
   useEffect(() => {
     if (!activeNodeId) return;
-    if (searching && !nodeInTree(visibleCollections, activeNodeId)) return;
+    if (searching && !nodeInTree(visibleFolders, activeNodeId)) return;
     requestAnimationFrame(() => {
       document
-        .querySelector(`[data-collection-node-id="${CSS.escape(activeNodeId)}"]`)
+        .querySelector(`[data-folder-node-id="${CSS.escape(activeNodeId)}"]`)
         ?.scrollIntoView({ block: 'nearest' });
     });
-  }, [activeNodeId, searching, visibleCollections]);
+  }, [activeNodeId, searching, visibleFolders]);
 
   return (
     <aside
       className="sidebar"
-      style={{ width: collectionSidebarWidth, minWidth: collectionSidebarWidth }}
+      style={{ width: folderSidebarWidth, minWidth: folderSidebarWidth }}
     >
-      <section className="sidebar-section sidebar-section-collections">
+      <section className="sidebar-section sidebar-section-folders">
         <div className="sidebar-section-header">
-          <span>{t('collection.title')}</span>
+          <span>{t('folder.title')}</span>
           <div className="sidebar-section-actions">
-            <button type="button" title={t('collection.addCollection')} onClick={() => addCollection()}>+</button>
+            <button type="button" title={t('folder.addFolder')} onClick={() => addFolder(null)}>+</button>
           </div>
         </div>
-        {collections.length > 0 && (
-          <div className="sidebar-collection-search">
+        {folders.length > 0 && (
+          <div className="sidebar-folder-search">
             <input
               type="search"
-              className="sidebar-collection-search-input"
-              placeholder={t('collection.searchPlaceholder')}
-              title={`${t('collection.searchPlaceholder')} (${focusCollectionSearch})`}
+              className="sidebar-folder-search-input"
+              placeholder={t('folder.searchPlaceholder')}
+              title={`${t('folder.searchPlaceholder')} (${focusFolderSearch})`}
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               spellCheck={false}
@@ -494,13 +494,13 @@ export default function CollectionSidebar() {
           </div>
         )}
         <div className="sidebar-section-body">
-          {collections.length === 0 && (
-            <div className="sidebar-placeholder">{t('collection.empty')}</div>
+          {folders.length === 0 && (
+            <div className="sidebar-placeholder">{t('folder.empty')}</div>
           )}
-          {collections.length > 0 && searching && visibleCollections.length === 0 && (
-            <div className="sidebar-placeholder">{t('collection.searchNoResults')}</div>
+          {folders.length > 0 && searching && visibleFolders.length === 0 && (
+            <div className="sidebar-placeholder">{t('folder.searchNoResults')}</div>
           )}
-          {visibleCollections.map((node) => (
+          {visibleFolders.map((node) => (
             <TreeNode key={node.id} node={node} />
           ))}
         </div>

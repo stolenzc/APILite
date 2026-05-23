@@ -2,8 +2,6 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-const LEGACY_MONO: &str = "apilite-collections.json";
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct KeyValue {
@@ -24,10 +22,10 @@ pub struct HttpRequest {
     pub body: String,
 }
 
-/// On-disk file: one APILite collection root (full tree in `children`).
+/// On-disk file: one top-level folder (full tree in `children`).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct CollectionFile {
+struct FolderFile {
     id: String,
     name: String,
     #[serde(default)]
@@ -74,9 +72,9 @@ fn sanitize_file_stem(name: &str) -> String {
     }
 }
 
-fn read_collection_display_name(path: &Path) -> Result<String, String> {
+fn read_folder_display_name(path: &Path) -> Result<String, String> {
     let raw = fs::read_to_string(path).map_err(|e| e.to_string())?;
-    let file: CollectionFile = serde_json::from_str(&raw)
+    let file: FolderFile = serde_json::from_str(&raw)
         .map_err(|e| format!("Parse {}: {}", path.display(), e))?;
     let stem = path
         .file_stem()
@@ -89,7 +87,7 @@ fn read_collection_display_name(path: &Path) -> Result<String, String> {
     })
 }
 
-fn collection_name_exists(root: &Path, name: &str, skip_file: Option<&str>) -> Result<bool, String> {
+fn top_level_folder_name_exists(root: &Path, name: &str, skip_file: Option<&str>) -> Result<bool, String> {
     let norm = name.trim().to_lowercase();
     if norm.is_empty() {
         return Ok(false);
@@ -97,7 +95,7 @@ fn collection_name_exists(root: &Path, name: &str, skip_file: Option<&str>) -> R
     for entry in fs::read_dir(root).map_err(|e| e.to_string())? {
         let entry = entry.map_err(|e| e.to_string())?;
         let file_name = entry.file_name().to_string_lossy().to_string();
-        if !file_name.ends_with(".json") || file_name.ends_with(".migrated") {
+        if !file_name.ends_with(".json") {
             continue;
         }
         if !entry.path().is_file() {
@@ -106,7 +104,7 @@ fn collection_name_exists(root: &Path, name: &str, skip_file: Option<&str>) -> R
         if skip_file == Some(file_name.as_str()) {
             continue;
         }
-        let display = read_collection_display_name(&entry.path())?;
+        let display = read_folder_display_name(&entry.path())?;
         if display.trim().to_lowercase() == norm {
             return Ok(true);
         }
@@ -121,72 +119,9 @@ fn stored_to_json_value(nodes: Vec<StoredNode>) -> Vec<serde_json::Value> {
         .collect()
 }
 
-fn migrate_legacy(root: &PathBuf) -> Result<(), String> {
-    let legacy = root.join(LEGACY_MONO);
-    if !legacy.exists() {
-        return Ok(());
-    }
-    let raw = fs::read_to_string(&legacy).map_err(|e| e.to_string())?;
-    let children: Vec<StoredNode> =
-        serde_json::from_str(&raw).or_else(|_| {
-            serde_json::from_str::<CollectionFile>(&raw).map(|f| f.children)
-        }).unwrap_or_default();
-    let id = "legacy".to_string();
-    let file_name = "Default.json".to_string();
-    let file = CollectionFile {
-        id: id.clone(),
-        name: "Default".to_string(),
-        collapsed: false,
-        children,
-    };
-    let path = root.join(&file_name);
-    let data = serde_json::to_string_pretty(&file).map_err(|e| e.to_string())?;
-    fs::write(path, data).map_err(|e| e.to_string())?;
-    let backup = root.join(format!("{}.migrated", LEGACY_MONO));
-    let _ = fs::rename(&legacy, &backup);
-    Ok(())
-}
-
-fn migrate_nested_dirs(root: &PathBuf) -> Result<(), String> {
-    // Flatten old per-folder directories into one json per top-level subdir if present.
-    let entries: Vec<_> = fs::read_dir(root)
-        .map_err(|e| e.to_string())?
-        .filter_map(|e| e.ok())
-        .collect();
-    for entry in entries {
-        let path = entry.path();
-        if !path.is_dir() {
-            continue;
-        }
-        let dir_name = entry.file_name().to_string_lossy().to_string();
-        let json_path = path.join(format!("{}.json", dir_name));
-        if !json_path.exists() {
-            continue;
-        }
-        let raw = fs::read_to_string(&json_path).map_err(|e| e.to_string())?;
-        let file: CollectionFile = serde_json::from_str(&raw).unwrap_or(CollectionFile {
-            id: dir_name.clone(),
-            name: dir_name.clone(),
-            collapsed: false,
-            children: vec![],
-        });
-        let stem = sanitize_file_stem(&file.name);
-        let out_name = format!("{}.json", stem);
-        let out_path = root.join(&out_name);
-        if !out_path.exists() {
-            let data = serde_json::to_string_pretty(&file).map_err(|e| e.to_string())?;
-            fs::write(&out_path, data).map_err(|e| e.to_string())?;
-        }
-        let _ = fs::remove_dir_all(path);
-    }
-    Ok(())
-}
-
 pub fn load_tree(dir: &str) -> Result<String, String> {
     let root = PathBuf::from(dir);
     fs::create_dir_all(&root).map_err(|e| e.to_string())?;
-    migrate_legacy(&root)?;
-    migrate_nested_dirs(&root)?;
 
     let mut roots: Vec<serde_json::Value> = Vec::new();
     let mut files: Vec<String> = Vec::new();
@@ -194,7 +129,7 @@ pub fn load_tree(dir: &str) -> Result<String, String> {
     for entry in fs::read_dir(&root).map_err(|e| e.to_string())? {
         let entry = entry.map_err(|e| e.to_string())?;
         let name = entry.file_name().to_string_lossy().to_string();
-        if !name.ends_with(".json") || name.ends_with(".migrated") {
+        if !name.ends_with(".json") {
             continue;
         }
         if entry.path().is_file() {
@@ -206,7 +141,7 @@ pub fn load_tree(dir: &str) -> Result<String, String> {
     for file_name in files {
         let path = root.join(&file_name);
         let raw = fs::read_to_string(&path).map_err(|e| e.to_string())?;
-        let file: CollectionFile = serde_json::from_str(&raw)
+        let file: FolderFile = serde_json::from_str(&raw)
             .map_err(|e| format!("Parse {}: {}", file_name, e))?;
         let stem = file_name.strip_suffix(".json").unwrap_or(&file_name);
         roots.push(serde_json::json!({
@@ -222,22 +157,22 @@ pub fn load_tree(dir: &str) -> Result<String, String> {
     serde_json::to_string(&roots).map_err(|e| e.to_string())
 }
 
-pub fn save_collection(dir: &str, file_name: &str, data: &str) -> Result<(), String> {
+pub fn save_folder(dir: &str, file_name: &str, data: &str) -> Result<(), String> {
     let root = PathBuf::from(dir);
     let path = root.join(file_name);
-    let _: CollectionFile = serde_json::from_str(data).map_err(|e| format!("Invalid collection data: {}", e))?;
+    let _: FolderFile = serde_json::from_str(data).map_err(|e| format!("Invalid folder data: {}", e))?;
     fs::create_dir_all(&root).map_err(|e| e.to_string())?;
     fs::write(path, data).map_err(|e| e.to_string())
 }
 
-pub fn create_collection(dir: &str, id: &str, name: &str) -> Result<String, String> {
+pub fn create_folder(dir: &str, id: &str, name: &str) -> Result<String, String> {
     let root = PathBuf::from(dir);
     fs::create_dir_all(&root).map_err(|e| e.to_string())?;
-    if collection_name_exists(&root, name, None)? {
-        return Err("duplicate_collection_name".to_string());
+    if top_level_folder_name_exists(&root, name, None)? {
+        return Err("duplicate_top_level_folder_name".to_string());
     }
     let file_name = format!("{}.json", sanitize_file_stem(name));
-    let file = CollectionFile {
+    let file = FolderFile {
         id: id.to_string(),
         name: name.to_string(),
         collapsed: false,
@@ -248,7 +183,7 @@ pub fn create_collection(dir: &str, id: &str, name: &str) -> Result<String, Stri
     Ok(file_name)
 }
 
-pub fn delete_collection(dir: &str, file_name: &str) -> Result<(), String> {
+pub fn delete_folder(dir: &str, file_name: &str) -> Result<(), String> {
     let path = PathBuf::from(dir).join(file_name);
     if path.exists() {
         fs::remove_file(path).map_err(|e| e.to_string())?;
@@ -256,17 +191,17 @@ pub fn delete_collection(dir: &str, file_name: &str) -> Result<(), String> {
     Ok(())
 }
 
-pub fn rename_collection(dir: &str, file_name: &str, new_name: &str) -> Result<String, String> {
+pub fn rename_folder(dir: &str, file_name: &str, new_name: &str) -> Result<String, String> {
     let root = PathBuf::from(dir);
     let old_path = root.join(file_name);
     if !old_path.exists() {
-        return Err("Collection file not found".to_string());
+        return Err("Folder file not found".to_string());
     }
-    if collection_name_exists(&root, new_name, Some(file_name))? {
-        return Err("duplicate_collection_name".to_string());
+    if top_level_folder_name_exists(&root, new_name, Some(file_name))? {
+        return Err("duplicate_top_level_folder_name".to_string());
     }
     let raw = fs::read_to_string(&old_path).map_err(|e| e.to_string())?;
-    let mut file: CollectionFile = serde_json::from_str(&raw).map_err(|e| e.to_string())?;
+    let mut file: FolderFile = serde_json::from_str(&raw).map_err(|e| e.to_string())?;
     file.name = new_name.to_string();
     let new_file_name = format!("{}.json", sanitize_file_stem(new_name));
     let new_path = root.join(&new_file_name);

@@ -1,16 +1,16 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { useCollectionStore, folderPathIds } from '../store/useCollection';
-import type { CollectionFolder, CollectionNode } from '../types';
+import { useFolderStore, folderPathIds } from '../store/useFolderStore';
+import type { TreeFolder, TreeNode } from '../types';
 import { t } from '../i18n';
 import { useModalOverlayDismiss } from '../utils/modalOverlayDismiss';
 import { showToast } from '../utils/toast';
 import TreeChevron from './TreeChevron';
 
-function folderChildren(nodes: CollectionNode[]): CollectionFolder[] {
-  return nodes.filter((n) => n.type === 'folder') as CollectionFolder[];
+function folderChildren(nodes: TreeNode[]): TreeFolder[] {
+  return nodes.filter((n) => n.type === 'folder') as TreeFolder[];
 }
 
-function findFolderById(nodes: CollectionNode[], id: string): CollectionFolder | null {
+function findFolderById(nodes: TreeNode[], id: string): TreeFolder | null {
   for (const n of nodes) {
     if (n.type === 'folder') {
       if (n.id === id) return n;
@@ -21,7 +21,7 @@ function findFolderById(nodes: CollectionNode[], id: string): CollectionFolder |
   return null;
 }
 
-function hasFolderChildren(folder: CollectionFolder): boolean {
+function hasFolderChildren(folder: TreeFolder): boolean {
   return folderChildren(folder.children).length > 0;
 }
 
@@ -75,14 +75,14 @@ function SaveFolderContextMenu({
 }
 
 interface FolderTreeProps {
-  nodes: CollectionNode[];
+  nodes: TreeNode[];
   depth: number;
   expandedIds: Set<string>;
   onToggleExpand: (id: string) => void;
   selectedFolderId: string | null;
   onSelectFolder: (id: string) => void;
   onSave: () => void;
-  onFolderContextMenu: (folder: CollectionFolder, e: React.MouseEvent) => void;
+  onFolderContextMenu: (folder: TreeFolder, e: React.MouseEvent) => void;
 }
 
 function SaveFolderTree({
@@ -166,21 +166,20 @@ interface Props {
 }
 
 export default function SaveRequestModal({ onClose, onSave, defaultName }: Props) {
-  const collections = useCollectionStore((s) => s.collections);
-  const addCollection = useCollectionStore((s) => s.addCollection);
-  const addFolder = useCollectionStore((s) => s.addFolder);
-  const deleteNode = useCollectionStore((s) => s.deleteNode);
+  const folders = useFolderStore((s) => s.folders);
+  const addFolder = useFolderStore((s) => s.addFolder);
+  const deleteNode = useFolderStore((s) => s.deleteNode);
   const [name, setName] = useState(defaultName);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
   const [contextMenu, setContextMenu] = useState<SaveFolderContextMenuState | null>(null);
   const overlayDismiss = useModalOverlayDismiss(onClose);
 
-  const rootFolders = folderChildren(collections);
+  const rootFolders = folderChildren(folders);
   const hasFolders = rootFolders.length > 0;
 
   const expandToNode = useCallback((nodeId: string) => {
-    const tree = useCollectionStore.getState().collections;
+    const tree = useFolderStore.getState().folders;
     const pathIds = folderPathIds(tree, nodeId);
     setExpandedIds((prev) => new Set([...prev, ...pathIds]));
   }, []);
@@ -194,14 +193,14 @@ export default function SaveRequestModal({ onClose, onSave, defaultName }: Props
     });
   }, []);
 
-  const handleNewCollection = useCallback(() => {
-    const id = addCollection();
+  const handleNewRootFolder = useCallback(() => {
+    const id = addFolder(null);
     if (!id) return;
     setSelectedFolderId(id);
     setExpandedIds((prev) => new Set(prev).add(id));
-  }, [addCollection]);
+  }, [addFolder]);
 
-  const handleNewFolder = useCallback(() => {
+  const handleNewSubfolder = useCallback(() => {
     if (!selectedFolderId) return;
     const newId = addFolder(selectedFolderId);
     if (!newId) return;
@@ -210,15 +209,15 @@ export default function SaveRequestModal({ onClose, onSave, defaultName }: Props
   }, [addFolder, selectedFolderId, expandToNode]);
 
   const handleCreate = useCallback(() => {
-    if (selectedFolderId) handleNewFolder();
-    else handleNewCollection();
-  }, [selectedFolderId, handleNewFolder, handleNewCollection]);
+    if (selectedFolderId) handleNewSubfolder();
+    else handleNewRootFolder();
+  }, [selectedFolderId, handleNewSubfolder, handleNewRootFolder]);
 
   const clearSelection = useCallback(() => {
     setSelectedFolderId(null);
   }, []);
 
-  const onFolderContextMenu = useCallback((folder: CollectionFolder, e: React.MouseEvent) => {
+  const onFolderContextMenu = useCallback((folder: TreeFolder, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setContextMenu({
@@ -231,7 +230,7 @@ export default function SaveRequestModal({ onClose, onSave, defaultName }: Props
 
   const handleDeleteFolder = useCallback(
     (folderId: string) => {
-      const folder = findFolderById(useCollectionStore.getState().collections, folderId);
+      const folder = findFolderById(useFolderStore.getState().folders, folderId);
       if (!folder || folder.children.length > 0) {
         showToast(t('saveRequest.deleteFolderNotEmpty'));
         return;
@@ -283,7 +282,7 @@ export default function SaveRequestModal({ onClose, onSave, defaultName }: Props
               className="btn btn-secondary save-request-toolbar-btn"
               onClick={handleCreate}
             >
-              {selectedFolderId ? t('saveRequest.newFolder') : t('saveRequest.newCollection')}
+              {selectedFolderId ? t('saveRequest.newSubfolder') : t('saveRequest.newFolder')}
             </button>
           </div>
         </div>
@@ -307,7 +306,7 @@ export default function SaveRequestModal({ onClose, onSave, defaultName }: Props
             </div>
           ) : (
             <SaveFolderTree
-              nodes={collections}
+              nodes={folders}
               depth={0}
               expandedIds={expandedIds}
               onToggleExpand={onToggleExpand}

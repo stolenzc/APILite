@@ -1,4 +1,4 @@
-/** Consistent expand/collapse chevron for collection & save-request trees. */
+/** Consistent expand/collapse chevron for folder & save-request trees. */
 
 type Props = {
   expanded: boolean;

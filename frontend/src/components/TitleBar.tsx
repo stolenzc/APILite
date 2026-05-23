@@ -10,8 +10,8 @@ export default function TitleBar() {
     settingsOpen,
     setSettingsOpen,
     curlPanelOpen,
-    collectionSidebarOpen,
-    setCollectionSidebarOpen,
+    folderSidebarOpen,
+    setFolderSidebarOpen,
     historyCollapsed,
     setHistoryCollapsed,
   } = useSettingsStore();
@@ -33,12 +33,12 @@ export default function TitleBar() {
         <button
           type="button"
           className="btn btn-icon app-titlebar-btn"
-          onClick={() => setCollectionSidebarOpen(!collectionSidebarOpen)}
-          title={`${t('app.toggleCollections')} (${shortcuts.toggleCollectionSidebar})`}
-          aria-label={t('app.toggleCollections')}
-          aria-pressed={collectionSidebarOpen}
+          onClick={() => setFolderSidebarOpen(!folderSidebarOpen)}
+          title={`${t('app.toggleFolders')} (${shortcuts.toggleFolderSidebar})`}
+          aria-label={t('app.toggleFolders')}
+          aria-pressed={folderSidebarOpen}
         >
-          <PanelLeftIcon active={collectionSidebarOpen} />
+          <PanelLeftIcon active={folderSidebarOpen} />
         </button>
         <button
           type="button"

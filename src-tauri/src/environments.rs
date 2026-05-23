@@ -7,15 +7,6 @@ pub fn load(data_dir: &str) -> Result<Option<String>, String> {
     if path.exists() {
         return fs::read_to_string(&path).map(Some).map_err(|e| e.to_string());
     }
-
-    // One-time migration from legacy ~/.APILite/environments.json
-    let legacy = storage::legacy_data_dir()?.join("environments.json");
-    if legacy.exists() && legacy != path {
-        let data = fs::read_to_string(&legacy).map_err(|e| e.to_string())?;
-        save(data_dir, &data)?;
-        return Ok(Some(data));
-    }
-
     Ok(None)
 }
 

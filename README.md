@@ -26,7 +26,7 @@
   - [Project Structure](#project-structure)
 - [Interface Overview](#interface-overview)
 - [Environments](#environments)
-- [Saving Requests to Collections](#saving-requests-to-collections)
+- [Saving Requests to Folders](#saving-requests-to-folders)
 - [Making Requests](#making-requests)
   - [Sending a Request](#sending-a-request)
   - [URL Input](#url-input)
@@ -76,7 +76,7 @@ APILite/
 │   │   ├── histories.rs     # History persistence (daily JSON shards)
 │   │   ├── storage.rs       # Data directory layout
 │   │   ├── environments.rs  # Environment variables on disk
-│   │   └── collections.rs   # API collection files
+│   │   └── folders.rs       # Saved request tree on disk
 │   ├── Cargo.toml
 │   └── tauri.conf.json
 ├── frontend/            # React + TypeScript frontend
@@ -95,16 +95,16 @@ APILite/
 
 | Area                    | Description                                                                                                                                 |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Title bar**           | Panel toggles: collections (left), history (bottom), cURL (right), and settings (⚙). On macOS the bar sits in the overlay title-bar region. |
-| **Tab bar**             | Request tabs, **+** for a new tab, environment dropdown and manage (⚙).                                                                     |
-| **Collections sidebar** | Optional left panel — tree of collections, folders, and saved requests.                                                                     |
+| **Title bar**        | Panel toggles: folders (left), history (bottom), cURL (right), and settings (⚙). On macOS the bar sits in the overlay title-bar region. |
+| **Tab bar**          | Request tabs, **+** for a new tab, environment dropdown and manage (⚙).                                                                     |
+| **Folders sidebar**  | Optional left panel — tree of folders and saved requests.                                                                                   |
 | **URL bar**             | HTTP method, URL, **Send**.                                                                                                                 |
 | **Request editor**      | **Params**, **Headers**, **Body** tabs.                                                                                                     |
 | **Response panel**      | Status, duration, body / headers / raw HTTP. A loading overlay appears while a request is in flight.                                        |
 | **cURL panel**          | Optional right panel — live cURL for the current request with **Copy**.                                                                     |
 | **History panel**       | Optional bottom dock — persisted history; drag the top edge to resize.                                                                      |
 
-Thin drag handles (same style as the history dock) resize the response area, collection sidebar, cURL panel, and history height.
+Thin drag handles (same style as the history dock) resize the response area, folders sidebar, cURL panel, and history height.
 
 ---
 
@@ -114,12 +114,12 @@ Pick an environment from the dropdown on the **tab bar**. Use `{{variable_name}}
 
 ---
 
-## Saving Requests to Collections
+## Saving Requests to Folders
 
-1. Configure the request, then press **⌘ S** / **Ctrl+S** (or save from the collection sidebar when applicable).
+1. Configure the request, then press **⌘ S** / **Ctrl+S** (or save from the folders sidebar when applicable).
 2. Enter a **request name**.
 3. In the folder browser, expand folders with **▶** / **▾**, click a folder to select it, then **Save** (or double-click a folder to save immediately).
-4. Use the toolbar button above the tree: **New collection** when nothing is selected, **New folder** when a folder is selected (click blank area in the tree to deselect).
+4. Use the toolbar button above the tree: **New folder** when nothing is selected, **New subfolder** when a folder is selected (click blank area in the tree to deselect).
 
 ---
 
@@ -277,7 +277,7 @@ Select from five built-in themes:
 
 Choose a folder for app data (default `~/.APILite`). The app creates:
 
-- `collections/` — saved API collections
+- `folders/` — saved requests (folder tree)
 - `histories/` — request history (one JSON file per day)
 - `environments.json` — environment variables
 
@@ -287,7 +287,7 @@ Set maximum age (days) and maximum entry count. Older or excess entries are prun
 
 ### Resizable Splitters
 
-Drag the thin bar between the request editor and response panel to resize the response area (min 100px; height is saved). Similar handles resize the collection sidebar, cURL panel, and history dock.
+Drag the thin bar between the request editor and response panel to resize the response area (min 100px; height is saved). Similar handles resize the folders sidebar, cURL panel, and history dock.
 
 ### Keyboard Shortcuts
 
@@ -299,11 +299,11 @@ Most defaults use **⌘** on macOS and **Ctrl** on Windows/Linux. **Toggle Histo
 | -------------------------- | ------- | -------------------- |
 | Send Request               | ⌘ Enter | Ctrl+Enter           |
 | Save Request               | ⌘ S     | Ctrl+S               |
-| Toggle Collections Sidebar | ⌘ B     | Ctrl+B               |
+| Toggle Folders Sidebar     | ⌘ B     | Ctrl+B               |
 | Toggle History Panel       | Ctrl+`  | Ctrl+`               |
 | Toggle cURL Panel          | ⌘ ⌥ B   | Ctrl+Alt+B           |
 | Focus URL Bar              | ⌘ L     | Ctrl+L               |
-| Focus Collection Search    | ⌘ ⇧ F   | Ctrl+Shift+F         |
+| Focus Folder Search        | ⌘ ⇧ F   | Ctrl+Shift+F         |
 | Open Settings              | ⌘ ,     | Ctrl+,               |
 | New Tab                    | ⌘ T     | Ctrl+T               |
 | Close Tab                  | ⌘ W     | Ctrl+W               |

@@ -21,7 +21,7 @@ export interface FormField {
   fileName?: string;
   /** Local path (Tauri) for upload without loading into memory. */
   filePath?: string;
-  /** Base64 payload when no path (browser or collection persistence). */
+  /** Base64 payload when no path (browser or tree persistence). */
   fileDataBase64?: string;
 }
 
@@ -56,17 +56,17 @@ export interface HttpResponse {
   durationMs: number;
 }
 
-export interface CollectionFolder {
+export interface TreeFolder {
   id: string;
   name: string;
   type: 'folder';
-  children: CollectionNode[];
+  children: TreeNode[];
   collapsed: boolean;
-  /** Set only on top-level collection roots (one `.json` file each). */
+  /** Set on top-level folders only (one JSON file per root folder on disk). */
   fileName?: string;
 }
 
-export interface CollectionRequest {
+export interface TreeRequest {
   id: string;
   name: string;
   type: 'request';
@@ -75,7 +75,7 @@ export interface CollectionRequest {
   sortOrder?: number;
 }
 
-export type CollectionNode = CollectionFolder | CollectionRequest;
+export type TreeNode = TreeFolder | TreeRequest;
 
 export interface HistoryEntry {
   id: string;

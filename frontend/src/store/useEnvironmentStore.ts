@@ -26,12 +26,6 @@ interface PersistedV2 {
   activeEnvironmentId: string;
 }
 
-interface LegacyEnv {
-  id: string;
-  name: string;
-  rows: { id: string; key: string; value: string }[];
-}
-
 interface EnvironmentState {
   environments: EnvColumn[];
   variables: EnvVariableRow[];
@@ -41,7 +35,7 @@ interface EnvironmentState {
   setEnvModalOpen: (open: boolean) => void;
   setActiveEnvironmentId: (id: string) => void;
   addEnvironmentColumn: () => void;
-  /** Alias of `addEnvironmentColumn` (legacy / external callers). */
+  /** Alias of `addEnvironmentColumn`. */
   addEnvironment: () => void;
   removeEnvironmentColumn: (id: string) => void;
   duplicateEnvironmentColumn: (id: string) => void;
@@ -69,7 +63,6 @@ function reorderById<T extends { id: string }>(list: T[], activeId: string, over
 }
 
 const STORAGE_V2 = 'APILite-environments-v2';
-const STORAGE_V1 = 'APILite-environments-v1';
 
 function defaultState(): Omit<
   EnvironmentState,
@@ -96,57 +89,6 @@ function defaultState(): Omit<
     activeEnvironmentId: id,
     envModalOpen: false,
   };
-}
-
-function migrateV1(parsed: { environments?: LegacyEnv[]; activeEnvironmentId?: string }): Omit<
-  EnvironmentState,
-  | 'setEnvModalOpen'
-  | 'setActiveEnvironmentId'
-  | 'addEnvironmentColumn'
-  | 'addEnvironment'
-  | 'removeEnvironmentColumn'
-  | 'duplicateEnvironmentColumn'
-  | 'renameEnvironmentColumn'
-  | 'addVariableRow'
-  | 'removeVariableRow'
-  | 'duplicateVariableRow'
-  | 'updateVariableKey'
-  | 'updateCell'
-  | 'reorderVariableRows'
-  | 'reorderEnvironmentColumns'
-  | 'getActiveVarMap'
-> | null {
-  const list = parsed.environments;
-  if (!list?.length || !('rows' in list[0])) return null;
-
-  const environments: EnvColumn[] = list.map((e) => ({ id: e.id, name: e.name }));
-  const keyOrder: string[] = [];
-  const keyToCells: Record<string, Record<string, string>> = {};
-
-  for (const e of list) {
-    for (const r of e.rows || []) {
-      const k = String(r.key || '').trim();
-      if (!k) continue;
-      if (!keyToCells[k]) {
-        keyToCells[k] = {};
-        keyOrder.push(k);
-      }
-      keyToCells[k][e.id] = r.value ?? '';
-    }
-  }
-
-  const variables: EnvVariableRow[] = keyOrder.map((key) => ({
-    id: nanoid(),
-    key,
-    valuesByEnvId: { ...keyToCells[key] },
-  }));
-
-  const active =
-    parsed.activeEnvironmentId && environments.some((c) => c.id === parsed.activeEnvironmentId)
-      ? parsed.activeEnvironmentId
-      : environments[0].id;
-
-  return { environments, variables, activeEnvironmentId: active, envModalOpen: false };
 }
 
 /** Parse persisted v2 JSON (localStorage or disk). */
@@ -205,15 +147,10 @@ function load(): Omit<
   | 'getActiveVarMap'
 > {
   try {
-    const raw2 = localStorage.getItem(STORAGE_V2);
-    if (raw2) {
-      const parsed = parsePersistedV2(raw2);
+    const raw = localStorage.getItem(STORAGE_V2);
+    if (raw) {
+      const parsed = parsePersistedV2(raw);
       if (parsed) return parsed;
-    }
-    const raw1 = localStorage.getItem(STORAGE_V1);
-    if (raw1) {
-      const migrated = migrateV1(JSON.parse(raw1));
-      if (migrated) return migrated;
     }
   } catch {
     /* ignore */

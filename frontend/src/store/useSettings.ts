@@ -2,16 +2,15 @@ import { create } from 'zustand';
 import { setLocale as applyI18nLocale, type Locale } from '../i18n';
 import { focusUrlInput } from '../utils/focusUrl';
 import { useEnvironmentStore } from './useEnvironmentStore';
-import { migrateStoragePath } from '../utils/storagePaths';
 
 export interface ShortcutConfig {
   sendRequest: string;
   saveRequest: string;
   focusUrl: string;
-  focusCollectionSearch: string;
+  focusFolderSearch: string;
   toggleSettings: string;
   toggleHistory: string;
-  toggleCollectionSidebar: string;
+  toggleFolderSidebar: string;
   toggleCurlPanel: string;
   newTab: string;
   closeTab: string;
@@ -27,10 +26,10 @@ export const defaultShortcuts: ShortcutConfig = {
   sendRequest: `${mod}+Enter`,
   saveRequest: `${mod}+S`,
   focusUrl: `${mod}+L`,
-  focusCollectionSearch: `${mod}+Shift+F`,
+  focusFolderSearch: `${mod}+Shift+F`,
   toggleSettings: `${mod}+,`,
   toggleHistory: 'Ctrl+`',
-  toggleCollectionSidebar: `${mod}+B`,
+  toggleFolderSidebar: `${mod}+B`,
   toggleCurlPanel: `${mod}+Alt+B`,
   newTab: `${mod}+T`,
   closeTab: `${mod}+W`,
@@ -45,12 +44,12 @@ export interface AppSettings {
   responseHeight: number;
   historyHeight: number;
   historyCollapsed: boolean;
-  collectionSidebarOpen: boolean;
-  collectionSidebarWidth: number;
+  folderSidebarOpen: boolean;
+  folderSidebarWidth: number;
   curlPanelOpen: boolean;
   curlPanelWidth: number;
   curlPanelCollapsed: boolean;
-  /** Local data root: contains `collections/`, `histories/`, and `environments.json`. */
+  /** Local data root: contains `folders/`, `histories/`, and `environments.json`. */
   dataDir: string;
   autoCompleteProtocol: boolean;
   /** Drop history entries older than this many days. */
@@ -66,8 +65,8 @@ export const defaultSettings: AppSettings = {
   responseHeight: 300,
   historyHeight: 250,
   historyCollapsed: true,
-  collectionSidebarOpen: true,
-  collectionSidebarWidth: 260,
+  folderSidebarOpen: true,
+  folderSidebarWidth: 260,
   curlPanelOpen: true,
   curlPanelWidth: 360,
   curlPanelCollapsed: false,
@@ -92,42 +91,36 @@ function clampHistoryMaxCount(count: number): number {
   return Math.min(HISTORY_COUNT_MAX, Math.max(HISTORY_COUNT_MIN, Math.round(count)));
 }
 
-function migrateShortcuts(shortcuts: Partial<ShortcutConfig> & Record<string, string>): ShortcutConfig {
-  const currentMod = isMac ? 'Cmd' : 'Ctrl';
-  const oldMod = isMac ? 'Ctrl' : 'Cmd';
-  const merged: Partial<ShortcutConfig> & Record<string, string> = { ...defaultShortcuts, ...shortcuts };
-  // Pre-toggleCurlPanel settings stored the cURL shortcut as exportCurl.
-  const legacyExportCurl = shortcuts.exportCurl?.trim();
-  if (legacyExportCurl && !shortcuts.toggleCurlPanel?.trim()) {
-    merged.toggleCurlPanel = legacyExportCurl;
-  }
-  const migrated = { ...defaultShortcuts };
+function mergeShortcuts(shortcuts?: Partial<ShortcutConfig>): ShortcutConfig {
+  const result = { ...defaultShortcuts };
+  if (!shortcuts) return result;
   for (const key of Object.keys(defaultShortcuts) as (keyof ShortcutConfig)[]) {
-    const raw = merged[key]?.trim();
-    const value = raw || defaultShortcuts[key];
-    if (key === 'toggleHistory') {
-      migrated[key] = value === `${currentMod}+\`` || value === `${oldMod}+\``
-        ? defaultShortcuts.toggleHistory
-        : value;
-      continue;
-    }
-    migrated[key] = value.startsWith(oldMod + '+')
-      ? value.replace(oldMod + '+', currentMod + '+')
-      : value;
+    const raw = shortcuts[key]?.trim();
+    if (raw) result[key] = raw;
   }
-  return migrated;
+  return result;
 }
 
 function loadSettings(): AppSettings {
   try {
     const stored = localStorage.getItem('APILite-settings');
     if (stored) {
-      const parsed = JSON.parse(stored) as Partial<AppSettings> & { collectionDir?: string };
+      const parsed = JSON.parse(stored) as Partial<AppSettings>;
       return {
         ...defaultSettings,
-        ...parsed,
-        shortcuts: migrateShortcuts({ ...defaultShortcuts, ...parsed.shortcuts }),
-        dataDir: migrateStoragePath(parsed),
+        theme: parsed.theme ?? defaultSettings.theme,
+        locale: parsed.locale ?? defaultSettings.locale,
+        responseHeight: parsed.responseHeight ?? defaultSettings.responseHeight,
+        historyHeight: parsed.historyHeight ?? defaultSettings.historyHeight,
+        historyCollapsed: parsed.historyCollapsed ?? defaultSettings.historyCollapsed,
+        folderSidebarOpen: parsed.folderSidebarOpen ?? defaultSettings.folderSidebarOpen,
+        folderSidebarWidth: parsed.folderSidebarWidth ?? defaultSettings.folderSidebarWidth,
+        curlPanelOpen: parsed.curlPanelOpen ?? defaultSettings.curlPanelOpen,
+        curlPanelWidth: parsed.curlPanelWidth ?? defaultSettings.curlPanelWidth,
+        curlPanelCollapsed: parsed.curlPanelCollapsed ?? defaultSettings.curlPanelCollapsed,
+        autoCompleteProtocol: parsed.autoCompleteProtocol ?? defaultSettings.autoCompleteProtocol,
+        shortcuts: mergeShortcuts(parsed.shortcuts),
+        dataDir: parsed.dataDir?.trim() ?? defaultSettings.dataDir,
         historyMaxAgeDays: clampHistoryMaxAgeDays(
           parsed.historyMaxAgeDays ?? defaultSettings.historyMaxAgeDays,
         ),
@@ -157,8 +150,8 @@ interface SettingsState extends AppSettings {
   setResponseHeight: (height: number) => void;
   setHistoryHeight: (height: number) => void;
   setHistoryCollapsed: (collapsed: boolean) => void;
-  setCollectionSidebarOpen: (open: boolean) => void;
-  setCollectionSidebarWidth: (width: number) => void;
+  setFolderSidebarOpen: (open: boolean) => void;
+  setFolderSidebarWidth: (width: number) => void;
   setCurlPanelOpen: (open: boolean) => void;
   setCurlPanelWidth: (width: number) => void;
   setCurlPanelCollapsed: (collapsed: boolean) => void;
@@ -235,14 +228,14 @@ export const useSettingsStore = create<SettingsState>((set) => {
       return next;
     }),
 
-    setCollectionSidebarOpen: (collectionSidebarOpen) => set(state => {
-      const next = { ...state, collectionSidebarOpen };
+    setFolderSidebarOpen: (folderSidebarOpen) => set(state => {
+      const next = { ...state, folderSidebarOpen };
       saveSettings(next);
       return next;
     }),
 
-    setCollectionSidebarWidth: (collectionSidebarWidth) => set(state => {
-      const next = { ...state, collectionSidebarWidth: Math.round(collectionSidebarWidth) };
+    setFolderSidebarWidth: (folderSidebarWidth) => set(state => {
+      const next = { ...state, folderSidebarWidth: Math.round(folderSidebarWidth) };
       saveSettings(next);
       return next;
     }),
@@ -400,9 +393,9 @@ export function initKeyboardShortcuts(): () => void {
       return;
     }
 
-    if (matchesShortcutCombo(e, shortcuts.focusCollectionSearch)) {
+    if (matchesShortcutCombo(e, shortcuts.focusFolderSearch)) {
       e.preventDefault();
-      window.dispatchEvent(new CustomEvent('app:focus-collection-search'));
+      window.dispatchEvent(new CustomEvent('app:focus-folder-search'));
       return;
     }
 
@@ -419,10 +412,10 @@ export function initKeyboardShortcuts(): () => void {
       return;
     }
 
-    if (matchesShortcutCombo(e, shortcuts.toggleCollectionSidebar)) {
+    if (matchesShortcutCombo(e, shortcuts.toggleFolderSidebar)) {
       e.preventDefault();
-      const { collectionSidebarOpen, setCollectionSidebarOpen } = useSettingsStore.getState();
-      setCollectionSidebarOpen(!collectionSidebarOpen);
+      const { folderSidebarOpen, setFolderSidebarOpen } = useSettingsStore.getState();
+      setFolderSidebarOpen(!folderSidebarOpen);
       return;
     }
 

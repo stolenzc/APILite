@@ -4,7 +4,7 @@ interface Props {
   width: number;
   onWidthChange: (width: number) => void;
   disabled?: boolean;
-  /** `left`: drag right to widen (collection sidebar). `right`: drag left to widen (cURL panel). */
+  /** `left`: drag right to widen (folder sidebar). `right`: drag left to widen (cURL panel). */
   side?: 'left' | 'right';
   minWidth?: number;
   maxWidth?: number;

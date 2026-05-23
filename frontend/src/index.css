@@ -372,7 +372,7 @@ body {
   flex-shrink: 0;
 }
 
-/* Tab Bar (inside main-workspace top — shares row height with collections sidebar) */
+/* Tab Bar (inside main-workspace top — shares row height with folders sidebar) */
 .tab-bar {
   display: flex;
   align-items: center;
@@ -418,11 +418,11 @@ body {
   border-bottom: 2px solid var(--accent);
 }
 
-/* Collection tabs get a warm green tint */
-.tab-item.collection {
+/* Folder-saved request tabs get a warm green tint */
+.tab-item.folder-tab {
   background: rgba(73, 204, 144, 0.04);
 }
-.tab-item.collection.active {
+.tab-item.folder-tab.active {
   background: rgba(73, 204, 144, 0.1);
   border-bottom-color: rgba(73, 204, 144, 0.5);
 }
@@ -508,7 +508,7 @@ body {
   width: 100%;
 }
 
-/* Right column: request tabs on top, URL/request UI below (collections stay left full-height). */
+/* Right column: request tabs on top, URL/request UI below (folders sidebar stays left full-height). */
 .main-workspace {
   flex: 1;
   display: flex;
@@ -637,7 +637,7 @@ body {
   min-height: 0;
 }
 
-.sidebar-section-collections {
+.sidebar-section-folders {
   flex: 1;
 }
 
@@ -679,12 +679,12 @@ body {
   border-color: var(--accent);
 }
 
-.sidebar-collection-search {
+.sidebar-folder-search {
   padding: 0 10px 8px;
   flex-shrink: 0;
 }
 
-.sidebar-collection-search-input {
+.sidebar-folder-search-input {
   width: 100%;
   box-sizing: border-box;
   padding: 6px 8px;
@@ -697,11 +697,11 @@ body {
   outline: none;
 }
 
-.sidebar-collection-search-input:focus {
+.sidebar-folder-search-input:focus {
   border-color: var(--accent);
 }
 
-.sidebar-collection-search-input::placeholder {
+.sidebar-folder-search-input::placeholder {
   color: var(--text-muted);
 }
 
@@ -871,7 +871,7 @@ body {
   z-index: 200;
 }
 
-/* Collection sidebar toggle */
+/* Folder sidebar toggle */
 .sidebar-toggle {
   position: fixed;
   left: 0;
@@ -1816,7 +1816,7 @@ input[type="checkbox"].kv-checkbox-lg {
   background: var(--accent);
 }
 
-/* Vertical splitters (collection sidebar, cURL panel) — match history drag handle */
+/* Vertical splitters (folder sidebar, cURL panel) — match history drag handle */
 .splitter-v {
   width: 4px;
   height: auto;

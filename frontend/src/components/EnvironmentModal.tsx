@@ -184,7 +184,7 @@ function EnvContextMenu({
         className="context-menu-item"
         onClick={() => run(() => (isCol ? onDuplicateCol(menu.id) : onDuplicateRow(menu.id)))}
       >
-        {t('collection.duplicate')}
+        {t('folder.duplicate')}
       </div>
       <div
         className={`context-menu-item${isCol && !canDeleteCol ? ' context-menu-item--disabled' : ''}`}
@@ -193,7 +193,7 @@ function EnvContextMenu({
           run(() => (isCol ? onDeleteCol(menu.id) : onDeleteRow(menu.id)));
         }}
       >
-        {t('collection.delete')}
+        {t('folder.delete')}
       </div>
     </div>
   );

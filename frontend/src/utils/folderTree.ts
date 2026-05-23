@@ -1,17 +1,17 @@
-import type { CollectionFolder, CollectionNode, CollectionRequest } from '../types';
+import type { TreeFolder, TreeNode, TreeRequest } from '../types';
 
-function compareFolderName(a: CollectionFolder, b: CollectionFolder): number {
+function compareFolderName(a: TreeFolder, b: TreeFolder): number {
   return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
 }
 
-function requestSortKey(req: CollectionRequest, indexAmongRequests: number): number {
+function requestSortKey(req: TreeRequest, indexAmongRequests: number): number {
   return typeof req.sortOrder === 'number' ? req.sortOrder : indexAmongRequests * 10;
 }
 
 /** Folders first (by name), then requests (by sortOrder / add order). Recurses into folders. */
-export function normalizeFolderChildren(children: CollectionNode[]): CollectionNode[] {
+export function normalizeFolderChildren(children: TreeNode[]): TreeNode[] {
   const folders = children
-    .filter((c): c is CollectionFolder => c.type === 'folder')
+    .filter((c): c is TreeFolder => c.type === 'folder')
     .map((f) => ({
       ...f,
       children: normalizeFolderChildren(f.children),
@@ -19,7 +19,7 @@ export function normalizeFolderChildren(children: CollectionNode[]): CollectionN
     .sort(compareFolderName);
 
   const requests = children
-    .filter((c): c is CollectionRequest => c.type === 'request')
+    .filter((c): c is TreeRequest => c.type === 'request')
     .map((r, index) => ({
       ...r,
       sortOrder: requestSortKey(r, index),
@@ -29,14 +29,14 @@ export function normalizeFolderChildren(children: CollectionNode[]): CollectionN
   return [...folders, ...requests];
 }
 
-export function normalizeCollectionTree(collections: CollectionNode[]): CollectionNode[] {
-  return collections.map((node) => {
+export function normalizeFolderTree(folders: TreeNode[]): TreeNode[] {
+  return folders.map((node) => {
     if (node.type !== 'folder') return node;
     return { ...node, children: normalizeFolderChildren(node.children) };
   });
 }
 
-export function nextRequestSortOrder(children: CollectionNode[]): number {
+export function nextRequestSortOrder(children: TreeNode[]): number {
   let max = -10;
   for (const child of children) {
     if (child.type === 'request') {

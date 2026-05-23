@@ -5,17 +5,17 @@ import { themes } from '../themes';
 import { t, getAvailableLocales } from '../i18n';
 import type { ShortcutConfig } from '../store/useSettings';
 import { useModalOverlayDismiss } from '../utils/modalOverlayDismiss';
-import { COLLECTIONS_SUBDIR, ENVIRONMENTS_FILE, HISTORIES_SUBDIR } from '../utils/storagePaths';
+import { FOLDERS_SUBDIR, ENVIRONMENTS_FILE, HISTORIES_SUBDIR } from '../utils/storagePaths';
 import { HISTORY_DAY_FILE_PATTERN } from '../utils/historyStorage';
 
 const SHORTCUT_LABELS: Record<keyof ShortcutConfig, string> = {
   sendRequest: 'shortcut.sendRequest',
   saveRequest: 'shortcut.saveRequest',
   focusUrl: 'shortcut.focusUrl',
-  focusCollectionSearch: 'shortcut.focusCollectionSearch',
+  focusFolderSearch: 'shortcut.focusFolderSearch',
   toggleSettings: 'shortcut.toggleSettings',
   toggleHistory: 'shortcut.toggleHistory',
-  toggleCollectionSidebar: 'shortcut.toggleCollectionSidebar',
+  toggleFolderSidebar: 'shortcut.toggleFolderSidebar',
   toggleCurlPanel: 'shortcut.toggleCurlPanel',
   newTab: 'shortcut.newTab',
   closeTab: 'shortcut.closeTab',
@@ -102,7 +102,7 @@ export default function SettingsPanel() {
           <h4>{t('settings.storage.title')}</h4>
           <p className="settings-storage-hint">{t('settings.storage.hint')}</p>
           <ul className="settings-storage-layout">
-            <li><code>{COLLECTIONS_SUBDIR}/</code> — {t('settings.storage.collections')}</li>
+            <li><code>{FOLDERS_SUBDIR}/</code> — {t('settings.storage.folders')}</li>
             <li><code>{HISTORIES_SUBDIR}/{HISTORY_DAY_FILE_PATTERN}</code> — {t('settings.storage.histories')}</li>
             <li><code>{ENVIRONMENTS_FILE}</code> — {t('settings.storage.environments')}</li>
           </ul>

@@ -1,6 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-mod collections;
+mod folders;
 mod environments;
 mod histories;
 mod storage;
@@ -118,32 +118,32 @@ fn environments_save(data_dir: String, data: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn load_collections(dir: String) -> Result<String, String> {
-    collections::load_tree(&dir)
+fn load_folders(dir: String) -> Result<String, String> {
+    folders::load_tree(&dir)
 }
 
 #[tauri::command]
-fn collections_save(dir: String, file_name: String, data: String) -> Result<(), String> {
-    collections::save_collection(&dir, &file_name, &data)
+fn folders_save(dir: String, file_name: String, data: String) -> Result<(), String> {
+    folders::save_folder(&dir, &file_name, &data)
 }
 
 #[tauri::command]
-fn collections_create(dir: String, id: String, name: String) -> Result<String, String> {
-    collections::create_collection(&dir, &id, &name)
+fn folders_create(dir: String, id: String, name: String) -> Result<String, String> {
+    folders::create_folder(&dir, &id, &name)
 }
 
 #[tauri::command]
-fn collections_delete(dir: String, file_name: String) -> Result<(), String> {
-    collections::delete_collection(&dir, &file_name)
+fn folders_delete(dir: String, file_name: String) -> Result<(), String> {
+    folders::delete_folder(&dir, &file_name)
 }
 
 #[tauri::command]
-fn collections_rename(
+fn folders_rename(
     dir: String,
     file_name: String,
     new_name: String,
 ) -> Result<String, String> {
-    collections::rename_collection(&dir, &file_name, &new_name)
+    folders::rename_folder(&dir, &file_name, &new_name)
 }
 
 #[tauri::command]
@@ -173,11 +173,11 @@ fn main() {
             histories_clear,
             environments_load,
             environments_save,
-            load_collections,
-            collections_save,
-            collections_create,
-            collections_delete,
-            collections_rename,
+            load_folders,
+            folders_save,
+            folders_create,
+            folders_delete,
+            folders_rename,
             force_close_window,
         ])
         .run(tauri::generate_context!())

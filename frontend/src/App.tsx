@@ -4,7 +4,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { useStore } from './store/useStore';
 import { useSettingsStore, initKeyboardShortcuts } from './store/useSettings';
-import { useCollectionStore, getCollectionPath } from './store/useCollection';
+import { useFolderStore, getFolderPath } from './store/useFolderStore';
 import { applyTheme } from './themes';
 import { setLocale, getLocale, t } from './i18n';
 import UrlBar from './components/UrlBar';
@@ -17,14 +17,14 @@ import ResponsePanel from './components/ResponsePanel';
 import HistoryPanel from './components/HistoryPanel';
 import SettingsPanel from './components/SettingsPanel';
 import ResizableSplitter from './components/ResizableSplitter';
-import CollectionSidebar from './components/CollectionSidebar';
+import FolderSidebar from './components/FolderSidebar';
 import CurlPanel from './components/CurlPanel';
 import VerticalResizableSplitter from './components/VerticalResizableSplitter';
 import TabBar from './components/TabBar';
 import SaveRequestModal from './components/SaveRequestModal';
 import { isTauri, setupTauriMenu } from './tauri/setupMenu';
 import { bootstrapLocalStorage } from './utils/bootstrapStorage';
-import { focusCollectionSearchInput } from './utils/focusCollectionSearch';
+import { focusFolderSearchInput } from './utils/focusFolderSearch';
 import { cloneHttpRequest } from './utils/normalizeRequest';
 
 export default function App() {
@@ -41,10 +41,10 @@ export default function App() {
     curlPanelWidth,
     setCurlPanelWidth,
     curlPanelCollapsed,
-    collectionSidebarOpen,
-    collectionSidebarWidth,
-    setCollectionSidebarWidth,
-    setCollectionSidebarOpen,
+    folderSidebarOpen,
+    folderSidebarWidth,
+    setFolderSidebarWidth,
+    setFolderSidebarOpen,
   } = useSettingsStore();
 
   useEffect(() => {
@@ -54,13 +54,13 @@ export default function App() {
   }, [dataDir]);
 
   useEffect(() => {
-    const onFocusCollectionSearch = () => {
-      setCollectionSidebarOpen(true);
-      requestAnimationFrame(() => focusCollectionSearchInput());
+    const onFocusFolderSearch = () => {
+      setFolderSidebarOpen(true);
+      requestAnimationFrame(() => focusFolderSearchInput());
     };
-    window.addEventListener('app:focus-collection-search', onFocusCollectionSearch);
-    return () => window.removeEventListener('app:focus-collection-search', onFocusCollectionSearch);
-  }, [setCollectionSidebarOpen]);
+    window.addEventListener('app:focus-folder-search', onFocusFolderSearch);
+    return () => window.removeEventListener('app:focus-folder-search', onFocusFolderSearch);
+  }, [setFolderSidebarOpen]);
 
   useEffect(() => {
     useStore.getState().syncHistoryRetention();
@@ -93,14 +93,14 @@ export default function App() {
 
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const saveActiveTabToCollection = (collectionId: string, name: string) => {
+  const saveActiveTabToFolder = (requestNodeId: string, name: string) => {
     const activeTab = useStore.getState().tabs.find(t => t.id === useStore.getState().activeTabId);
     if (!activeTab) return false;
     const req = activeTab.request;
-    useCollectionStore.getState().updateRequest(collectionId, name, cloneHttpRequest(req));
-    if (activeTab.collectionId !== collectionId) {
-      const path = getCollectionPath(useCollectionStore.getState().collections, collectionId);
-      useStore.getState().linkActiveTabToCollection(collectionId, name, path);
+    useFolderStore.getState().updateRequest(requestNodeId, name, cloneHttpRequest(req));
+    if (activeTab.requestNodeId !== requestNodeId) {
+      const path = getFolderPath(useFolderStore.getState().folders, requestNodeId);
+      useStore.getState().linkActiveTabToFolder(requestNodeId, name, path);
     } else {
       useStore.getState().clearUnsaved();
     }
@@ -112,10 +112,10 @@ export default function App() {
     if (!activeTab) return;
     const req = activeTab.request;
     const requestId = nanoid();
-    const savedId = useCollectionStore.getState().addRequest(folderId, name, cloneHttpRequest(req), requestId);
+    const savedId = useFolderStore.getState().addRequest(folderId, name, cloneHttpRequest(req), requestId);
     if (!savedId) return;
-    const path = getCollectionPath(useCollectionStore.getState().collections, savedId);
-    useStore.getState().linkActiveTabToCollection(savedId, name, path);
+    const path = getFolderPath(useFolderStore.getState().folders, savedId);
+    useStore.getState().linkActiveTabToFolder(savedId, name, path);
     setSaveModalOpen(false);
     setToast('Saved!');
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -155,20 +155,20 @@ export default function App() {
       const activeTab = tabState.tabs.find(t => t.id === tabState.activeTabId);
       if (!activeTab) return;
 
-      let collectionId = activeTab.collectionId;
+      let requestNodeId = activeTab.requestNodeId;
       let name = activeTab.name;
-      if (!collectionId) {
-        const activeNodeId = useCollectionStore.getState().activeNodeId;
+      if (!requestNodeId) {
+        const activeNodeId = useFolderStore.getState().activeNodeId;
         if (activeNodeId) {
-          const node = useCollectionStore.getState().getRequestNode(activeNodeId);
+          const node = useFolderStore.getState().getRequestNode(activeNodeId);
           if (node) {
-            collectionId = node.id;
+            requestNodeId = node.id;
             name = node.name;
           }
         }
       }
 
-      if (collectionId && saveActiveTabToCollection(collectionId, name)) {
+      if (requestNodeId && saveActiveTabToFolder(requestNodeId, name)) {
         setToast('Saved!');
         if (toastTimer.current) clearTimeout(toastTimer.current);
         toastTimer.current = setTimeout(() => setToast(''), 1500);
@@ -237,13 +237,13 @@ export default function App() {
       <TitleBar />
       <div className="app-body">
         <div className="main-content">
-        {collectionSidebarOpen && (
+        {folderSidebarOpen && (
           <>
-            <CollectionSidebar />
+            <FolderSidebar />
             <VerticalResizableSplitter
               side="left"
-              width={collectionSidebarWidth}
-              onWidthChange={setCollectionSidebarWidth}
+              width={folderSidebarWidth}
+              onWidthChange={setFolderSidebarWidth}
               minWidth={180}
               maxWidth={560}
             />
