@@ -53,6 +53,17 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
+/* Portaled header suggestions — not clipped by table overflow */
+.autocomplete-dropdown--float {
+  position: fixed;
+  top: auto;
+  left: auto;
+  right: auto;
+  margin-top: 0;
+  overflow-y: auto;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+}
+
 .autocomplete-item {
   padding: 6px 12px;
   font-size: 12px;

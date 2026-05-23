@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useStore } from '../store/useStore';
 import type { KeyValue } from '../types';
 import { matchHeaders } from '../constants';
 import { t } from '../i18n';
 import { EnvVarField } from './EnvVarField';
+import { useDropdownAnchorStyle } from '../hooks/useDropdownAnchorStyle';
 
 export default function HeadersTab() {
   const { updateHeader, removeHeader } = useStore();
@@ -12,10 +14,15 @@ export default function HeadersTab() {
   const [envSuggestRow, setEnvSuggestRow] = useState<number | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const anchorRef = useRef<HTMLTableCellElement>(null);
+
+  const showHeaderSuggest = activeDropdown !== null && envSuggestRow !== activeDropdown;
 
   const suggestions = activeDropdown !== null
     ? matchHeaders(headers[activeDropdown]?.key ?? '')
     : [];
+
+  const dropdownStyle = useDropdownAnchorStyle(showHeaderSuggest && suggestions.length > 0, anchorRef);
 
   const handleSelect = (index: number, key: string) => {
     updateHeader(index, 'key', key);
@@ -41,9 +48,10 @@ export default function HeadersTab() {
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setActiveDropdown(null);
-      }
+      const target = e.target as Node;
+      if (dropdownRef.current?.contains(target)) return;
+      if (anchorRef.current?.contains(target)) return;
+      setActiveDropdown(null);
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -52,6 +60,31 @@ export default function HeadersTab() {
   useEffect(() => {
     setActiveIndex(0);
   }, [activeDropdown, suggestions.length]);
+
+  const headerSuggestPortal = showHeaderSuggest && suggestions.length > 0 && dropdownStyle
+    ? createPortal(
+        <div
+          ref={dropdownRef}
+          className="autocomplete-dropdown autocomplete-dropdown--float"
+          style={dropdownStyle}
+          role="listbox"
+        >
+          {suggestions.map((s, si) => (
+            <div
+              key={s.key}
+              role="option"
+              aria-selected={si === activeIndex}
+              className={`autocomplete-item ${si === activeIndex ? 'active' : ''}`}
+              onMouseDown={() => activeDropdown !== null && handleSelect(activeDropdown, s.key)}
+            >
+              <span className="key">{s.key}</span>
+              <span className="desc">{s.description}</span>
+            </div>
+          ))}
+        </div>,
+        document.body,
+      )
+    : null;
 
   return (
     <div className="kv-table-wrap">
@@ -68,7 +101,10 @@ export default function HeadersTab() {
           {headers.map((h: KeyValue, i: number) => (
             <tr key={i}>
               <td className="kv-table-checkbox-cell"><input type="checkbox" checked={h.enabled} onChange={e => updateHeader(i, 'enabled', e.target.checked)} /></td>
-              <td className="autocomplete-wrapper">
+              <td
+                ref={activeDropdown === i ? anchorRef : undefined}
+                className="autocomplete-wrapper"
+              >
                 <EnvVarField
                   type="text"
                   placeholder={t('kv.key')}
@@ -86,20 +122,6 @@ export default function HeadersTab() {
                   }}
                   onKeyDown={(e) => handleKeyDown(e, i)}
                 />
-                {activeDropdown === i && envSuggestRow !== i && suggestions.length > 0 && (
-                  <div ref={dropdownRef} className="autocomplete-dropdown">
-                    {suggestions.map((s, si) => (
-                      <div
-                        key={s.key}
-                        className={`autocomplete-item ${si === activeIndex ? 'active' : ''}`}
-                        onMouseDown={() => handleSelect(i, s.key)}
-                      >
-                        <span className="key">{s.key}</span>
-                        <span className="desc">{s.description}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </td>
               <td>
                 <EnvVarField
@@ -114,6 +136,7 @@ export default function HeadersTab() {
           ))}
         </tbody>
       </table>
+      {headerSuggestPortal}
     </div>
   );
 }
