@@ -1404,6 +1404,7 @@ input[type="checkbox"].kv-checkbox-lg {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
 }
 
 .response-header {
@@ -1480,6 +1481,30 @@ input[type="checkbox"].kv-checkbox-lg {
   height: 100%;
   color: var(--text-muted);
   font-size: 14px;
+}
+
+.response-loading-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--bg-primary) 62%, transparent);
+  backdrop-filter: blur(1px);
+}
+
+.response-loading-overlay .response-spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid var(--border-color);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: response-spin 0.75s linear infinite;
+}
+
+@keyframes response-spin {
+  to { transform: rotate(360deg); }
 }
 
 /* History Panel */

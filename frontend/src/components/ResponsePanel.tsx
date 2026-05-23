@@ -6,9 +6,11 @@ import { getRawHttpResponse } from '../utils/httpUtils';
 export default function ResponsePanel() {
   const responseTab = useStore((s) => s.responseTab);
   const setResponseTab = useStore((s) => s.setResponseTab);
-  const response = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.response ?? null);
+  const tab = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId));
+  const response = tab?.response ?? null;
+  const loading = tab?.loading ?? false;
 
-  if (!response) {
+  if (!response && !loading) {
     return (
       <div className="response-panel">
         <div className="response-placeholder">{t('app.response.placeholder')}</div>
@@ -16,16 +18,16 @@ export default function ResponsePanel() {
     );
   }
 
-  const statusClass = response.status >= 200 && response.status < 300 ? 'status-2xx'
+  const statusClass = response && (response.status >= 200 && response.status < 300 ? 'status-2xx'
     : response.status >= 300 && response.status < 400 ? 'status-3xx'
     : response.status >= 400 && response.status < 500 ? 'status-4xx'
-    : 'status-5xx';
+    : 'status-5xx');
 
-  const jsonValid = isJson(response.body);
-  const formattedBody = responseTab === 'body'
+  const jsonValid = response ? isJson(response.body) : false;
+  const formattedBody = response && responseTab === 'body'
     ? (jsonValid ? formatJson(response.body).formatted : response.body)
     : '';
-  const rawHttp = getRawHttpResponse(response);
+  const rawHttp = response ? getRawHttpResponse(response) : '';
 
   return (
     <div className="response-panel">
@@ -36,38 +38,49 @@ export default function ResponsePanel() {
           <span className={`response-tab ${responseTab === 'raw' ? 'active' : ''}`} onClick={() => setResponseTab('raw')}>{t('response.raw')}</span>
         </div>
         <div className="response-header-meta">
-          <span className={`status-badge ${statusClass}`}>{response.status} {response.statusText}</span>
-          <span className="response-time">{response.durationMs}ms</span>
-          {responseTab === 'body' && jsonValid && (
-            <span className="json-status valid" style={{ fontSize: 11 }}>JSON</span>
-          )}
+          {response ? (
+            <>
+              <span className={`status-badge ${statusClass}`}>{response.status} {response.statusText}</span>
+              <span className="response-time">{response.durationMs}ms</span>
+              {responseTab === 'body' && jsonValid && (
+                <span className="json-status valid" style={{ fontSize: 11 }}>JSON</span>
+              )}
+            </>
+          ) : null}
         </div>
       </div>
       <div className="response-body">
-        {responseTab === 'body' ? (
-          jsonValid ? (
-            <div
-              className="json-highlight"
-              dangerouslySetInnerHTML={{ __html: highlightJson(formattedBody) }}
-            />
+        {response ? (
+          responseTab === 'body' ? (
+            jsonValid ? (
+              <div
+                className="json-highlight"
+                dangerouslySetInnerHTML={{ __html: highlightJson(formattedBody) }}
+              />
+            ) : (
+              <pre>{formattedBody}</pre>
+            )
+          ) : responseTab === 'headers' ? (
+            <div className="kv-table-wrap">
+            <table className="kv-table">
+              <thead><tr><th>{t('kv.key')}</th><th>{t('kv.value')}</th></tr></thead>
+              <tbody>
+                {Object.entries(response.headers).map(([k, v]) => (
+                  <tr key={k}><td>{k}</td><td>{v}</td></tr>
+                ))}
+              </tbody>
+            </table>
+            </div>
           ) : (
-            <pre>{formattedBody}</pre>
+            <pre className="response-raw">{rawHttp}</pre>
           )
-        ) : responseTab === 'headers' ? (
-          <div className="kv-table-wrap">
-          <table className="kv-table">
-            <thead><tr><th>{t('kv.key')}</th><th>{t('kv.value')}</th></tr></thead>
-            <tbody>
-              {Object.entries(response.headers).map(([k, v]) => (
-                <tr key={k}><td>{k}</td><td>{v}</td></tr>
-              ))}
-            </tbody>
-          </table>
-          </div>
-        ) : (
-          <pre className="response-raw">{rawHttp}</pre>
-        )}
+        ) : null}
       </div>
+      {loading && (
+        <div className="response-loading-overlay" aria-busy="true">
+          <span className="response-spinner" aria-hidden />
+        </div>
+      )}
     </div>
   );
 }
