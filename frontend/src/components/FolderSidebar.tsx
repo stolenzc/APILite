@@ -4,6 +4,7 @@ import { useFolderStore, getFolderPath, nodeInTree } from '../store/useFolderSto
 import { useStore } from '../store/useStore';
 import type { TreeFolder, TreeNode, TreeRequest } from '../types';
 import { t } from '../i18n';
+import { isImeComposing } from '../utils/keyboard';
 import { methodColors } from '../constants';
 import { useSettingsStore } from '../store/useSettings';
 import TreeChevron from './TreeChevron';
@@ -204,6 +205,7 @@ function TreeNode({ node, depth = 0 }: { node: TreeNode; depth?: number }) {
   }, [editName, node.id, node.name, renameNode]);
 
   const handleKey = useCallback((e: React.KeyboardEvent) => {
+    if (isImeComposing(e)) return;
     if (e.key === 'Enter') confirmRename();
     if (e.key === 'Escape') { setEditName(node.name); setRenaming(false); }
   }, [confirmRename, node.name]);

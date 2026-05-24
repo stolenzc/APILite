@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, type RefObject } from 'react';
 import { parseOpenEnvPlaceholder } from '../utils/envInterpolation';
+import { isImeComposing } from '../utils/keyboard';
 import { useStore } from '../store/useStore';
 import { useEnvVarEntries, type EnvSuggestRow } from './useEnvVarEntries';
 
@@ -66,6 +67,7 @@ export function useEnvVarSuggest(
 
   const handleEnvKeyDown = useCallback(
     (e: React.KeyboardEvent): boolean => {
+      if (isImeComposing(e)) return false;
       if (!envSuggest || envSuggest.list.length === 0) return false;
       if (e.key === 'ArrowDown') {
         e.preventDefault();

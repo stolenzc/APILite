@@ -7,6 +7,7 @@ import { matchHeaderValues } from '../utils/headerValues';
 import { t } from '../i18n';
 import { EnvVarField } from './EnvVarField';
 import { useDropdownAnchorStyle } from '../hooks/useDropdownAnchorStyle';
+import { isImeComposing } from '../utils/keyboard';
 
 export default function HeadersTab() {
   const { updateHeader, removeHeader } = useStore();
@@ -54,6 +55,7 @@ export default function HeadersTab() {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent, index: number) => {
+    if (isImeComposing(e)) return;
     if (activeKeyRow === null) return;
     if (e.key === 'ArrowDown') {
       e.preventDefault();
@@ -70,6 +72,7 @@ export default function HeadersTab() {
   };
 
   const handleValueKeyDown = (e: React.KeyboardEvent, index: number) => {
+    if (isImeComposing(e)) return;
     if (activeValueRow === null) return;
     if (e.key === 'ArrowDown') {
       e.preventDefault();

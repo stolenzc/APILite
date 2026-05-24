@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { setLocale as applyI18nLocale, type Locale } from '../i18n';
 import { focusUrlInput } from '../utils/focusUrl';
+import { isImeComposing } from '../utils/keyboard';
 import { useEnvironmentStore } from './useEnvironmentStore';
 
 export interface ShortcutConfig {
@@ -333,6 +334,7 @@ export function matchesShortcutCombo(
   e: KeyboardEvent | React.KeyboardEvent,
   shortcut: string,
 ): boolean {
+  if (isImeComposing(e)) return false;
   const trimmed = shortcut.trim();
   if (!trimmed) return false;
   if (buildCombo(e) === trimmed) return true;
@@ -365,6 +367,7 @@ function handleEscapeKey(e: KeyboardEvent) {
 export function initKeyboardShortcuts(): () => void {
   const handler = (e: KeyboardEvent) => {
     if (handleEscapeKey(e)) return;
+    if (isImeComposing(e)) return;
 
     const shortcuts = useSettingsStore.getState().shortcuts;
 

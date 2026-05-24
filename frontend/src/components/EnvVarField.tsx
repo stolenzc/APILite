@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useEnvVarSuggest } from '../hooks/useEnvVarSuggest';
 import { useEnvVarCaretSuggestStyle } from '../hooks/useEnvVarCaretSuggestStyle';
 import EnvVarSuggestList from './EnvVarSuggestList';
+import { isImeComposing } from '../utils/keyboard';
 
 type CommonProps = {
   value: string;
@@ -105,6 +106,7 @@ export function EnvVarField(props: EnvVarFieldProps) {
           onChange={onChangeWithSuggest}
           {...envInputHandlers}
           onKeyDown={(e) => {
+            if (isImeComposing(e)) return;
             if (handleEnvKeyDown(e)) return;
             onKeyDown?.(e);
           }}
@@ -151,6 +153,7 @@ export function EnvVarField(props: EnvVarFieldProps) {
         onChange={onChangeWithSuggest}
         {...envInputHandlers}
         onKeyDown={(e) => {
+          if (isImeComposing(e)) return;
           if (handleEnvKeyDown(e)) return;
           onKeyDown?.(e);
         }}

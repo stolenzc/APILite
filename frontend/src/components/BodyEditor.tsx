@@ -8,6 +8,7 @@ import { EnvVarField } from './EnvVarField';
 import BodyFormTable from './BodyFormTable';
 import { pickFilePath, readBrowserFileAsBase64 } from '../utils/filePicker';
 import { isTauri } from '../tauri/setupMenu';
+import { isImeComposing } from '../utils/keyboard';
 
 function isSendRequestShortcut(e: React.KeyboardEvent): boolean {
   return matchesShortcutCombo(e, useSettingsStore.getState().shortcuts.sendRequest);
@@ -95,6 +96,7 @@ function JsonBody() {
   const setBody = useStore((s) => s.setBody);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (isImeComposing(e)) return;
     if (isSendRequestShortcut(e)) {
       e.preventDefault();
       return;
@@ -223,6 +225,7 @@ function RawContentEditor({ rawContentType }: { rawContentType: RawContentType }
   const placeholderKey = PLACEHOLDER_KEYS[rawContentType] ?? '';
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (isImeComposing(e)) return;
     if (isSendRequestShortcut(e)) {
       e.preventDefault();
     }

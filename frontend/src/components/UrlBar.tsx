@@ -8,6 +8,7 @@ import { formatRawHttpResponse } from '../utils/httpUtils';
 import { hasHttpProtocol, interpolateEnvVars } from '../utils/envInterpolation';
 import { useEnvironmentStore } from '../store/useEnvironmentStore';
 import { isCurlCommand } from '../utils/curlUtils';
+import { isImeComposing } from '../utils/keyboard';
 import { showToast } from '../utils/toast';
 import { focusUrlInput } from '../utils/focusUrl';
 import { EnvVarField } from './EnvVarField';
@@ -157,6 +158,7 @@ export default function UrlBar() {
           }}
           onPaste={handlePaste}
           onKeyDown={async (e) => {
+            if (isImeComposing(e)) return;
             if (e.key === 'Enter') {
               if (isCurlCommand(requestUrl)) {
                 e.preventDefault();

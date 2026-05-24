@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { useFolderStore, folderPathIds } from '../store/useFolderStore';
 import type { TreeFolder, TreeNode } from '../types';
 import { t } from '../i18n';
+import { isImeComposing } from '../utils/keyboard';
 import { useModalOverlayDismiss } from '../utils/modalOverlayDismiss';
 import { showToast } from '../utils/toast';
 import TreeChevron from './TreeChevron';
@@ -267,6 +268,7 @@ export default function SaveRequestModal({ onClose, onSave, defaultName }: Props
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => {
+            if (isImeComposing(e)) return;
             if (e.key === 'Enter') handleSubmit();
           }}
           autoFocus
