@@ -55,7 +55,7 @@ const messages: Record<Locale, Record<string, string>> = {
 
     // Body
     'body.type.none': 'None',
-    'body.json.placeholder': 'Enter JSON body...',
+    'body.json.placeholder': 'Enter JSONC body (// and /* */ comments supported)...',
     'saveRequest.title': 'Save Request',
     'saveRequest.name': 'Request Name',
     'saveRequest.folder': 'Save to Folder',
@@ -93,8 +93,8 @@ const messages: Record<Locale, Record<string, string>> = {
     'body.placeholder.javascript': '// Enter JavaScript code...',
     'body.json.format': 'Format',
     'body.json.minify': 'Minify',
-    'body.json.valid': 'JSON valid',
-    'body.json.invalid': 'JSON invalid',
+    'body.json.valid': 'JSONC valid',
+    'body.json.invalid': 'JSONC invalid',
 
     // Response
     'response.body': 'Body',
@@ -220,7 +220,7 @@ const messages: Record<Locale, Record<string, string>> = {
 
     // Body
     'body.type.none': '无',
-    'body.json.placeholder': '输入 JSON 请求体...',
+    'body.json.placeholder': '输入 JSONC 请求体（支持 // 与 /* */ 注释）...',
     'saveRequest.title': '保存请求',
     'saveRequest.name': '请求名称',
     'saveRequest.folder': '保存到文件夹',
@@ -258,8 +258,8 @@ const messages: Record<Locale, Record<string, string>> = {
     'body.placeholder.javascript': '// 输入 JavaScript 代码...',
     'body.json.format': '格式化',
     'body.json.minify': '压缩',
-    'body.json.valid': 'JSON 有效',
-    'body.json.invalid': 'JSON 无效',
+    'body.json.valid': 'JSONC 有效',
+    'body.json.invalid': 'JSONC 无效',
 
     // Response
     'response.body': '响应体',

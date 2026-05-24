@@ -3,7 +3,7 @@ import { useStore } from '../store/useStore';
 import { matchesShortcutCombo, useSettingsStore } from '../store/useSettings';
 import type { BodyType, RawContentType } from '../types';
 import { t } from '../i18n';
-import { formatJson, isJson } from '../utils/jsonUtils';
+import { formatJsonc, isJsonc, parseJsonc } from '../utils/jsonUtils';
 import { EnvVarField } from './EnvVarField';
 import BodyFormTable from './BodyFormTable';
 import { pickFilePath, readBrowserFileAsBase64 } from '../utils/filePicker';
@@ -284,18 +284,18 @@ export default function BodyEditor() {
   const setRawContentType = useStore((s) => s.setRawContentType);
   const setBody = useStore((s) => s.setBody);
 
-  const jsonValid = body.length > 0 && isJson(body);
+  const jsonValid = body.length > 0 && isJsonc(body);
 
   const handleFormat = () => {
     if (!body) return;
-    const { formatted, valid } = formatJson(body);
+    const { formatted, valid } = formatJsonc(body);
     if (valid) setBody(formatted);
   };
 
   const handleMinify = () => {
     if (!body) return;
-    const { formatted, valid } = formatJson(body);
-    if (valid) setBody(formatted.replace(/\n\s*/g, ''));
+    const { value, valid } = parseJsonc(body);
+    if (valid) setBody(JSON.stringify(value));
   };
 
   const isJsonBody = bodyType === 'raw' && rawContentType === 'json';

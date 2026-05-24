@@ -1,5 +1,6 @@
 import type { BinaryBodyFile, FormField, HttpRequest, KeyValue } from '../types';
 import { interpolateEnvVars } from './envInterpolation';
+import { jsoncToStrictJson } from './jsonUtils';
 
 export interface OutboundFormField {
   key: string;
@@ -121,6 +122,9 @@ export function resolveOutboundBody(
     };
   }
 
-  const body = req.body ? interpolateEnvVars(req.body, vars) : null;
+  let body = req.body ? interpolateEnvVars(req.body, vars) : null;
+  if (req.bodyType === 'raw' && req.rawContentType === 'json' && body) {
+    body = jsoncToStrictJson(body);
+  }
   return { effectiveBodyType, body, formFields: [], binaryFile: null };
 }
