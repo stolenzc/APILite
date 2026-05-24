@@ -162,12 +162,16 @@ function JsonBody() {
       const charAfter = body[start];
       if (e.key === '{') {
         const charBefore = body[start - 1];
+        // Second "{" of "{{env}}" — let default input run (do not insert "}").
         if (charBefore === '{') return;
         if (charAfter === '}') {
           e.preventDefault();
           setTimeout(() => { ta.selectionStart = ta.selectionEnd = start + 1; }, 0);
           return;
         }
+        e.preventDefault();
+        setBody(body.substring(0, start) + '{}' + body.substring(start));
+        setTimeout(() => { ta.selectionStart = ta.selectionEnd = start + 1; }, 0);
         return;
       }
       for (const [open, close] of autoClosePairs) {
