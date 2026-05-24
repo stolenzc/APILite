@@ -10,7 +10,7 @@ import {
   loadInitialHistoryPage,
   saveFullHistory,
 } from './historyStorage';
-import { getFoldersDir, joinPath, FOLDERS_SUBDIR } from './storagePaths';
+import { joinPath, FOLDERS_SUBDIR } from './storagePaths';
 
 /** Resolve data root, ensure layout, load folders and environments from disk. */
 export async function bootstrapLocalStorage(): Promise<void> {

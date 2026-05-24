@@ -20,8 +20,3 @@ export function getFoldersDir(): string {
   const root = getDataDir();
   return root ? joinPath(root, FOLDERS_SUBDIR) : '';
 }
-
-export function getEnvironmentsFilePath(): string {
-  const root = getDataDir();
-  return root ? joinPath(root, ENVIRONMENTS_FILE) : '';
-}

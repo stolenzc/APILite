@@ -41,7 +41,8 @@ export interface RequestTab {
   response: HttpResponse | null;
   loading: boolean;
   sourceType: TabSource;
-  sourcePath: string;
+  /** Breadcrumb path in the folder tree (e.g. `APIs > Auth`); empty for unsaved tabs. */
+  folderTreePath: string;
   unsaved: boolean;
   /** Request snapshot when opened or last saved; used to clear unsaved after revert. */
   savedRequest: HttpRequest | null;
@@ -65,7 +66,7 @@ interface AppState {
   switchToNextTab: () => void;
   openTabFromFolder: (req: HttpRequest, name: string, folderPath: string, requestNodeId: string) => void;
   syncFolderTabName: (requestNodeId: string, name: string) => void;
-  linkActiveTabToFolder: (requestNodeId: string, name: string, sourcePath: string) => void;
+  linkActiveTabToFolder: (requestNodeId: string, name: string, folderTreePath: string) => void;
   markUnsaved: () => void;
   clearUnsaved: () => void;
 
@@ -123,7 +124,7 @@ function newEmptyTab(): RequestTab {
     response: null,
     loading: false,
     sourceType: 'temporary',
-    sourcePath: '',
+    folderTreePath: '',
     unsaved: false,
     savedRequest: cloneHttpRequest(defaultRequest),
     requestNodeId: null,
@@ -250,7 +251,7 @@ export const useStore = create<AppState>((set, get) => ({
             ? {
                 ...t,
                 name,
-                sourcePath: folderPath,
+                folderTreePath: folderPath,
                 sourceType: 'folder' as const,
                 requestNodeId,
                 request: cloneHttpRequest(req),
@@ -269,7 +270,7 @@ export const useStore = create<AppState>((set, get) => ({
       response: null,
       loading: false,
       sourceType: 'folder',
-      sourcePath: folderPath,
+      folderTreePath: folderPath,
       unsaved: false,
       savedRequest: cloneHttpRequest(req),
       requestNodeId,
@@ -283,13 +284,13 @@ export const useStore = create<AppState>((set, get) => ({
     ),
   })),
 
-  linkActiveTabToFolder: (requestNodeId, name, sourcePath) => set(state => {
+  linkActiveTabToFolder: (requestNodeId, name, folderTreePath) => set(state => {
     const tab = state.tabs.find((t) => t.id === state.activeTabId);
     if (!tab) return state;
     return updateActiveTab(state, {
       requestNodeId,
       name,
-      sourcePath,
+      folderTreePath,
       sourceType: 'folder',
       unsaved: false,
       savedRequest: cloneHttpRequest(tab.request),

@@ -6,7 +6,7 @@ import { useStore } from './store/useStore';
 import { useSettingsStore, initKeyboardShortcuts } from './store/useSettings';
 import { useFolderStore, getFolderPath } from './store/useFolderStore';
 import { applyTheme } from './themes';
-import { setLocale, getLocale, t } from './i18n';
+import { setLocale, t } from './i18n';
 import UrlBar from './components/UrlBar';
 import TitleBar from './components/TitleBar';
 import ParamsTab from './components/ParamsTab';

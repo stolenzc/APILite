@@ -62,7 +62,7 @@ export interface TreeFolder {
   type: 'folder';
   children: TreeNode[];
   collapsed: boolean;
-  /** Set on top-level folders only (one JSON file per root folder on disk). */
+  /** Disk JSON filename (e.g. `My API.json`); only on top-level folders. */
   fileName?: string;
 }
 

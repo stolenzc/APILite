@@ -8,7 +8,3 @@ export function focusFolderSearchInput(): void {
     input?.select();
   });
 }
-
-export function dispatchFocusFolderSearch(): void {
-  window.dispatchEvent(new CustomEvent('app:focus-folder-search'));
-}

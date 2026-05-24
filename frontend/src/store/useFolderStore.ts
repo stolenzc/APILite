@@ -15,15 +15,11 @@ import {
 
 const defaultRequest: HttpRequest = normalizeHttpRequest({ method: 'GET', url: '' });
 
-function foldersDir(): string {
-  return getFoldersDir();
-}
-
-function isTopLevelFolder(node: TreeNode): boolean {
+function hasDiskFile(node: TreeNode): boolean {
   return node.type === 'folder' && !!node.fileName;
 }
 
-function asTopLevelFolder(node: TreeNode): TreeFolder | null {
+function asDiskFileFolder(node: TreeNode): TreeFolder | null {
   if (node.type === 'folder' && node.fileName) return node;
   return null;
 }
@@ -32,7 +28,7 @@ function topLevelFolderNameTaken(folders: TreeNode[], name: string, exceptId?: s
   const norm = name.trim().toLowerCase();
   if (!norm) return false;
   return folders.some(
-    n => isTopLevelFolder(n) && n.id !== exceptId && n.name.trim().toLowerCase() === norm,
+    n => hasDiskFile(n) && n.id !== exceptId && n.name.trim().toLowerCase() === norm,
   );
 }
 
@@ -59,7 +55,7 @@ function findNode(
   return { node: null, parent: null, path: [] };
 }
 
-function findPersistRoot(nodes: TreeNode[], nodeId: string): TreeFolder | null {
+function findTopLevelDiskFolder(nodes: TreeNode[], nodeId: string): TreeFolder | null {
   for (const node of nodes) {
     if (node.type === 'folder' && node.fileName) {
       if (node.id === nodeId) return node;
@@ -69,8 +65,8 @@ function findPersistRoot(nodes: TreeNode[], nodeId: string): TreeFolder | null {
   return null;
 }
 
-async function persistTopLevelFolder(root: TreeFolder) {
-  const dir = foldersDir();
+async function saveTopLevelDiskFolder(root: TreeFolder) {
+  const dir = getFoldersDir();
   if (!dir || !root.fileName) return;
   await invoke('folders_save', {
     dir,
@@ -80,18 +76,18 @@ async function persistTopLevelFolder(root: TreeFolder) {
 }
 
 async function persistForNodeId(nodeId: string, folders: TreeNode[]) {
-  const root = findPersistRoot(folders, nodeId);
-  if (root) await persistTopLevelFolder(root);
+  const root = findTopLevelDiskFolder(folders, nodeId);
+  if (root) await saveTopLevelDiskFolder(root);
 }
 
 function defaultParentId(folders: TreeNode[], activeNodeId: string | null): string | null {
   if (activeNodeId) {
     const { node } = findNode(folders, activeNodeId);
     if (node?.type === 'folder') return node.id;
-    const root = findPersistRoot(folders, activeNodeId);
+    const root = findTopLevelDiskFolder(folders, activeNodeId);
     if (root) return root.id;
   }
-  const first = folders.find((n): n is TreeFolder => isTopLevelFolder(n));
+  const first = folders.find((n): n is TreeFolder => hasDiskFile(n));
   return first?.id ?? null;
 }
 
@@ -286,7 +282,7 @@ export const useFolderStore = create<FolderStore>((set, get) => ({
         pendingRenameNodeId: id,
         activeNodeId: id,
       }));
-      const dir = foldersDir();
+      const dir = getFoldersDir();
       if (!dir) return id;
       void invoke<string>('folders_create', { dir, id, name: trimmed })
         .then(fileName => {
@@ -366,14 +362,14 @@ export const useFolderStore = create<FolderStore>((set, get) => ({
     const { node } = findNode(get().folders, id);
     if (!node) return false;
 
-    const topLevel = asTopLevelFolder(node);
+    const topLevel = asDiskFileFolder(node);
     if (topLevel && topLevelFolderNameTaken(get().folders, trimmed, id)) {
       showToast(t('folder.duplicateTopLevelName'));
       return false;
     }
 
     let folders = updateNode([...get().folders], id, { name: trimmed });
-    if (node.type === 'folder' && !isTopLevelFolder(node)) {
+    if (node.type === 'folder' && !hasDiskFile(node)) {
       const parent = findParentFolder(folders, id);
       if (parent) {
         parent.children = normalizeFolderChildren(parent.children);
@@ -386,7 +382,7 @@ export const useFolderStore = create<FolderStore>((set, get) => ({
     }
 
     if (topLevel?.fileName) {
-      const dir = foldersDir();
+      const dir = getFoldersDir();
       if (!dir) return true;
       void invoke<string>('folders_rename', { dir, fileName: topLevel.fileName, newName: trimmed })
         .then(fileName => {
@@ -422,16 +418,16 @@ export const useFolderStore = create<FolderStore>((set, get) => ({
 
   deleteNode: (id) => {
     const { node } = findNode(get().folders, id);
-    const root = findPersistRoot(get().folders, id);
+    const root = findTopLevelDiskFolder(get().folders, id);
     const folders = removeNode([...get().folders], id);
     set({
       folders,
       activeNodeId: get().activeNodeId === id ? null : get().activeNodeId,
     });
-    const dir = foldersDir();
+    const dir = getFoldersDir();
     if (!dir || !node) return;
 
-    const topLevel = asTopLevelFolder(node);
+    const topLevel = asDiskFileFolder(node);
     if (topLevel?.fileName) {
       void invoke('folders_delete', { dir, fileName: topLevel.fileName }).catch(err =>
         console.error('Failed to delete folder file:', err),
@@ -439,7 +435,7 @@ export const useFolderStore = create<FolderStore>((set, get) => ({
     } else if (root) {
       const updated = findNode(folders, root.id).node as TreeFolder | null;
       if (updated?.type === 'folder') {
-        void persistTopLevelFolder(updated).catch(err =>
+        void saveTopLevelDiskFolder(updated).catch(err =>
           console.error('Failed to save after delete:', err),
         );
       }
@@ -483,7 +479,7 @@ export const useFolderStore = create<FolderStore>((set, get) => ({
       }
       persistId = parent.id;
     } else {
-      if (cloned.type === 'folder' && isTopLevelFolder(node)) {
+      if (cloned.type === 'folder' && hasDiskFile(node)) {
         if (topLevelFolderNameTaken(folders, cloned.name)) {
           showToast(t('folder.duplicateTopLevelName'));
           return;
@@ -491,9 +487,9 @@ export const useFolderStore = create<FolderStore>((set, get) => ({
       }
       const idx = folders.findIndex(c => c.id === id);
       folders.splice(idx + 1, 0, cloned);
-      persistId = asTopLevelFolder(node)?.id ?? cloned.id;
-      if (cloned.type === 'folder' && isTopLevelFolder(node)) {
-        const dir = foldersDir();
+      persistId = asDiskFileFolder(node)?.id ?? cloned.id;
+      if (cloned.type === 'folder' && hasDiskFile(node)) {
+        const dir = getFoldersDir();
         if (dir) {
           void invoke<string>('folders_create', { dir, id: cloned.id, name: cloned.name })
             .then(fileName => {
@@ -542,7 +538,7 @@ export const useFolderStore = create<FolderStore>((set, get) => ({
     const { node: source } = findNode(state.folders, sourceId);
     if (!source || source.type !== 'request' || sourceId === targetId) return;
 
-    const sourceRoot = findPersistRoot(state.folders, sourceId);
+    const sourceRoot = findTopLevelDiskFolder(state.folders, sourceId);
     const sourceSnapshot: TreeRequest = {
       ...source,
       request: {
@@ -581,7 +577,7 @@ export const useFolderStore = create<FolderStore>((set, get) => ({
     if (sourceRoot) {
       const updatedRoot = findNode(folders, sourceRoot.id).node;
       if (updatedRoot?.type === 'folder') {
-        void persistTopLevelFolder(updatedRoot).catch((err) =>
+        void saveTopLevelDiskFolder(updatedRoot).catch((err) =>
           console.error('Failed to save folder after move:', err),
         );
       }
@@ -592,13 +588,13 @@ export const useFolderStore = create<FolderStore>((set, get) => ({
     if (sourceId === targetFolderId) return;
     const state = get();
     const { node: source } = findNode(state.folders, sourceId);
-    if (!source || source.type !== 'folder' || isTopLevelFolder(source)) return;
+    if (!source || source.type !== 'folder' || hasDiskFile(source)) return;
 
     const target = findNode(state.folders, targetFolderId).node;
     if (!target || target.type !== 'folder') return;
     if (folderContainsId(state.folders, sourceId, targetFolderId)) return;
 
-    const sourceRoot = findPersistRoot(state.folders, sourceId);
+    const sourceRoot = findTopLevelDiskFolder(state.folders, sourceId);
 
     let folders = removeNode([...state.folders], sourceId);
     const targetLive = findNode(folders, targetFolderId).node;
@@ -611,7 +607,7 @@ export const useFolderStore = create<FolderStore>((set, get) => ({
     if (sourceRoot) {
       const updatedRoot = findNode(folders, sourceRoot.id).node;
       if (updatedRoot?.type === 'folder') {
-        void persistTopLevelFolder(updatedRoot).catch((err) =>
+        void saveTopLevelDiskFolder(updatedRoot).catch((err) =>
           console.error('Failed to save folder after folder move:', err),
         );
       }

@@ -35,8 +35,6 @@ interface EnvironmentState {
   setEnvModalOpen: (open: boolean) => void;
   setActiveEnvironmentId: (id: string) => void;
   addEnvironmentColumn: () => void;
-  /** Alias of `addEnvironmentColumn`. */
-  addEnvironment: () => void;
   removeEnvironmentColumn: (id: string) => void;
   duplicateEnvironmentColumn: (id: string) => void;
   renameEnvironmentColumn: (id: string, name: string) => void;
@@ -69,7 +67,6 @@ function defaultState(): Omit<
   | 'setEnvModalOpen'
   | 'setActiveEnvironmentId'
   | 'addEnvironmentColumn'
-  | 'addEnvironment'
   | 'removeEnvironmentColumn'
   | 'duplicateEnvironmentColumn'
   | 'renameEnvironmentColumn'
@@ -97,7 +94,6 @@ function parsePersistedV2(raw: string): Omit<
   | 'setEnvModalOpen'
   | 'setActiveEnvironmentId'
   | 'addEnvironmentColumn'
-  | 'addEnvironment'
   | 'removeEnvironmentColumn'
   | 'duplicateEnvironmentColumn'
   | 'renameEnvironmentColumn'
@@ -133,7 +129,6 @@ function load(): Omit<
   | 'setEnvModalOpen'
   | 'setActiveEnvironmentId'
   | 'addEnvironmentColumn'
-  | 'addEnvironment'
   | 'removeEnvironmentColumn'
   | 'duplicateEnvironmentColumn'
   | 'renameEnvironmentColumn'
@@ -219,8 +214,6 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => {
         save(next);
         return next;
       }),
-
-    addEnvironment: () => get().addEnvironmentColumn(),
 
     removeEnvironmentColumn: (id) =>
       set((s) => {

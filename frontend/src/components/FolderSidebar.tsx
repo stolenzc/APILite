@@ -124,14 +124,14 @@ function TreeNode({ node, depth = 0 }: { node: TreeNode; depth?: number }) {
   const {
     toggleCollapse, setActiveNode, activeNodeId,
     openContextMenu, closeContextMenu, contextMenu,
-    deleteNode, cloneNode, addFolder, addRequest, renameNode, loadRequest,
+    addFolder, addRequest, renameNode, loadRequest,
     moveRequest, moveFolder, pendingRenameNodeId, consumePendingRename,
   } = useFolderStore();
   const { openTabFromFolder } = useStore();
 
   const isFolder = node.type === 'folder';
-  const isTopLevelFolder = isFolder && !!(node as TreeFolder).fileName;
-  const canDrag = !isTopLevelFolder;
+  const hasDiskFile = isFolder && !!(node as TreeFolder).fileName;
+  const canDrag = !hasDiskFile;
   const isActive = activeNodeId === node.id;
   const [renaming, setRenaming] = useState(false);
   const [editName, setEditName] = useState(node.name);

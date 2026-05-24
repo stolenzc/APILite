@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct KeyValue {
+struct KeyValue {
     pub key: String,
     pub value: String,
     pub enabled: bool,
@@ -12,7 +12,7 @@ pub struct KeyValue {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct HttpRequest {
+struct HttpRequest {
     pub method: String,
     pub url: String,
     pub params: Vec<KeyValue>,
