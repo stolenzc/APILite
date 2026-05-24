@@ -1793,13 +1793,12 @@ input[type="checkbox"].kv-checkbox-lg {
   font-weight: 600;
 }
 
-/* Splitter (request/response — match history drag handle) */
+/* Splitter (request/response) — 1px line, wider invisible drag hit area */
 .splitter {
-  height: 4px;
+  height: 1px;
+  flex-shrink: 0;
   cursor: ns-resize;
   background: transparent;
-  flex-shrink: 0;
-  transition: background 0.15s;
   position: relative;
 }
 
@@ -1812,19 +1811,32 @@ input[type="checkbox"].kv-checkbox-lg {
   right: 0;
 }
 
-.splitter:hover {
+.splitter::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 1px;
+  background: var(--border-color);
+  transition: height 0.15s, background 0.15s;
+  pointer-events: none;
+}
+
+.splitter:hover::after,
+.splitter.splitter-dragging::after {
+  height: 2px;
   background: var(--accent);
 }
 
-/* Vertical splitters (folder sidebar, cURL panel) — match history drag handle */
+/* Vertical splitters (folder sidebar, cURL panel) — 1px line, not a wide gap */
 .splitter-v {
-  width: 4px;
-  height: auto;
-  align-self: stretch;
+  width: 1px;
   flex-shrink: 0;
+  align-self: stretch;
   cursor: col-resize;
   background: transparent;
-  transition: background 0.15s;
   position: relative;
 }
 
@@ -1837,15 +1849,38 @@ input[type="checkbox"].kv-checkbox-lg {
   right: -4px;
 }
 
-.splitter-v:hover,
-.splitter-v.splitter-dragging {
+.splitter-v::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 1px;
+  background: var(--border-color);
+  transition: width 0.15s, background 0.15s;
+  pointer-events: none;
+}
+
+.splitter-v:hover::after,
+.splitter-v.splitter-dragging::after {
+  width: 2px;
   background: var(--accent);
 }
 
 .splitter-v-disabled {
   cursor: default;
   pointer-events: none;
-  opacity: 0.35;
+  opacity: 0.5;
+}
+
+/* Splitter already draws the edge — avoid double borders */
+.sidebar:has(+ .splitter-v) {
+  border-right: none;
+}
+
+.splitter-v + .curl-panel {
+  border-left: none;
 }
 
 /* Modal */
