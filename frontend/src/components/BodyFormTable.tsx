@@ -62,14 +62,14 @@ export default function BodyFormTable(props: Props) {
   const isFormData = props.mode === 'form-data';
 
   return (
-    <div className="body-form-table-wrap kv-table-wrap">
+    <div className="kv-table-wrap">
       <input
         ref={fileInputRef}
         type="file"
         hidden
         onChange={onBrowserFileChange}
       />
-      <table className="kv-table body-form-table">
+      <table className="kv-table">
         <thead>
           <tr>
             <th style={{ width: 44 }} />
@@ -103,7 +103,7 @@ export default function BodyFormTable(props: Props) {
                 {isFormData && (
                   <td>
                     <select
-                      className="body-field-type-select"
+                      className="kv-table-select"
                       value={(row as FormField).fieldType}
                       onChange={(e) =>
                         props.onSetFieldType(i, e.target.value as FormFieldType)
@@ -122,7 +122,7 @@ export default function BodyFormTable(props: Props) {
                       </span>
                       <button
                         type="button"
-                        className="btn btn-secondary body-file-btn"
+                        className="body-file-btn"
                         onClick={() => void pickFileForRow(i)}
                       >
                         {t('body.selectFile')}

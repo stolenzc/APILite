@@ -299,9 +299,10 @@ export default function BodyEditor() {
   };
 
   const isJsonBody = bodyType === 'raw' && rawContentType === 'json';
+  const fillEditor = bodyType === 'raw';
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div className={`body-editor-root${fillEditor ? ' body-editor-root--fill' : ''}`}>
       {/* Body type tabs */}
       <div className="body-type-tabs" style={{ flexShrink: 0 }}>
         {BODY_TYPES.map(type => (

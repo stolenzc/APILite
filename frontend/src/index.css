@@ -1312,6 +1312,63 @@ input[type="checkbox"].kv-checkbox-lg {
   color: var(--error);
 }
 
+.kv-table select,
+.kv-table .kv-table-select {
+  width: 100%;
+  appearance: none;
+  background: transparent;
+  color: var(--text-primary);
+  border: none;
+  padding: 6px 8px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  outline: none;
+  cursor: pointer;
+}
+
+.kv-table select:focus,
+.kv-table .kv-table-select:focus {
+  background: var(--bg-input);
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1px var(--kv-table-border-strong);
+}
+
+.kv-table .body-file-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.kv-table .body-file-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  padding: 6px 8px;
+}
+
+.kv-table .body-file-btn {
+  flex-shrink: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  border: none;
+  border-radius: 3px;
+  padding: 4px 8px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.kv-table .body-file-btn:hover {
+  color: var(--accent);
+  background: var(--bg-input);
+}
+
 /* Body Editor */
 .body-editor {
   width: 100%;
@@ -1325,7 +1382,18 @@ input[type="checkbox"].kv-checkbox-lg {
   outline: none;
 }
 
-.body-editor-content {
+.body-editor-root {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Raw / JSON / XML editors fill remaining tab height; form tables size to content like Headers. */
+.body-editor-root--fill {
+  height: 100%;
+  min-height: 0;
+}
+
+.body-editor-root--fill .body-editor-content {
   flex: 1;
   min-height: 0;
   display: flex;
@@ -1634,46 +1702,6 @@ input[type="checkbox"].kv-checkbox-lg {
   padding: 6px 12px;
 }
 
-.body-form-table-wrap {
-  margin: 8px 12px;
-  overflow: auto;
-  flex: 1;
-  align-self: stretch;
-}
-
-.body-form-table .body-field-type-select {
-  width: 100%;
-  font-size: 12px;
-  padding: 4px 6px;
-  background: var(--bg-input);
-  color: var(--text-primary);
-  border: 1px solid var(--kv-table-border-strong);
-  border-radius: 4px;
-}
-
-.body-file-cell {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-.body-file-name {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 12px;
-  color: var(--text-muted);
-}
-
-.body-file-btn {
-  font-size: 12px;
-  padding: 4px 10px;
-  flex-shrink: 0;
-}
-
 .body-binary-panel {
   padding: 16px;
   display: flex;
@@ -1692,6 +1720,22 @@ input[type="checkbox"].kv-checkbox-lg {
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.body-binary-row .body-file-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.body-binary-row .body-file-btn {
+  font-size: 12px;
+  padding: 4px 10px;
+  flex-shrink: 0;
 }
 
 .history-row {
