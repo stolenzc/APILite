@@ -1472,8 +1472,98 @@ input[type="checkbox"].kv-checkbox-lg {
 .json-highlight .json-punct { color: var(--text-muted); }
 .json-highlight .json-comment { color: var(--text-muted); font-style: italic; }
 
-.json-textarea {
-  word-wrap: break-word;
+/* JSONC body editor — highlight layer behind transparent textarea */
+.jsonc-editor {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.jsonc-editor-viewport {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Shared metrics — highlight <pre> and <textarea> must match pixel-for-pixel */
+.jsonc-editor-layer {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 12px;
+  border: none;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  letter-spacing: 0;
+  tab-size: 2;
+  -moz-tab-size: 2;
+  white-space: pre;
+  overflow-wrap: normal;
+  word-break: normal;
+  font-style: normal;
+  font-weight: 400;
+  font-variant-ligatures: none;
+}
+
+.jsonc-editor-highlight {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  pointer-events: none;
+  scrollbar-width: none;
+  z-index: 0;
+}
+
+.jsonc-editor-highlight.json-highlight {
+  /* Override read-only response panel rules */
+  overflow: auto;
+}
+
+.jsonc-editor-highlight .json-comment {
+  font-style: normal;
+}
+
+.jsonc-editor-highlight::-webkit-scrollbar {
+  display: none;
+}
+
+.jsonc-editor-viewport > .env-var-field {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.jsonc-editor-input.body-editor {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  overflow: auto;
+  resize: none;
+  color: transparent;
+  caret-color: var(--text-primary);
+  background: transparent;
+  /* Metrics come from .jsonc-editor-layer only (avoid .body-editor drift) */
+  padding: 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre;
+}
+
+.jsonc-editor-input::placeholder {
+  color: var(--text-muted);
+}
+
+.jsonc-editor-input::selection {
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
 /* Body Editor scrollbars */

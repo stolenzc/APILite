@@ -5,6 +5,7 @@ import type { BodyType, RawContentType } from '../types';
 import { t } from '../i18n';
 import { formatJsonc, isJsonc, parseJsonc } from '../utils/jsonUtils';
 import { EnvVarField } from './EnvVarField';
+import JsoncBodyEditor from './JsoncBodyEditor';
 import BodyFormTable from './BodyFormTable';
 import { pickFilePath, readBrowserFileAsBase64 } from '../utils/filePicker';
 import { isTauri } from '../tauri/setupMenu';
@@ -204,16 +205,11 @@ function JsonBody() {
   };
 
   return (
-    <EnvVarField
-      as="textarea"
-      className="body-editor body-editor-flex json-textarea"
+    <JsoncBodyEditor
       value={body}
       onValueChange={setBody}
       onKeyDown={handleKeyDown}
       placeholder={t('body.json.placeholder')}
-      spellCheck={false}
-      autoCapitalize="off"
-      autoCorrect="off"
     />
   );
 }

@@ -50,22 +50,63 @@ const JSON_TOKEN_RE = /("(?:\\.|[^"\\])*")(\s*:\s*)|("(?:\\.|[^"\\])*")|\b(true|
 
 const JSONC_COMMENT_RE = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)/g;
 
-export function highlightJson(input: string): string {
-  const escaped = input
+/** Letter-only slug — digits in placeholders get wrapped by JSON_TOKEN_RE and break HTML comments. */
+const COMMENT_PH_RE = /<!--APILITEC([a-z]+)-->/g;
+
+function commentIndexSlug(n: number): string {
+  let s = '';
+  let v = n + 1;
+  while (v > 0) {
+    v -= 1;
+    s = String.fromCharCode(97 + (v % 26)) + s;
+    v = Math.floor(v / 26);
+  }
+  return s;
+}
+
+function slugToCommentIndex(slug: string): number {
+  let n = 0;
+  for (const ch of slug) {
+    n = n * 26 + (ch.charCodeAt(0) - 97 + 1);
+  }
+  return n - 1;
+}
+
+function commentPlaceholder(idx: number): string {
+  return `<!--APILITEC${commentIndexSlug(idx)}-->`;
+}
+
+function escapeHtml(input: string): string {
+  return input
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
+}
 
-  const withComments = escaped.replace(JSONC_COMMENT_RE, (comment) => {
-    return `<span class="json-comment">${comment}</span>`;
+export function highlightJson(input: string): string {
+  const escaped = escapeHtml(input);
+  const commentSlots: string[] = [];
+
+  const withoutComments = escaped.replace(JSONC_COMMENT_RE, (comment) => {
+    const idx = commentSlots.length;
+    commentSlots.push(comment);
+    return commentPlaceholder(idx);
   });
 
-  return withComments.replace(JSON_TOKEN_RE, (match, key, colon, stringVal, bool, number, punct) => {
-    if (key !== undefined) return `<span class="json-key">${key}</span>${colon}`;
-    if (stringVal !== undefined) return `<span class="json-string">${stringVal}</span>`;
-    if (bool !== undefined) return `<span class="json-bool">${bool}</span>`;
-    if (number !== undefined) return `<span class="json-number">${number}</span>`;
-    if (punct !== undefined) return `<span class="json-punct">${punct}</span>`;
-    return match;
+  const withTokens = withoutComments.replace(
+    JSON_TOKEN_RE,
+    (match, key, colon, stringVal, bool, number, punct) => {
+      if (key !== undefined) return `<span class="json-key">${key}</span>${colon}`;
+      if (stringVal !== undefined) return `<span class="json-string">${stringVal}</span>`;
+      if (bool !== undefined) return `<span class="json-bool">${bool}</span>`;
+      if (number !== undefined) return `<span class="json-number">${number}</span>`;
+      if (punct !== undefined) return `<span class="json-punct">${punct}</span>`;
+      return match;
+    },
+  );
+
+  return withTokens.replace(COMMENT_PH_RE, (_, slug) => {
+    const comment = commentSlots[slugToCommentIndex(slug)] ?? '';
+    return `<span class="json-comment">${comment}</span>`;
   });
 }
