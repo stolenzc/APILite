@@ -1795,7 +1795,14 @@ input[type="checkbox"].kv-checkbox-lg {
 .response-header-meta {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.response-copy-btn {
+  padding: 2px 10px;
+  font-size: 11px;
   flex-shrink: 0;
 }
 

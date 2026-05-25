@@ -100,6 +100,10 @@ const messages: Record<Locale, Record<string, string>> = {
     'response.body': 'Body',
     'response.headers': 'Headers',
     'response.raw': 'Raw',
+    'response.copy': 'Copy',
+    'response.copied': 'Response copied to clipboard',
+    'response.copyFailed': 'Failed to copy',
+    'response.copyEmpty': 'Nothing to copy',
 
     // History
     'history.label': 'History',
@@ -265,6 +269,10 @@ const messages: Record<Locale, Record<string, string>> = {
     'response.body': '响应体',
     'response.headers': '响应头',
     'response.raw': '原始 HTTP',
+    'response.copy': '复制',
+    'response.copied': '已复制响应到剪贴板',
+    'response.copyFailed': '复制失败',
+    'response.copyEmpty': '没有可复制的内容',
 
     // History
     'history.label': '历史记录',

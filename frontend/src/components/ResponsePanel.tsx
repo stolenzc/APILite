@@ -1,7 +1,9 @@
+import { useCallback } from 'react';
 import { useStore } from '../store/useStore';
 import { t } from '../i18n';
 import { highlightJson, isJson, formatJson } from '../utils/jsonUtils';
-import { getRawHttpResponse } from '../utils/httpUtils';
+import { getRawHttpResponse, getResponseCopyText } from '../utils/httpUtils';
+import { showToast } from '../utils/toast';
 
 export default function ResponsePanel() {
   const responseTab = useStore((s) => s.responseTab);
@@ -9,6 +11,21 @@ export default function ResponsePanel() {
   const tab = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId));
   const response = tab?.response ?? null;
   const loading = tab?.loading ?? false;
+
+  const handleCopy = useCallback(async () => {
+    if (!response) return;
+    const text = getResponseCopyText(response, responseTab);
+    if (!text) {
+      showToast(t('response.copyEmpty'));
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast(t('response.copied'));
+    } catch {
+      showToast(t('response.copyFailed'));
+    }
+  }, [response, responseTab]);
 
   if (!response && !loading) {
     return (
@@ -45,6 +62,13 @@ export default function ResponsePanel() {
               {responseTab === 'body' && jsonValid && (
                 <span className="json-status valid" style={{ fontSize: 11 }}>JSON</span>
               )}
+              <button
+                type="button"
+                className="btn btn-secondary response-copy-btn"
+                onClick={() => void handleCopy()}
+              >
+                {t('response.copy')}
+              </button>
             </>
           ) : null}
         </div>
