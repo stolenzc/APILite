@@ -113,7 +113,109 @@ pub fn to_curl(req: ExportRequest) -> String {
         }
     }
 
-    parts.join(" ")
+    format_multiline_curl(&parts)
+}
+
+const CURL_LINE_INDENT: &str = "  ";
+/// Max length for grouping `curl`, `-X`, and URL on one line.
+const CURL_FIRST_LINE_MAX: usize = 120;
+
+fn format_multiline_curl(parts: &[String]) -> String {
+    if parts.is_empty() {
+        return String::new();
+    }
+    if parts.len() == 1 {
+        return parts[0].clone();
+    }
+
+    let first_line_len = if parts.len() > 1 && parts[1].starts_with("-X ") {
+        3.min(parts.len())
+    } else {
+        2.min(parts.len())
+    };
+
+    // Only curl (+ optional -X) + URL — no headers/body to break out.
+    if first_line_len >= parts.len() {
+        return parts[..first_line_len].join(" ");
+    }
+
+    let mut lines = Vec::with_capacity(parts.len());
+    push_first_line_group(&mut lines, &parts[..first_line_len]);
+
+    for (i, part) in parts.iter().enumerate().skip(first_line_len) {
+        if i == parts.len() - 1 {
+            lines.push(format!("{}{}", CURL_LINE_INDENT, part));
+        } else {
+            lines.push(format!("{}{} \\", CURL_LINE_INDENT, part));
+        }
+    }
+    lines.join("\n")
+}
+
+fn push_first_line_group(lines: &mut Vec<String>, first_parts: &[String]) {
+    let joined = first_parts.join(" ");
+    if joined.len() <= CURL_FIRST_LINE_MAX {
+        lines.push(format!("{} \\", joined));
+        return;
+    }
+
+    if first_parts.len() >= 3 {
+        lines.push(format!("{} {} \\", first_parts[0], first_parts[1]));
+        lines.push(format!("{}{} \\", CURL_LINE_INDENT, first_parts[2]));
+    } else if first_parts.len() == 2 {
+        lines.push(format!("{} \\", first_parts[0]));
+        lines.push(format!("{}{} \\", CURL_LINE_INDENT, first_parts[1]));
+    } else {
+        lines.push(format!("{} \\", joined));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn request_line_only_stays_single_line() {
+        let parts = vec![
+            "curl".into(),
+            "-X POST".into(),
+            "'https://api.example.com'".into(),
+        ];
+        assert_eq!(
+            format_multiline_curl(&parts),
+            "curl -X POST 'https://api.example.com'"
+        );
+    }
+
+    #[test]
+    fn short_with_headers_still_multiline() {
+        let parts = vec![
+            "curl".into(),
+            "'https://api.example.com'".into(),
+            "-H 'Accept: application/json'".into(),
+        ];
+        assert_eq!(
+            format_multiline_curl(&parts),
+            "curl 'https://api.example.com' \\\n  -H 'Accept: application/json'"
+        );
+    }
+
+    #[test]
+    fn long_command_groups_first_line() {
+        let parts = vec![
+            "curl".into(),
+            "-X POST".into(),
+            "'https://api.example.com/v1/resources/items'".into(),
+            "-H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0'".into(),
+            "-H 'X-Custom-Header: another-value'".into(),
+            "-d '{\"key\":\"value\",\"nested\":{\"a\":1}}'".into(),
+        ];
+        let out = format_multiline_curl(&parts);
+        assert!(out.contains('\n'), "expected multiline output");
+        assert!(out.starts_with("curl -X POST 'https://api.example.com/v1/resources/items' \\"));
+        assert!(out.contains("\n  -H "));
+        assert!(out.ends_with("{\"a\":1}}'"));
+    }
 }
 
 fn escape_single_quotes(s: &str) -> String {

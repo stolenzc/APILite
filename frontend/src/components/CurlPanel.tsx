@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../store/useStore';
 import { useSettingsStore } from '../store/useSettings';
 import { buildCurlForRequest } from '../utils/curlExport';
+import { highlightCurl } from '../utils/curlHighlight';
 import { showToast } from '../utils/toast';
 import { t } from '../i18n';
 import type { HttpRequest } from '../types';
@@ -32,6 +33,7 @@ export default function CurlPanel() {
   const [error, setError] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sig = useMemo(() => requestSignature(activeRequest), [activeRequest]);
+  const highlightedCurl = useMemo(() => (curl ? highlightCurl(curl) : ''), [curl]);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -115,7 +117,12 @@ export default function CurlPanel() {
           {!loading && !error && !curl && (
             <div className="curl-panel-placeholder">{t('curl.empty')}</div>
           )}
-          {curl && <pre className="curl-panel-content">{curl}</pre>}
+          {curl && (
+            <pre
+              className="curl-panel-content curl-highlight"
+              dangerouslySetInnerHTML={{ __html: highlightedCurl }}
+            />
+          )}
         </div>
       )}
     </aside>

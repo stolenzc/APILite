@@ -9,8 +9,13 @@ pub struct ParsedCurl {
 }
 
 pub fn parse_curl(command: &str) -> Result<ParsedCurl, String> {
-    let trimmed = command.trim();
-    if !trimmed.starts_with("curl ") && !trimmed.starts_with("curl\t") {
+    let normalized = normalize_line_continuations(command);
+    let trimmed = normalized.trim();
+    if !trimmed.starts_with("curl") {
+        return Err("Command must start with 'curl'".into());
+    }
+    let after_curl = trimmed.strip_prefix("curl").unwrap_or("");
+    if !after_curl.is_empty() && !after_curl.starts_with(|c: char| c.is_whitespace()) {
         return Err("Command must start with 'curl'".into());
     }
 
@@ -78,6 +83,23 @@ pub fn parse_curl(command: &str) -> Result<ParsedCurl, String> {
     }
 
     Ok(ParsedCurl { method, url, headers, body })
+}
+
+/// Join lines continued with trailing `\` (shell line continuation).
+fn normalize_line_continuations(command: &str) -> String {
+    command
+        .lines()
+        .map(|line| {
+            let trimmed_end = line.trim_end();
+            if trimmed_end.ends_with('\\') {
+                trimmed_end[..trimmed_end.len() - 1].trim_end()
+            } else {
+                line.trim()
+            }
+        })
+        .filter(|s| !s.is_empty())
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 fn tokenize(command: &str) -> Result<Vec<String>, String> {

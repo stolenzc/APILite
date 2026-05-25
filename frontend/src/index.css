@@ -600,7 +600,37 @@ body {
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-all;
-  color: var(--text-primary);
+  color: var(--text-secondary);
+}
+
+/* cURL syntax highlighting */
+.curl-highlight .curl-cmd {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.curl-highlight .curl-flag {
+  color: #56b6c2;
+}
+
+.curl-highlight .curl-method {
+  font-weight: 600;
+}
+
+.curl-highlight .curl-method-get { color: var(--get); }
+.curl-highlight .curl-method-post { color: var(--post); }
+.curl-highlight .curl-method-put { color: var(--put); }
+.curl-highlight .curl-method-delete { color: var(--delete); }
+.curl-highlight .curl-method-patch { color: var(--patch); }
+.curl-highlight .curl-method-head { color: var(--head); }
+.curl-highlight .curl-method-options { color: var(--options); }
+
+.curl-highlight .curl-string {
+  color: #98c379;
+}
+
+.curl-highlight .curl-cont {
+  color: var(--text-muted);
 }
 
 .curl-panel-placeholder,
