@@ -6,6 +6,7 @@ import { matchHeaders } from '../constants';
 import { matchHeaderValues } from '../utils/headerValues';
 import { t } from '../i18n';
 import { EnvVarField } from './EnvVarField';
+import KvTableWrap, { KvTableColGroup } from './KvTableWrap';
 import { useDropdownAnchorStyle } from '../hooks/useDropdownAnchorStyle';
 import { isImeComposing } from '../utils/keyboard';
 
@@ -165,14 +166,15 @@ export default function HeadersTab() {
       : null;
 
   return (
-    <div className="kv-table-wrap">
+    <KvTableWrap>
       <table className="kv-table">
+        <KvTableColGroup />
         <thead>
           <tr>
-            <th style={{ width: 44 }}></th>
+            <th />
             <th>{t('kv.key')}</th>
             <th>{t('kv.value')}</th>
-            <th style={{ width: 30 }}></th>
+            <th />
           </tr>
         </thead>
         <tbody>
@@ -242,6 +244,6 @@ export default function HeadersTab() {
       </table>
       {keySuggestPortal}
       {valueSuggestPortal}
-    </div>
+    </KvTableWrap>
   );
 }

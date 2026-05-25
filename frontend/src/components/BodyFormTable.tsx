@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import type { FormField, FormFieldType, KeyValue } from '../types';
 import { t } from '../i18n';
 import { EnvVarField } from './EnvVarField';
+import KvTableWrap, { KvTableColGroup } from './KvTableWrap';
 import { pickFilePath, readBrowserFileAsBase64 } from '../utils/filePicker';
 import { isTauri } from '../tauri/setupMenu';
 
@@ -62,7 +63,7 @@ export default function BodyFormTable(props: Props) {
   const isFormData = props.mode === 'form-data';
 
   return (
-    <div className="kv-table-wrap">
+    <KvTableWrap>
       <input
         ref={fileInputRef}
         type="file"
@@ -70,13 +71,14 @@ export default function BodyFormTable(props: Props) {
         onChange={onBrowserFileChange}
       />
       <table className="kv-table">
+        <KvTableColGroup withMiddleCol={isFormData} />
         <thead>
           <tr>
-            <th style={{ width: 44 }} />
+            <th />
             <th>{t('kv.key')}</th>
-            {isFormData && <th style={{ width: 100 }}>{t('body.fieldType')}</th>}
+            {isFormData && <th>{t('body.fieldType')}</th>}
             <th>{isFormData ? t('body.fieldValue') : t('kv.value')}</th>
-            <th style={{ width: 30 }} />
+            <th />
           </tr>
         </thead>
         <tbody>
@@ -162,6 +164,6 @@ export default function BodyFormTable(props: Props) {
           })}
         </tbody>
       </table>
-    </div>
+    </KvTableWrap>
   );
 }

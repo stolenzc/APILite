@@ -2,6 +2,7 @@ import { useStore } from '../store/useStore';
 import type { KeyValue } from '../types';
 import { t } from '../i18n';
 import { EnvVarField } from './EnvVarField';
+import KvTableWrap, { KvTableColGroup } from './KvTableWrap';
 
 export default function ParamsTab() {
   const { updateParam, removeParam, syncUrlFromParams } = useStore();
@@ -16,14 +17,15 @@ export default function ParamsTab() {
   };
 
   return (
-    <div className="kv-table-wrap">
+    <KvTableWrap>
       <table className="kv-table">
+        <KvTableColGroup />
         <thead>
           <tr>
-            <th style={{ width: 44 }}></th>
+            <th />
             <th>{t('kv.key')}</th>
             <th>{t('kv.value')}</th>
-            <th style={{ width: 30 }}></th>
+            <th />
           </tr>
         </thead>
         <tbody>
@@ -53,6 +55,6 @@ export default function ParamsTab() {
           ))}
         </tbody>
       </table>
-    </div>
+    </KvTableWrap>
   );
 }
