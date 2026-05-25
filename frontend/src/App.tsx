@@ -22,6 +22,7 @@ import CurlPanel from './components/CurlPanel';
 import VerticalResizableSplitter from './components/VerticalResizableSplitter';
 import TabBar from './components/TabBar';
 import SaveRequestModal from './components/SaveRequestModal';
+import { defaultRequestNameFromUrl } from './utils/requestName';
 import { isTauri, setupTauriMenu } from './tauri/setupMenu';
 import { bootstrapLocalStorage } from './utils/bootstrapStorage';
 import { focusFolderSearchInput } from './utils/focusFolderSearch';
@@ -73,7 +74,9 @@ export default function App() {
   useEffect(() => {
     if (!saveModalOpen) return;
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setSaveModalOpen(false);
+      if (e.key !== 'Escape') return;
+      if (document.activeElement?.id === 'save-request-name') return;
+      setSaveModalOpen(false);
     };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
@@ -92,6 +95,11 @@ export default function App() {
   }, []);
 
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activeTabForSave = tabs.find((t) => t.id === activeTabId);
+  const saveModalDefaultName =
+    defaultRequestNameFromUrl(activeTabForSave?.request.url ?? '') ||
+    activeTabForSave?.name ||
+    'New Request';
 
   const saveActiveTabToFolder = (requestNodeId: string, name: string) => {
     const activeTab = useStore.getState().tabs.find(t => t.id === useStore.getState().activeTabId);
@@ -112,8 +120,16 @@ export default function App() {
     if (!activeTab) return;
     const req = activeTab.request;
     const requestId = nanoid();
-    const savedId = useFolderStore.getState().addRequest(folderId, name, cloneHttpRequest(req), requestId);
+    const folderStore = useFolderStore.getState();
+    const savedId = folderStore.addRequest(
+      folderId,
+      name,
+      cloneHttpRequest(req),
+      requestId,
+      { startRename: false },
+    );
     if (!savedId) return;
+    folderStore.consumePendingRename();
     const path = getFolderPath(useFolderStore.getState().folders, savedId);
     useStore.getState().linkActiveTabToFolder(savedId, name, path);
     setSaveModalOpen(false);
@@ -302,7 +318,7 @@ export default function App() {
         <SaveRequestModal
           onClose={() => setSaveModalOpen(false)}
           onSave={handleSaveRequest}
-          defaultName={tabs.find(t => t.id === activeTabId)?.name ?? 'New Request'}
+          defaultName={saveModalDefaultName}
         />
       )}
       {toast && (

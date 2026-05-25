@@ -170,11 +170,20 @@ export default function SaveRequestModal({ onClose, onSave, defaultName }: Props
   const folders = useFolderStore((s) => s.folders);
   const addFolder = useFolderStore((s) => s.addFolder);
   const deleteNode = useFolderStore((s) => s.deleteNode);
+  const consumePendingRename = useFolderStore((s) => s.consumePendingRename);
   const [name, setName] = useState(defaultName);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
   const [contextMenu, setContextMenu] = useState<SaveFolderContextMenuState | null>(null);
   const overlayDismiss = useModalOverlayDismiss(onClose);
+
+  useEffect(() => {
+    consumePendingRename();
+  }, [consumePendingRename]);
+
+  useEffect(() => {
+    setName(defaultName);
+  }, [defaultName]);
 
   const rootFolders = folderChildren(folders);
   const hasFolders = rootFolders.length > 0;
@@ -195,7 +204,7 @@ export default function SaveRequestModal({ onClose, onSave, defaultName }: Props
   }, []);
 
   const handleNewRootFolder = useCallback(() => {
-    const id = addFolder(null);
+    const id = addFolder(null, { startRename: false });
     if (!id) return;
     setSelectedFolderId(id);
     setExpandedIds((prev) => new Set(prev).add(id));
@@ -203,7 +212,7 @@ export default function SaveRequestModal({ onClose, onSave, defaultName }: Props
 
   const handleNewSubfolder = useCallback(() => {
     if (!selectedFolderId) return;
-    const newId = addFolder(selectedFolderId);
+    const newId = addFolder(selectedFolderId, { startRename: false });
     if (!newId) return;
     expandToNode(newId);
     setSelectedFolderId(newId);
@@ -249,13 +258,18 @@ export default function SaveRequestModal({ onClose, onSave, defaultName }: Props
 
   const handleSubmit = () => {
     if (!selectedFolderId) return;
+    consumePendingRename();
     onSave(selectedFolderId, name || 'Untitled');
     onClose();
   };
 
   return (
     <div className="modal-overlay save-request-modal-overlay" {...overlayDismiss}>
-      <div className="modal modal--save-request" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="modal modal--save-request"
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
+      >
         <h3>{t('saveRequest.title')}</h3>
 
         <label className="save-request-field-label" htmlFor="save-request-name">
@@ -269,7 +283,17 @@ export default function SaveRequestModal({ onClose, onSave, defaultName }: Props
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => {
             if (isImeComposing(e)) return;
-            if (e.key === 'Enter') handleSubmit();
+            if (e.key === 'Escape') {
+              e.preventDefault();
+              e.stopPropagation();
+              e.currentTarget.blur();
+              return;
+            }
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              e.stopPropagation();
+              handleSubmit();
+            }
           }}
           autoFocus
         />
@@ -327,6 +351,7 @@ export default function SaveRequestModal({ onClose, onSave, defaultName }: Props
           <button
             type="button"
             className="btn btn-send"
+            onMouseDown={(e) => e.preventDefault()}
             onClick={handleSubmit}
             disabled={!selectedFolderId}
           >

@@ -216,8 +216,14 @@ interface FolderStore {
   pendingRenameNodeId: string | null;
 
   initFolders: (dir: string) => Promise<void>;
-  addFolder: (parentId: string | null) => string | undefined;
-  addRequest: (parentId: string | null, name?: string, request?: HttpRequest, id?: string) => string | undefined;
+  addFolder: (parentId: string | null, options?: { startRename?: boolean }) => string | undefined;
+  addRequest: (
+    parentId: string | null,
+    name?: string,
+    request?: HttpRequest,
+    id?: string,
+    options?: { startRename?: boolean },
+  ) => string | undefined;
   consumePendingRename: () => void;
   getRequestNode: (id: string) => TreeRequest | null;
   renameNode: (id: string, name: string) => boolean;
@@ -260,7 +266,8 @@ export const useFolderStore = create<FolderStore>((set, get) => ({
     }
   },
 
-  addFolder: (parentId) => {
+  addFolder: (parentId, options) => {
+    const startRename = options?.startRename !== false;
     if (parentId === null) {
       const name = 'New Folder';
       const trimmed = name.trim() || 'New Folder';
@@ -279,7 +286,7 @@ export const useFolderStore = create<FolderStore>((set, get) => ({
       };
       set(state => ({
         folders: [...state.folders, root],
-        pendingRenameNodeId: id,
+        pendingRenameNodeId: startRename ? id : state.pendingRenameNodeId,
         activeNodeId: id,
       }));
       const dir = getFoldersDir();
@@ -315,7 +322,7 @@ export const useFolderStore = create<FolderStore>((set, get) => ({
     parent.children = normalizeFolderChildren([...parent.children, folder]);
     set({
       folders,
-      pendingRenameNodeId: folder.id,
+      pendingRenameNodeId: startRename ? folder.id : get().pendingRenameNodeId,
       activeNodeId: folder.id,
     });
     void persistForNodeId(parentKey, folders).catch(err =>
@@ -324,7 +331,8 @@ export const useFolderStore = create<FolderStore>((set, get) => ({
     return folder.id;
   },
 
-  addRequest: (parentId, name = 'New Request', request = { ...defaultRequest }, id?: string) => {
+  addRequest: (parentId, name = 'New Request', request = { ...defaultRequest }, id?: string, options?) => {
+    const startRename = options?.startRename !== false;
     const folders = [...get().folders];
     const parentKey = parentId ?? defaultParentId(folders, get().activeNodeId);
     if (!parentKey) return undefined;
@@ -342,7 +350,7 @@ export const useFolderStore = create<FolderStore>((set, get) => ({
     parent.children = normalizeFolderChildren([...parent.children, node]);
     set({
       folders,
-      pendingRenameNodeId: node.id,
+      pendingRenameNodeId: startRename ? node.id : get().pendingRenameNodeId,
       activeNodeId: node.id,
     });
     void persistForNodeId(parentKey, folders).catch(err =>
