@@ -404,6 +404,8 @@ body {
   border-right: 1px solid var(--border-color);
   min-width: 120px;
   max-width: 200px;
+  flex-shrink: 0;
+  scroll-margin-inline: 4px;
   background: var(--bg-secondary);
   transition: background 0.1s;
   user-select: none;
