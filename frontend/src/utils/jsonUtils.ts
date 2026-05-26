@@ -25,8 +25,75 @@ export function jsoncToStrictJson(input: string): string {
   return JSON.stringify(value);
 }
 
-export function formatJson(input: string): { formatted: string; valid: boolean } {
+/** JSON object/array only — bare numbers/strings are valid JSON but must not be parsed as Number. */
+function isJsonObjectOrArray(input: string): boolean {
+  const t = input.trim();
+  return t.startsWith('{') || t.startsWith('[');
+}
+
+/** Number literals outside JSON strings; used to detect JSON.parse precision loss. */
+function extractJsonNumberLiterals(input: string): string[] {
+  const result: string[] = [];
+  let i = 0;
+  let inString = false;
+  while (i < input.length) {
+    const ch = input[i];
+    if (inString) {
+      if (ch === '\\') {
+        i += 2;
+        continue;
+      }
+      if (ch === '"') inString = false;
+      i++;
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+      i++;
+      continue;
+    }
+    if (ch === '-' || (ch >= '0' && ch <= '9')) {
+      const start = i;
+      if (ch === '-') i++;
+      while (i < input.length && input[i] >= '0' && input[i] <= '9') i++;
+      if (i < input.length && input[i] === '.') {
+        i++;
+        while (i < input.length && input[i] >= '0' && input[i] <= '9') i++;
+      }
+      if (i < input.length && (input[i] === 'e' || input[i] === 'E')) {
+        i++;
+        if (i < input.length && (input[i] === '+' || input[i] === '-')) i++;
+        while (i < input.length && input[i] >= '0' && input[i] <= '9') i++;
+      }
+      result.push(input.slice(start, i));
+      continue;
+    }
+    i++;
+  }
+  return result;
+}
+
+function jsonNumberLiteralsPreserveOnParse(input: string): boolean {
+  const literals = extractJsonNumberLiterals(input);
+  if (literals.length === 0) return true;
   try {
+    const compact = JSON.stringify(JSON.parse(input));
+    const outLiterals = extractJsonNumberLiterals(compact);
+    if (literals.length !== outLiterals.length) return false;
+    return literals.every((lit, idx) => lit === outLiterals[idx]);
+  } catch {
+    return true;
+  }
+}
+
+export function formatJson(input: string): { formatted: string; valid: boolean } {
+  if (!isJsonObjectOrArray(input)) {
+    return { formatted: input, valid: false };
+  }
+  try {
+    if (!jsonNumberLiteralsPreserveOnParse(input)) {
+      return { formatted: input, valid: true };
+    }
     const parsed = JSON.parse(input);
     return { formatted: JSON.stringify(parsed, null, 2), valid: true };
   } catch {
@@ -35,6 +102,7 @@ export function formatJson(input: string): { formatted: string; valid: boolean }
 }
 
 export function isJson(input: string): boolean {
+  if (!isJsonObjectOrArray(input)) return false;
   try {
     JSON.parse(input);
     return true;
