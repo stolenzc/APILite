@@ -1,11 +1,13 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useStore } from '../store/useStore';
 import { t } from '../i18n';
-import { highlightJson, isJson, formatJson } from '../utils/jsonUtils';
+import { isJson, formatJson } from '../utils/jsonUtils';
 import { getRawHttpResponse, getResponseCopyText } from '../utils/httpUtils';
 import { showToast } from '../utils/toast';
+import LineNumberedReadonly from './LineNumberedReadonly';
 
 export default function ResponsePanel() {
+  const [wordWrap, setWordWrap] = useState(false);
   const responseTab = useStore((s) => s.responseTab);
   const setResponseTab = useStore((s) => s.setResponseTab);
   const tab = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId));
@@ -64,6 +66,15 @@ export default function ResponsePanel() {
               )}
               <button
                 type="button"
+                className={`btn btn-secondary response-wrap-btn${wordWrap ? ' response-wrap-btn--active' : ''}`}
+                title={wordWrap ? t('response.wordWrapOff') : t('response.wordWrapOn')}
+                aria-pressed={wordWrap}
+                onClick={() => setWordWrap((v) => !v)}
+              >
+                {t('response.wordWrap')}
+              </button>
+              <button
+                type="button"
                 className="btn btn-secondary response-copy-btn"
                 onClick={() => void handleCopy()}
               >
@@ -73,17 +84,18 @@ export default function ResponsePanel() {
           ) : null}
         </div>
       </div>
-      <div className="response-body">
+      <div
+        className={`response-body${wordWrap ? ' response-body--wrap' : ''}${
+          response && responseTab !== 'headers' ? ' response-body--line-numbers' : ''
+        }`}
+      >
         {response ? (
           responseTab === 'body' ? (
-            jsonValid ? (
-              <div
-                className="json-highlight"
-                dangerouslySetInnerHTML={{ __html: highlightJson(formattedBody) }}
-              />
-            ) : (
-              <pre>{formattedBody}</pre>
-            )
+            <LineNumberedReadonly
+              text={formattedBody}
+              wordWrap={wordWrap}
+              highlightLines={jsonValid}
+            />
           ) : responseTab === 'headers' ? (
             <div className="kv-table-wrap">
             <table className="kv-table">
@@ -96,7 +108,7 @@ export default function ResponsePanel() {
             </table>
             </div>
           ) : (
-            <pre className="response-raw">{rawHttp}</pre>
+            <LineNumberedReadonly text={rawHttp} wordWrap={wordWrap} />
           )
         ) : null}
       </div>

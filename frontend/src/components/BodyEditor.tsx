@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useRef, type UIEvent } from 'react';
 import { useStore } from '../store/useStore';
 import { matchesShortcutCombo, useSettingsStore } from '../store/useSettings';
 import type { BodyType, RawContentType } from '../types';
@@ -6,6 +6,7 @@ import { t } from '../i18n';
 import { formatJsonc, isJsonc, jsoncToStrictJson, parseJsonc } from '../utils/jsonUtils';
 import { EnvVarField } from './EnvVarField';
 import JsoncBodyEditor from './JsoncBodyEditor';
+import LineNumberGutter, { type LineNumberGutterHandle } from './LineNumberGutter';
 import BodyFormTable from './BodyFormTable';
 import { pickFilePath, readBrowserFileAsBase64 } from '../utils/filePicker';
 import { isTauri } from '../tauri/setupMenu';
@@ -227,16 +228,41 @@ function RawContentEditor({ rawContentType }: { rawContentType: RawContentType }
     }
   };
 
+  const gutterRef = useRef<LineNumberGutterHandle>(null);
+  const syncGutterScroll = (e: UIEvent<HTMLTextAreaElement>) => {
+    gutterRef.current?.syncScrollTop(e.currentTarget.scrollTop);
+  };
+
+  const areaRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const area = areaRef.current;
+    if (!area) return;
+    const onScroll = (e: Event) => {
+      if (!(e.target instanceof HTMLTextAreaElement)) return;
+      if (!area.contains(e.target)) return;
+      gutterRef.current?.syncScrollTop(e.target.scrollTop);
+    };
+    area.addEventListener('scroll', onScroll, { capture: true, passive: true });
+    return () => area.removeEventListener('scroll', onScroll, { capture: true });
+  }, []);
+
   return (
-    <EnvVarField
-      as="textarea"
-      className="body-editor body-editor-flex"
-      value={body}
-      onValueChange={setBody}
-      onKeyDown={handleKeyDown}
-      placeholder={placeholderKey ? t(placeholderKey) : ''}
-      spellCheck={false}
-    />
+    <div ref={areaRef} className="line-numbered-area line-numbered-area--body-fill">
+      <LineNumberGutter ref={gutterRef} text={body} />
+      <div className="line-numbered-main">
+        <EnvVarField
+          as="textarea"
+          className="body-editor body-editor-flex line-numbered-textarea"
+          value={body}
+          onValueChange={setBody}
+          onKeyDown={handleKeyDown}
+          onScroll={syncGutterScroll}
+          placeholder={placeholderKey ? t(placeholderKey) : ''}
+          spellCheck={false}
+        />
+      </div>
+    </div>
   );
 }
 
