@@ -598,27 +598,6 @@ body {
   min-height: 0;
 }
 
-.curl-panel-input {
-  flex: 1;
-  width: 100%;
-  min-height: 0;
-  margin: 0;
-  padding: 12px;
-  border: none;
-  outline: none;
-  resize: none;
-  background: transparent;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--text-primary);
-  caret-color: var(--accent);
-}
-
-.curl-panel-input::placeholder {
-  color: var(--text-muted);
-}
-
 .curl-panel-content {
   margin: 0;
   padding: 12px;
@@ -1711,7 +1690,22 @@ input[type="checkbox"].kv-checkbox-lg {
   padding-left: 8px;
 }
 
-.jsonc-editor-with-gutter {
+/* Unified code editor (body / response / curl) */
+.code-editor {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.code-editor--fill {
+  height: 100%;
+}
+
+.code-editor-overlay,
+.code-editor-with-gutter {
   display: flex;
   flex: 1;
   min-height: 0;
@@ -1719,32 +1713,24 @@ input[type="checkbox"].kv-checkbox-lg {
   align-items: stretch;
 }
 
-.jsonc-editor-gutter.line-number-gutter {
+.code-editor-with-gutter {
+  width: 100%;
+}
+
+.code-editor-gutter.line-number-gutter {
   flex: 0 0 auto;
 }
 
-.jsonc-editor-with-gutter .jsonc-editor-viewport {
+.code-editor-with-gutter .code-editor-viewport {
   flex: 1;
   min-width: 0;
 }
 
-.jsonc-editor-with-gutter .jsonc-editor-layer {
+.code-editor-with-gutter .code-editor-layer {
   padding-left: 8px;
 }
 
-.jsonc-editor-input.body-editor {
-  padding-left: 8px;
-}
-
-/* JSONC body editor — highlight layer behind transparent textarea */
-.jsonc-editor {
-  display: flex;
-  flex: 1;
-  min-height: 0;
-  flex-direction: column;
-}
-
-.jsonc-editor-viewport {
+.code-editor-viewport {
   position: relative;
   flex: 1;
   min-height: 0;
@@ -1753,12 +1739,19 @@ input[type="checkbox"].kv-checkbox-lg {
   flex-direction: column;
 }
 
+.code-editor-viewport.code-editor--wrap .code-editor-layer {
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
 /* Shared metrics — highlight <pre> and <textarea> must match pixel-for-pixel */
-.jsonc-editor-layer {
+.code-editor-layer {
   box-sizing: border-box;
   margin: 0;
   padding: 12px;
   border: none;
+  outline: none;
   font-family: var(--font-mono);
   font-size: 12px;
   line-height: 1.5;
@@ -1773,7 +1766,7 @@ input[type="checkbox"].kv-checkbox-lg {
   font-variant-ligatures: none;
 }
 
-.jsonc-editor-highlight {
+.code-editor-highlight {
   position: absolute;
   inset: 0;
   overflow: auto;
@@ -1782,20 +1775,23 @@ input[type="checkbox"].kv-checkbox-lg {
   z-index: 0;
 }
 
-.jsonc-editor-highlight.json-highlight {
-  /* Override read-only response panel rules */
+.code-editor-highlight.json-highlight,
+.code-editor-highlight.curl-highlight {
   overflow: auto;
+  padding: 12px;
+  background: transparent;
 }
 
-.jsonc-editor-highlight .json-comment {
+.code-editor-highlight .json-comment {
   font-style: normal;
 }
 
-.jsonc-editor-highlight::-webkit-scrollbar {
+.code-editor-highlight::-webkit-scrollbar {
   display: none;
 }
 
-.jsonc-editor-viewport > .env-var-field {
+.code-editor-input-wrap,
+.code-editor-input-wrap > .env-var-field {
   position: relative;
   z-index: 1;
   flex: 1;
@@ -1805,29 +1801,42 @@ input[type="checkbox"].kv-checkbox-lg {
   width: 100%;
 }
 
-.jsonc-editor-input.body-editor {
+.code-editor-input {
   flex: 1;
   min-height: 0;
   width: 100%;
   overflow: auto;
   resize: none;
-  color: transparent;
-  caret-color: var(--text-primary);
   background: transparent;
-  /* Metrics come from .jsonc-editor-layer only (avoid .body-editor drift) */
-  padding: 12px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  line-height: 1.5;
-  white-space: pre;
+  color: var(--text-primary);
+  caret-color: var(--accent);
 }
 
-.jsonc-editor-input::placeholder {
+.code-editor-input--transparent {
+  color: transparent;
+}
+
+.code-editor-input::placeholder {
   color: var(--text-muted);
 }
 
-.jsonc-editor-input::selection {
+.code-editor-input::selection {
   background: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.body-editor-root--fill .body-editor-content > .code-editor--fill {
+  flex: 1;
+  min-height: 0;
+}
+
+.curl-panel-body > .code-editor--fill {
+  flex: 1;
+  min-height: 0;
+}
+
+.response-body--line-numbers > .code-editor {
+  flex: 1;
+  min-height: 0;
 }
 
 /* Body Editor scrollbars */
@@ -1975,7 +1984,8 @@ input[type="checkbox"].kv-checkbox-lg {
   flex-direction: column;
 }
 
-.response-body--line-numbers .line-sync-scroll {
+.response-body--line-numbers .line-sync-scroll,
+.response-body--line-numbers .code-editor {
   flex: 1;
   min-height: 0;
 }

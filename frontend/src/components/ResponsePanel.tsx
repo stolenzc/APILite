@@ -4,7 +4,7 @@ import { t } from '../i18n';
 import { isJson, formatJson } from '../utils/jsonUtils';
 import { getRawHttpResponse, getResponseCopyText } from '../utils/httpUtils';
 import { showToast } from '../utils/toast';
-import LineNumberedReadonly from './LineNumberedReadonly';
+import CodeEditor from './CodeEditor';
 
 export default function ResponsePanel() {
   const [wordWrap, setWordWrap] = useState(false);
@@ -91,10 +91,15 @@ export default function ResponsePanel() {
       >
         {response ? (
           responseTab === 'body' ? (
-            <LineNumberedReadonly
-              text={formattedBody}
-              wordWrap={wordWrap}
-              highlightLines={jsonValid}
+            <CodeEditor
+              value={formattedBody}
+              language={jsonValid ? 'json' : 'plain'}
+              features={{
+                lineNumbers: true,
+                highlight: jsonValid,
+                wordWrap,
+                editable: false,
+              }}
             />
           ) : responseTab === 'headers' ? (
             <div className="kv-table-wrap">
@@ -108,7 +113,11 @@ export default function ResponsePanel() {
             </table>
             </div>
           ) : (
-            <LineNumberedReadonly text={rawHttp} wordWrap={wordWrap} />
+            <CodeEditor
+              value={rawHttp}
+              language="plain"
+              features={{ lineNumbers: true, wordWrap, editable: false }}
+            />
           )
         ) : null}
       </div>

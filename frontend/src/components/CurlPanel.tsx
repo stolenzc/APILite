@@ -10,6 +10,7 @@ import { parseAndApplyCurlCommand } from '../utils/parseCurlCommand';
 import { showToast } from '../utils/toast';
 import { t } from '../i18n';
 import type { HttpRequest } from '../types';
+import CodeEditor from './CodeEditor';
 
 function requestSignature(req: HttpRequest | null): string {
   if (!req) return '';
@@ -104,9 +105,8 @@ export default function CurlPanel() {
     }, 400);
   }, []);
 
-  const handleChange = useCallback(
-    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      const value = e.target.value;
+  const handleValueChange = useCallback(
+    (value: string) => {
       setCurl(value);
       scheduleParse(value);
     },
@@ -186,16 +186,22 @@ export default function CurlPanel() {
       {!curlPanelCollapsed && (
         <div className="curl-panel-body">
           {error && <div className="curl-panel-error">{error}</div>}
-          <textarea
-            className="curl-panel-input"
+          <CodeEditor
             value={curl}
-            onChange={handleChange}
+            onValueChange={handleValueChange}
+            language="curl"
+            features={{
+              lineNumbers: true,
+              highlight: true,
+              wordWrap: true,
+              editable: true,
+            }}
+            fill
+            placeholder={placeholder}
             onFocus={() => {
               focusedRef.current = true;
             }}
             onBlur={handleBlur}
-            placeholder={placeholder}
-            spellCheck={false}
           />
         </div>
       )}
