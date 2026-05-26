@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../store/useStore';
 import { useSettingsStore } from '../store/useSettings';
+import { useEnvironmentStore } from '../store/useEnvironmentStore';
+import { resolveVariableMap } from '../utils/envInterpolation';
 import { buildCurlForRequest } from '../utils/curlExport';
 import { highlightCurl } from '../utils/curlHighlight';
 import { showToast } from '../utils/toast';
@@ -27,6 +29,18 @@ export default function CurlPanel() {
     return tab?.request ?? null;
   });
   const { curlPanelWidth, curlPanelCollapsed, setCurlPanelCollapsed } = useSettingsStore();
+  const autoCompleteProtocol = useSettingsStore((s) => s.autoCompleteProtocol);
+  /** Resolved active-env values; changes when switching env or editing variables. */
+  const envSig = useEnvironmentStore((s) => {
+    const envId = s.activeEnvironmentId;
+    const raw: Record<string, string> = {};
+    for (const row of s.variables) {
+      const k = row.key.trim();
+      if (!k) continue;
+      raw[k] = row.valuesByEnvId[envId] ?? '';
+    }
+    return JSON.stringify(resolveVariableMap(raw));
+  });
 
   const [curl, setCurl] = useState('');
   const [loading, setLoading] = useState(false);
@@ -66,7 +80,7 @@ export default function CurlPanel() {
       cancelled = true;
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [sig, activeRequest]);
+  }, [sig, activeRequest, envSig, autoCompleteProtocol]);
 
   const handleCopy = useCallback(async () => {
     if (!curl) return;
