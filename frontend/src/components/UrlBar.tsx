@@ -8,23 +8,16 @@ import { formatRawHttpResponse } from '../utils/httpUtils';
 import { hasHttpProtocol, interpolateEnvVars } from '../utils/envInterpolation';
 import { useEnvironmentStore } from '../store/useEnvironmentStore';
 import { isCurlCommand } from '../utils/curlUtils';
+import { parseAndApplyCurlCommand } from '../utils/parseCurlCommand';
 import { isImeComposing } from '../utils/keyboard';
-import { showToast } from '../utils/toast';
 import { focusUrlInput } from '../utils/focusUrl';
 import { EnvVarField } from './EnvVarField';
 import { kvToMap, resolveOutboundRequest } from '../utils/outboundRequest';
 
 const METHODS: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
 
-type ParsedCurl = {
-  method: string;
-  url: string;
-  headers: [string, string][];
-  body: string | null;
-};
-
 export default function UrlBar() {
-  const { setMethod, setUrl, syncParamsFromUrl, setLoading, setResponse, addHistory, applyParsedCurl } = useStore();
+  const { setMethod, setUrl, syncParamsFromUrl, setLoading, setResponse, addHistory } = useStore();
   const requestMethod = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.method ?? 'GET');
   const requestUrl = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.url ?? '');
   const loading = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.loading ?? false);
@@ -35,18 +28,10 @@ export default function UrlBar() {
     return () => window.removeEventListener('app:focus-url', onFocusUrl);
   }, []);
 
-  const applyCurlCommand = useCallback(async (command: string) => {
-    const trimmed = command.trim();
-    if (!isCurlCommand(trimmed)) return false;
-    try {
-      const parsed: ParsedCurl = await invoke('parse_curl', { command: trimmed });
-      applyParsedCurl(parsed);
-      return true;
-    } catch (err) {
-      showToast(`${t('url.curlParseError')}: ${err}`);
-      return false;
-    }
-  }, [applyParsedCurl]);
+  const applyCurlCommand = useCallback(
+    (command: string) => parseAndApplyCurlCommand(command),
+    [],
+  );
 
   const handlePaste = async (e: React.ClipboardEvent<HTMLInputElement>) => {
     const text = e.clipboardData.getData('text');

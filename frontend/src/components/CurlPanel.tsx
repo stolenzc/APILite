@@ -5,7 +5,8 @@ import { useEnvironmentStore } from '../store/useEnvironmentStore';
 import { buildRawVarMapForEnv } from '../utils/environmentScope';
 import { resolveVariableMap } from '../utils/envInterpolation';
 import { buildCurlForRequest } from '../utils/curlExport';
-import { highlightCurl } from '../utils/curlHighlight';
+import { isCurlCommand } from '../utils/curlUtils';
+import { parseAndApplyCurlCommand } from '../utils/parseCurlCommand';
 import { showToast } from '../utils/toast';
 import { t } from '../i18n';
 import type { HttpRequest } from '../types';
@@ -25,6 +26,7 @@ function requestSignature(req: HttpRequest | null): string {
 }
 
 export default function CurlPanel() {
+  const activeTabId = useStore((s) => s.activeTabId);
   const activeRequest = useStore((s) => {
     const tab = s.tabs.find((t) => t.id === s.activeTabId);
     return tab?.request ?? null;
@@ -40,12 +42,25 @@ export default function CurlPanel() {
   const [curl, setCurl] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const exportDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const parseDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const focusedRef = useRef(false);
+  const skipExportRef = useRef(false);
   const sig = useMemo(() => requestSignature(activeRequest), [activeRequest]);
-  const highlightedCurl = useMemo(() => (curl ? highlightCurl(curl) : ''), [curl]);
 
   useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
+    focusedRef.current = false;
+    skipExportRef.current = false;
+  }, [activeTabId]);
+
+  useEffect(() => {
+    if (exportDebounceRef.current) clearTimeout(exportDebounceRef.current);
+    if (focusedRef.current) return;
+    if (skipExportRef.current) {
+      skipExportRef.current = false;
+      return;
+    }
+
     if (!activeRequest?.url?.trim()) {
       setCurl('');
       setError(null);
@@ -55,16 +70,16 @@ export default function CurlPanel() {
 
     setLoading(true);
     let cancelled = false;
-    debounceRef.current = setTimeout(() => {
+    exportDebounceRef.current = setTimeout(() => {
       void buildCurlForRequest(activeRequest)
         .then((text) => {
-          if (cancelled) return;
+          if (cancelled || focusedRef.current) return;
           setCurl(text);
           setError(null);
           setLoading(false);
         })
         .catch((err) => {
-          if (cancelled) return;
+          if (cancelled || focusedRef.current) return;
           setCurl('');
           setError(String(err));
           setLoading(false);
@@ -73,9 +88,54 @@ export default function CurlPanel() {
 
     return () => {
       cancelled = true;
-      if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (exportDebounceRef.current) clearTimeout(exportDebounceRef.current);
     };
   }, [sig, activeRequest, envSig, autoCompleteProtocol]);
+
+  const scheduleParse = useCallback((command: string) => {
+    if (parseDebounceRef.current) clearTimeout(parseDebounceRef.current);
+    const trimmed = command.trim();
+    if (!trimmed) return;
+
+    parseDebounceRef.current = setTimeout(() => {
+      if (!isCurlCommand(trimmed)) return;
+      skipExportRef.current = true;
+      void parseAndApplyCurlCommand(trimmed);
+    }, 400);
+  }, []);
+
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const value = e.target.value;
+      setCurl(value);
+      scheduleParse(value);
+    },
+    [scheduleParse],
+  );
+
+  const handleBlur = useCallback(() => {
+    focusedRef.current = false;
+    const trimmed = curl.trim();
+    if (!trimmed || isCurlCommand(trimmed)) return;
+
+    if (!activeRequest?.url?.trim()) {
+      setCurl('');
+      return;
+    }
+
+    setLoading(true);
+    void buildCurlForRequest(activeRequest)
+      .then((text) => {
+        setCurl(text);
+        setError(null);
+        setLoading(false);
+      })
+      .catch((err) => {
+        setCurl('');
+        setError(String(err));
+        setLoading(false);
+      });
+  }, [curl, activeRequest]);
 
   const handleCopy = useCallback(async () => {
     if (!curl) return;
@@ -90,6 +150,12 @@ export default function CurlPanel() {
   const panelStyle = curlPanelCollapsed
     ? { width: 32, minWidth: 32 }
     : { width: curlPanelWidth, minWidth: curlPanelWidth };
+
+  const placeholder = loading && !curl
+    ? t('curl.generating')
+    : !activeRequest?.url?.trim()
+      ? t('curl.empty')
+      : t('curl.placeholder');
 
   return (
     <aside
@@ -119,19 +185,18 @@ export default function CurlPanel() {
       </div>
       {!curlPanelCollapsed && (
         <div className="curl-panel-body">
-          {loading && !curl && (
-            <div className="curl-panel-placeholder">{t('curl.generating')}</div>
-          )}
           {error && <div className="curl-panel-error">{error}</div>}
-          {!loading && !error && !curl && (
-            <div className="curl-panel-placeholder">{t('curl.empty')}</div>
-          )}
-          {curl && (
-            <pre
-              className="curl-panel-content curl-highlight"
-              dangerouslySetInnerHTML={{ __html: highlightedCurl }}
-            />
-          )}
+          <textarea
+            className="curl-panel-input"
+            value={curl}
+            onChange={handleChange}
+            onFocus={() => {
+              focusedRef.current = true;
+            }}
+            onBlur={handleBlur}
+            placeholder={placeholder}
+            spellCheck={false}
+          />
         </div>
       )}
     </aside>
