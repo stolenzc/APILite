@@ -3,7 +3,7 @@ import { useStore } from '../store/useStore';
 import { matchesShortcutCombo, useSettingsStore } from '../store/useSettings';
 import type { BodyType, RawContentType } from '../types';
 import { t } from '../i18n';
-import { formatJsonc, isJsonc, parseJsonc } from '../utils/jsonUtils';
+import { formatJsonc, isJsonc, jsoncToStrictJson, parseJsonc } from '../utils/jsonUtils';
 import { EnvVarField } from './EnvVarField';
 import JsoncBodyEditor from './JsoncBodyEditor';
 import BodyFormTable from './BodyFormTable';
@@ -297,8 +297,7 @@ export default function BodyEditor() {
 
   const handleMinify = () => {
     if (!body) return;
-    const { value, valid } = parseJsonc(body);
-    if (valid) setBody(JSON.stringify(value));
+    if (parseJsonc(body).valid) setBody(jsoncToStrictJson(body));
   };
 
   const isJsonBody = bodyType === 'raw' && rawContentType === 'json';

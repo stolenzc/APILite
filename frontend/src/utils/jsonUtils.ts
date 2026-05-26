@@ -12,103 +12,344 @@ export function isJsonc(input: string): boolean {
   return parseJsonc(input).valid;
 }
 
-export function formatJsonc(input: string): { formatted: string; valid: boolean } {
-  const { value, valid } = parseJsonc(input);
-  if (!valid) return { formatted: input, valid: false };
-  return { formatted: JSON.stringify(value, null, 2), valid: true };
-}
-
-/** Strip JSONC to strict JSON for outbound HTTP (comments removed). Invalid input returned as-is. */
-export function jsoncToStrictJson(input: string): string {
-  const { value, valid } = parseJsonc(input);
-  if (!valid) return input;
-  return JSON.stringify(value);
-}
-
-/** JSON object/array only — bare numbers/strings are valid JSON but must not be parsed as Number. */
-function isJsonObjectOrArray(input: string): boolean {
-  const t = input.trim();
-  return t.startsWith('{') || t.startsWith('[');
-}
-
-/** Number literals outside JSON strings; used to detect JSON.parse precision loss. */
-function extractJsonNumberLiterals(input: string): string[] {
-  const result: string[] = [];
+/** Remove JSONC comments outside of string literals. */
+function stripJsoncComments(input: string): string {
+  let out = '';
   let i = 0;
   let inString = false;
+
   while (i < input.length) {
     const ch = input[i];
     if (inString) {
       if (ch === '\\') {
+        out += input.slice(i, i + 2);
         i += 2;
         continue;
       }
       if (ch === '"') inString = false;
+      out += ch;
       i++;
       continue;
     }
     if (ch === '"') {
       inString = true;
+      out += ch;
       i++;
+      continue;
+    }
+    if (ch === '/' && input[i + 1] === '/') {
+      i += 2;
+      while (i < input.length && input[i] !== '\n') i++;
+      continue;
+    }
+    if (ch === '/' && input[i + 1] === '*') {
+      i += 2;
+      while (i < input.length && !(input[i] === '*' && input[i + 1] === '/')) i++;
+      i += 2;
+      continue;
+    }
+    out += ch;
+    i++;
+  }
+
+  return out;
+}
+
+export function formatJsonc(input: string): { formatted: string; valid: boolean } {
+  if (!input.trim()) return { formatted: input, valid: false };
+  const { valid } = parseJsonc(input);
+  if (!valid) return { formatted: input, valid: false };
+  return formatJson(stripJsoncComments(input));
+}
+
+/** Compact JSONC to strict JSON (comments stripped, large integers preserved). */
+export function jsoncToStrictJson(input: string): string {
+  if (!input.trim()) return input;
+  const { valid } = parseJsonc(input);
+  if (!valid) return input;
+  const tokens = parseJsonTokens(stripJsoncComments(input).trim());
+  if (!tokens) return input;
+  return minifyJsonTokens(tokens);
+}
+
+function minifyJsonTokens(tokens: JsonToken[]): string {
+  return tokens.map((t) => tokenForDisplay(t)).join('');
+}
+
+type JsonToken =
+  | { kind: 'punct'; value: string }
+  | { kind: 'string'; value: string }
+  | { kind: 'number'; value: string }
+  | { kind: 'literal'; value: string };
+
+function tokenText(token: JsonToken): string {
+  return token.value;
+}
+
+/**
+ * Decode JSON string token escapes (`\uXXXX`, `\n`, surrogate pairs) to UTF-16/UTF-8 text.
+ * Number tokens are never passed here — large integers stay verbatim.
+ */
+function decodeJsonStringToken(quoted: string): string {
+  try {
+    const decoded = JSON.parse(quoted) as unknown;
+    if (typeof decoded !== 'string') return quoted;
+    return JSON.stringify(decoded);
+  } catch {
+    return quoted;
+  }
+}
+
+function tokenForDisplay(token: JsonToken): string {
+  if (token.kind === 'string') return decodeJsonStringToken(token.value);
+  return tokenText(token);
+}
+
+/** Tokenize JSON without converting numbers (preserves large integer literals). */
+function tokenizeJson(input: string): JsonToken[] | null {
+  const tokens: JsonToken[] = [];
+  let i = 0;
+
+  while (i < input.length) {
+    const ch = input[i];
+    if (/\s/.test(ch)) {
+      i++;
+      continue;
+    }
+    if ('{}[]:,'.includes(ch)) {
+      tokens.push({ kind: 'punct', value: ch });
+      i++;
+      continue;
+    }
+    if (ch === '"') {
+      const start = i;
+      i++;
+      while (i < input.length) {
+        if (input[i] === '\\') {
+          i += 2;
+          if (i > input.length) return null;
+          continue;
+        }
+        if (input[i] === '"') {
+          i++;
+          break;
+        }
+        i++;
+      }
+      if (i > input.length || input[i - 1] !== '"') return null;
+      tokens.push({ kind: 'string', value: input.slice(start, i) });
       continue;
     }
     if (ch === '-' || (ch >= '0' && ch <= '9')) {
       const start = i;
       if (ch === '-') i++;
-      while (i < input.length && input[i] >= '0' && input[i] <= '9') i++;
+      if (i >= input.length) return null;
+      if (input[i] === '0') {
+        i++;
+      } else if (input[i] >= '1' && input[i] <= '9') {
+        while (i < input.length && input[i] >= '0' && input[i] <= '9') i++;
+      } else {
+        return null;
+      }
       if (i < input.length && input[i] === '.') {
         i++;
+        if (i >= input.length || input[i] < '0' || input[i] > '9') return null;
         while (i < input.length && input[i] >= '0' && input[i] <= '9') i++;
       }
       if (i < input.length && (input[i] === 'e' || input[i] === 'E')) {
         i++;
         if (i < input.length && (input[i] === '+' || input[i] === '-')) i++;
+        if (i >= input.length || input[i] < '0' || input[i] > '9') return null;
         while (i < input.length && input[i] >= '0' && input[i] <= '9') i++;
       }
-      result.push(input.slice(start, i));
+      tokens.push({ kind: 'number', value: input.slice(start, i) });
       continue;
     }
-    i++;
+    if (input.startsWith('true', i) && !/[A-Za-z0-9_$]/.test(input[i + 4] ?? '')) {
+      tokens.push({ kind: 'literal', value: 'true' });
+      i += 4;
+      continue;
+    }
+    if (input.startsWith('false', i) && !/[A-Za-z0-9_$]/.test(input[i + 5] ?? '')) {
+      tokens.push({ kind: 'literal', value: 'false' });
+      i += 5;
+      continue;
+    }
+    if (input.startsWith('null', i) && !/[A-Za-z0-9_$]/.test(input[i + 4] ?? '')) {
+      tokens.push({ kind: 'literal', value: 'null' });
+      i += 4;
+      continue;
+    }
+    return null;
   }
+
+  return tokens;
+}
+
+function isValueToken(token: JsonToken | undefined): boolean {
+  return token?.kind === 'string' || token?.kind === 'number' || token?.kind === 'literal';
+}
+
+/** Structural validation on tokens (no Number conversion). */
+function validateJsonTokens(tokens: JsonToken[]): boolean {
+  let pos = 0;
+
+  const peek = () => tokens[pos];
+  const consume = () => tokens[pos++];
+
+  const parseValue = (): boolean => {
+    const t = peek();
+    if (!t) return false;
+    if (isValueToken(t)) {
+      consume();
+      return true;
+    }
+    if (t.kind === 'punct' && t.value === '[') {
+      consume();
+      const inner = peek();
+      if (inner?.kind === 'punct' && inner.value === ']') {
+        consume();
+        return true;
+      }
+      if (!parseValue()) return false;
+      while (peek()?.kind === 'punct' && peek()!.value === ',') {
+        consume();
+        if (!parseValue()) return false;
+      }
+      const close = consume();
+      return close?.kind === 'punct' && close.value === ']';
+    }
+    if (t.kind === 'punct' && t.value === '{') {
+      consume();
+      const inner = peek();
+      if (inner?.kind === 'punct' && inner.value === '}') {
+        consume();
+        return true;
+      }
+      if (!parsePair()) return false;
+      while (peek()?.kind === 'punct' && peek()!.value === ',') {
+        consume();
+        if (!parsePair()) return false;
+      }
+      const close = consume();
+      return close?.kind === 'punct' && close.value === '}';
+    }
+    return false;
+  };
+
+  const parsePair = (): boolean => {
+    const key = consume();
+    if (key?.kind !== 'string') return false;
+    const colon = consume();
+    if (colon?.kind !== 'punct' || colon.value !== ':') return false;
+    return parseValue();
+  };
+
+  if (!parseValue()) return false;
+  return pos === tokens.length;
+}
+
+const JSON_INDENT = '  ';
+
+/** Pretty-print by inserting whitespace only; all literals are copied verbatim. */
+function prettyPrintJsonTokens(tokens: JsonToken[]): string {
+  let result = '';
+  let depth = 0;
+  let atLineStart = true;
+
+  const writeNewline = () => {
+    result += '\n';
+    atLineStart = true;
+  };
+
+  const writeIndent = () => {
+    if (atLineStart) result += JSON_INDENT.repeat(depth);
+    atLineStart = false;
+  };
+
+  const writeValue = (token: JsonToken) => {
+    writeIndent();
+    result += tokenForDisplay(token);
+    atLineStart = false;
+  };
+
+  for (let i = 0; i < tokens.length; i++) {
+    const t = tokens[i];
+    const next = tokens[i + 1];
+
+    if (t.kind !== 'punct') {
+      writeValue(t);
+      continue;
+    }
+
+    switch (t.value) {
+      case '{':
+      case '[': {
+        const close = t.value === '{' ? '}' : ']';
+        result += t.value;
+        if (next?.kind === 'punct' && next.value === close) break;
+        depth++;
+        writeNewline();
+        break;
+      }
+      case '}':
+      case ']': {
+        const open = t.value === '}' ? '{' : '[';
+        const prev = tokens[i - 1];
+        if (prev?.kind === 'punct' && prev.value === open) {
+          result += t.value;
+          break;
+        }
+        depth--;
+        writeNewline();
+        writeIndent();
+        result += t.value;
+        atLineStart = false;
+        break;
+      }
+      case ',':
+        result += ',';
+        writeNewline();
+        break;
+      case ':':
+        result += ': ';
+        atLineStart = false;
+        break;
+      default:
+        result += t.value;
+        atLineStart = false;
+    }
+  }
+
   return result;
 }
 
-function jsonNumberLiteralsPreserveOnParse(input: string): boolean {
-  const literals = extractJsonNumberLiterals(input);
-  if (literals.length === 0) return true;
-  try {
-    const compact = JSON.stringify(JSON.parse(input));
-    const outLiterals = extractJsonNumberLiterals(compact);
-    if (literals.length !== outLiterals.length) return false;
-    return literals.every((lit, idx) => lit === outLiterals[idx]);
-  } catch {
-    return true;
-  }
+function parseJsonTokens(input: string): JsonToken[] | null {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+  const tokens = tokenizeJson(trimmed);
+  if (!tokens || !validateJsonTokens(tokens)) return null;
+  return tokens;
 }
 
 export function formatJson(input: string): { formatted: string; valid: boolean } {
-  if (!isJsonObjectOrArray(input)) {
-    return { formatted: input, valid: false };
-  }
-  try {
-    if (!jsonNumberLiteralsPreserveOnParse(input)) {
-      return { formatted: input, valid: true };
+  const tokens = parseJsonTokens(input);
+  if (!tokens) return { formatted: input, valid: false };
+
+  const first = tokens[0];
+  const isDocument = first.kind === 'punct' && (first.value === '{' || first.value === '[');
+  if (!isDocument) {
+    if (first.kind === 'string') {
+      return { formatted: decodeJsonStringToken(first.value), valid: true };
     }
-    const parsed = JSON.parse(input);
-    return { formatted: JSON.stringify(parsed, null, 2), valid: true };
-  } catch {
-    return { formatted: input, valid: false };
+    return { formatted: input, valid: true };
   }
+
+  return { formatted: prettyPrintJsonTokens(tokens), valid: true };
 }
 
 export function isJson(input: string): boolean {
-  if (!isJsonObjectOrArray(input)) return false;
-  try {
-    JSON.parse(input);
-    return true;
-  } catch {
-    return false;
-  }
+  return parseJsonTokens(input) !== null;
 }
 
 // Simple regex-based JSON syntax highlighter
@@ -116,10 +357,141 @@ export function isJson(input: string): boolean {
 // Groups: 1=key, 2=colon ws, 3=string, 4=bool/null, 5=number, 6=punctuation
 const JSON_TOKEN_RE = /("(?:\\.|[^"\\])*")(\s*:\s*)|("(?:\\.|[^"\\])*")|\b(true|false|null)\b|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)|([{}[\],])/g;
 
-const JSONC_COMMENT_RE = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)/g;
+const STRING_MASK_MARK = '\x02';
+const STRING_MASK_END = '\x03';
+const STRING_PH_RE = /\x02([a-z]+)\x03/g;
 
-/** Letter-only slug — digits in placeholders get wrapped by JSON_TOKEN_RE and break HTML comments. */
-const COMMENT_PH_RE = /<!--APILITEC([a-z]+)-->/g;
+function stringPlaceholder(idx: number): string {
+  return `${STRING_MASK_MARK}${commentIndexSlug(idx)}${STRING_MASK_END}`;
+}
+
+type JsoncSegment = { type: 'code' | 'comment'; text: string };
+
+/** Split JSONC into code vs comments (comments only outside string literals). */
+function splitJsoncSegments(input: string): JsoncSegment[] {
+  const segments: JsoncSegment[] = [];
+  let buf = '';
+  let i = 0;
+  let mode: 'code' | 'string' | 'line_comment' | 'block_comment' = 'code';
+
+  const flush = (type: JsoncSegment['type']) => {
+    if (!buf) return;
+    segments.push({ type, text: buf });
+    buf = '';
+  };
+
+  while (i < input.length) {
+    const ch = input[i];
+
+    if (mode === 'code') {
+      if (ch === '"') {
+        buf += ch;
+        i++;
+        mode = 'string';
+        continue;
+      }
+      if (ch === '/' && input[i + 1] === '/') {
+        flush('code');
+        i += 2;
+        mode = 'line_comment';
+        buf = '//';
+        continue;
+      }
+      if (ch === '/' && input[i + 1] === '*') {
+        flush('code');
+        i += 2;
+        mode = 'block_comment';
+        buf = '/*';
+        continue;
+      }
+      buf += ch;
+      i++;
+      continue;
+    }
+
+    if (mode === 'string') {
+      buf += ch;
+      if (ch === '\\') {
+        i++;
+        if (i < input.length) {
+          buf += input[i];
+          i++;
+        }
+        continue;
+      }
+      if (ch === '"') mode = 'code';
+      i++;
+      continue;
+    }
+
+    if (mode === 'line_comment') {
+      buf += ch;
+      i++;
+      if (ch === '\n') {
+        flush('comment');
+        mode = 'code';
+      }
+      continue;
+    }
+
+    // block_comment
+    buf += ch;
+    if (ch === '*' && input[i + 1] === '/') {
+      buf += '/';
+      i += 2;
+      flush('comment');
+      mode = 'code';
+      continue;
+    }
+    i++;
+  }
+
+  if (mode === 'line_comment' || mode === 'block_comment') flush('comment');
+  else flush('code');
+
+  return segments;
+}
+
+/** Mask JSON string literals so `//` inside URLs is not treated as a comment. */
+function maskJsonStrings(input: string): { masked: string; strings: string[] } {
+  const strings: string[] = [];
+  let masked = '';
+  let i = 0;
+
+  while (i < input.length) {
+    if (input[i] === '"') {
+      const start = i;
+      i++;
+      while (i < input.length) {
+        if (input[i] === '\\') {
+          i += 2;
+          if (i > input.length) break;
+          continue;
+        }
+        if (input[i] === '"') {
+          i++;
+          break;
+        }
+        i++;
+      }
+      const idx = strings.length;
+      strings.push(input.slice(start, i));
+      masked += stringPlaceholder(idx);
+      continue;
+    }
+    masked += input[i];
+    i++;
+  }
+
+  return { masked, strings };
+}
+
+function unmaskJsonStrings(input: string, strings: string[]): string {
+  return input.replace(STRING_PH_RE, (_, slug) => {
+    const raw = strings[slugToCommentIndex(slug)] ?? '';
+    return escapeHtml(raw);
+  });
+}
 
 function commentIndexSlug(n: number): string {
   let s = '';
@@ -140,10 +512,6 @@ function slugToCommentIndex(slug: string): number {
   return n - 1;
 }
 
-function commentPlaceholder(idx: number): string {
-  return `<!--APILITEC${commentIndexSlug(idx)}-->`;
-}
-
 function escapeHtml(input: string): string {
   return input
     .replace(/&/g, '&amp;')
@@ -151,17 +519,12 @@ function escapeHtml(input: string): string {
     .replace(/>/g, '&gt;');
 }
 
-export function highlightJson(input: string): string {
-  const escaped = escapeHtml(input);
-  const commentSlots: string[] = [];
+function highlightJsonCode(input: string): string {
+  const { masked: stringMasked, strings } = maskJsonStrings(input);
+  const escaped = escapeHtml(stringMasked);
+  const withStrings = unmaskJsonStrings(escaped, strings);
 
-  const withoutComments = escaped.replace(JSONC_COMMENT_RE, (comment) => {
-    const idx = commentSlots.length;
-    commentSlots.push(comment);
-    return commentPlaceholder(idx);
-  });
-
-  const withTokens = withoutComments.replace(
+  return withStrings.replace(
     JSON_TOKEN_RE,
     (match, key, colon, stringVal, bool, number, punct) => {
       if (key !== undefined) return `<span class="json-key">${key}</span>${colon}`;
@@ -172,9 +535,15 @@ export function highlightJson(input: string): string {
       return match;
     },
   );
+}
 
-  return withTokens.replace(COMMENT_PH_RE, (_, slug) => {
-    const comment = commentSlots[slugToCommentIndex(slug)] ?? '';
-    return `<span class="json-comment">${comment}</span>`;
-  });
+export function highlightJson(input: string): string {
+  const segments = splitJsoncSegments(input);
+  return segments
+    .map((seg) =>
+      seg.type === 'comment'
+        ? `<span class="json-comment">${escapeHtml(seg.text)}</span>`
+        : highlightJsonCode(seg.text),
+    )
+    .join('');
 }

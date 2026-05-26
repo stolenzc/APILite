@@ -1,4 +1,5 @@
 use base64::{engine::general_purpose::STANDARD, Engine};
+use encoding_rs::Encoding;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::OnceLock;
@@ -124,6 +125,54 @@ fn decode_base64(data: &str) -> Result<Vec<u8>, String> {
     STANDARD
         .decode(data)
         .map_err(|e| format!("Invalid base64 body: {}", e))
+}
+
+fn header_lookup<'a>(headers: &'a HashMap<String, String>, name: &str) -> Option<&'a str> {
+    headers
+        .iter()
+        .find(|(k, _)| k.eq_ignore_ascii_case(name))
+        .map(|(_, v)| v.as_str())
+}
+
+fn charset_from_content_type(content_type: &str) -> Option<String> {
+    for part in content_type.split(';').skip(1) {
+        let part = part.trim();
+        let (key, value) = part.split_once('=')?;
+        if !key.trim().eq_ignore_ascii_case("charset") {
+            continue;
+        }
+        let value = value.trim().trim_matches(|c| c == '"' || c == '\'').trim();
+        if !value.is_empty() {
+            return Some(value.to_string());
+        }
+    }
+    None
+}
+
+fn strip_utf8_bom(bytes: &[u8]) -> &[u8] {
+    bytes.strip_prefix(&[0xEF, 0xBB, 0xBF]).unwrap_or(bytes)
+}
+
+/// Decode response bytes using `Content-Type` charset (defaults to UTF-8).
+fn decode_http_body(bytes: &[u8], headers: &HashMap<String, String>) -> Result<String, String> {
+    let bytes = strip_utf8_bom(bytes);
+    let charset = header_lookup(headers, "content-type")
+        .and_then(charset_from_content_type)
+        .unwrap_or_else(|| "utf-8".to_string());
+
+    if charset.eq_ignore_ascii_case("utf-8") || charset.eq_ignore_ascii_case("utf8") {
+        return std::str::from_utf8(bytes)
+            .map(|s| s.to_string())
+            .map_err(|e| format!("Invalid UTF-8 response body: {e}"));
+    }
+
+    let encoding = Encoding::for_label(charset.as_bytes()).ok_or_else(|| {
+        format!(
+            "Unsupported response charset \"{charset}\" (from Content-Type)"
+        )
+    })?;
+    let (decoded, _, _) = encoding.decode(bytes);
+    Ok(decoded.into_owned())
 }
 
 fn load_file_part(field: &FormFieldPart) -> Result<(Vec<u8>, String), String> {
@@ -398,7 +447,8 @@ pub async fn send(req: SendRequest) -> Result<SendResponse, String> {
         );
     }
 
-    let body = resp.text().await.map_err(|e| e.to_string())?;
+    let body_bytes = resp.bytes().await.map_err(|e| e.to_string())?;
+    let body = decode_http_body(&body_bytes, &resp_headers)?;
     let raw = format_raw_http(http_version, status, &status_text, &resp_headers, &body);
 
     Ok(SendResponse {
