@@ -4,6 +4,13 @@ import { invoke } from '@tauri-apps/api/core';
 import { isTauri } from '../tauri/setupMenu';
 import { getDataDir } from '../utils/storagePaths';
 import { resolveVariableMap } from '../utils/envInterpolation';
+import {
+  buildRawVarMapForEnv,
+  isVariableInEnv,
+  normalizePresentInEnvIds,
+  presentInEnvIdsAfterDisable,
+  presentInEnvIdsAfterEnable,
+} from '../utils/environmentScope';
 import { t } from '../i18n';
 
 /** One column = one environment (e.g. Default, Staging). */
@@ -17,6 +24,8 @@ export interface EnvVariableRow {
   id: string;
   key: string;
   valuesByEnvId: Record<string, string>;
+  /** When set, the variable only exists in these environment columns. */
+  presentInEnvIds?: string[];
 }
 
 interface PersistedV2 {
@@ -43,6 +52,8 @@ interface EnvironmentState {
   duplicateVariableRow: (rowId: string) => void;
   updateVariableKey: (rowId: string, key: string) => void;
   updateCell: (rowId: string, envId: string, value: string) => void;
+  setVariableInEnv: (rowId: string, envId: string, present: boolean) => void;
+  scopeVariableToEnvOnly: (rowId: string, envId: string) => void;
   reorderVariableRows: (activeId: string, overId: string) => void;
   reorderEnvironmentColumns: (activeId: string, overId: string) => void;
   /** Raw cells for active env, then `{{}}` cross-references resolved. */
@@ -75,6 +86,8 @@ function defaultState(): Omit<
   | 'duplicateVariableRow'
   | 'updateVariableKey'
   | 'updateCell'
+  | 'setVariableInEnv'
+  | 'scopeVariableToEnvOnly'
   | 'reorderVariableRows'
   | 'reorderEnvironmentColumns'
   | 'getActiveVarMap'
@@ -102,6 +115,8 @@ function parsePersistedV2(raw: string): Omit<
   | 'duplicateVariableRow'
   | 'updateVariableKey'
   | 'updateCell'
+  | 'setVariableInEnv'
+  | 'scopeVariableToEnvOnly'
   | 'reorderVariableRows'
   | 'reorderEnvironmentColumns'
   | 'getActiveVarMap'
@@ -113,9 +128,14 @@ function parsePersistedV2(raw: string): Omit<
       p.activeEnvironmentId && p.environments.some((e) => e.id === p.activeEnvironmentId)
         ? p.activeEnvironmentId
         : p.environments[0].id;
+    const envIds = p.environments.map((e) => e.id);
+    const variables = (Array.isArray(p.variables) ? p.variables : []).map((row) => ({
+      ...row,
+      presentInEnvIds: normalizePresentInEnvIds(row.presentInEnvIds, envIds),
+    }));
     return {
       environments: p.environments,
-      variables: Array.isArray(p.variables) ? p.variables : [],
+      variables,
       activeEnvironmentId: active,
       envModalOpen: false,
     };
@@ -137,6 +157,8 @@ function load(): Omit<
   | 'duplicateVariableRow'
   | 'updateVariableKey'
   | 'updateCell'
+  | 'setVariableInEnv'
+  | 'scopeVariableToEnvOnly'
   | 'reorderVariableRows'
   | 'reorderEnvironmentColumns'
   | 'getActiveVarMap'
@@ -201,10 +223,13 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => {
         const n = s.environments.length + 1;
         const id = nanoid();
         const col: EnvColumn = { id, name: `Environment ${n}` };
-        const variables = s.variables.map((row) => ({
-          ...row,
-          valuesByEnvId: { ...row.valuesByEnvId, [id]: '' },
-        }));
+        const variables = s.variables.map((row) => {
+          if (row.presentInEnvIds) return row;
+          return {
+            ...row,
+            valuesByEnvId: { ...row.valuesByEnvId, [id]: '' },
+          };
+        });
         const next = {
           ...s,
           environments: [...s.environments, col],
@@ -221,7 +246,11 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => {
         const environments = s.environments.filter((e) => e.id !== id);
         const variables = s.variables.map((row) => {
           const { [id]: _, ...rest } = row.valuesByEnvId;
-          return { ...row, valuesByEnvId: rest };
+          return {
+            ...row,
+            valuesByEnvId: rest,
+            presentInEnvIds: normalizePresentInEnvIds(row.presentInEnvIds, environments.map((e) => e.id)),
+          };
         });
         let activeEnvironmentId = s.activeEnvironmentId;
         if (activeEnvironmentId === id) activeEnvironmentId = environments[0].id;
@@ -240,10 +269,19 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => {
         const col: EnvColumn = { id: newId, name: `${label} ${t('env.copySuffix')}` };
         const environments = [...s.environments];
         environments.splice(idx + 1, 0, col);
-        const variables = s.variables.map((row) => ({
-          ...row,
-          valuesByEnvId: { ...row.valuesByEnvId, [newId]: row.valuesByEnvId[id] ?? '' },
-        }));
+        const variables = s.variables.map((row) => {
+          const valuesByEnvId = {
+            ...row.valuesByEnvId,
+            [newId]: row.valuesByEnvId[id] ?? '',
+          };
+          if (!isVariableInEnv(row, id)) {
+            return { ...row, valuesByEnvId };
+          }
+          const presentInEnvIds = row.presentInEnvIds
+            ? [...row.presentInEnvIds, newId]
+            : undefined;
+          return { ...row, valuesByEnvId, presentInEnvIds };
+        });
         const next = { ...s, environments, variables, activeEnvironmentId: newId };
         save(next);
         return next;
@@ -285,6 +323,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => {
           id: nanoid(),
           key: src.key,
           valuesByEnvId: { ...src.valuesByEnvId },
+          presentInEnvIds: src.presentInEnvIds ? [...src.presentInEnvIds] : undefined,
         };
         const variables = [...s.variables];
         variables.splice(idx + 1, 0, row);
@@ -303,10 +342,51 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => {
 
     updateCell: (rowId, envId, value) =>
       set((s) => {
+        const envIds = s.environments.map((e) => e.id);
+        const variables = s.variables.map((r) => {
+          if (r.id !== rowId) return r;
+          let presentInEnvIds = r.presentInEnvIds;
+          if (!isVariableInEnv(r, envId)) {
+            presentInEnvIds = presentInEnvIdsAfterEnable(presentInEnvIds, envId, envIds);
+          }
+          return {
+            ...r,
+            presentInEnvIds,
+            valuesByEnvId: { ...r.valuesByEnvId, [envId]: value },
+          };
+        });
+        const next = { ...s, variables };
+        save(next);
+        return next;
+      }),
+
+    setVariableInEnv: (rowId, envId, present) =>
+      set((s) => {
+        const envIds = s.environments.map((e) => e.id);
+        const variables = s.variables.map((r) => {
+          if (r.id !== rowId) return r;
+          if (present) {
+            const presentInEnvIds = presentInEnvIdsAfterEnable(r.presentInEnvIds, envId, envIds);
+            return {
+              ...r,
+              presentInEnvIds,
+              valuesByEnvId: { ...r.valuesByEnvId, [envId]: r.valuesByEnvId[envId] ?? '' },
+            };
+          }
+          return {
+            ...r,
+            presentInEnvIds: presentInEnvIdsAfterDisable(r.presentInEnvIds, envId, envIds),
+          };
+        });
+        const next = { ...s, variables };
+        save(next);
+        return next;
+      }),
+
+    scopeVariableToEnvOnly: (rowId, envId) =>
+      set((s) => {
         const variables = s.variables.map((r) =>
-          r.id === rowId
-            ? { ...r, valuesByEnvId: { ...r.valuesByEnvId, [envId]: value } }
-            : r,
+          r.id === rowId ? { ...r, presentInEnvIds: [envId] } : r,
         );
         const next = { ...s, variables };
         save(next);
@@ -333,13 +413,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => {
 
     getActiveVarMap: (): Record<string, string> => {
       const s = get();
-      const envId = s.activeEnvironmentId;
-      const raw: Record<string, string> = {};
-      for (const row of s.variables) {
-        const k = row.key.trim();
-        if (!k) continue;
-        raw[k] = row.valuesByEnvId[envId] ?? '';
-      }
+      const raw = buildRawVarMapForEnv(s.variables, s.activeEnvironmentId);
       return resolveVariableMap(raw);
     },
   };

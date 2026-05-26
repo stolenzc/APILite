@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useEnvironmentStore } from '../store/useEnvironmentStore';
+import { isVariableInEnv } from '../utils/environmentScope';
 import { t } from '../i18n';
 import { useModalOverlayDismiss } from '../utils/modalOverlayDismiss';
 
@@ -137,7 +138,8 @@ function focusEnvInput(e: React.MouseEvent<HTMLInputElement>) {
 
 type EnvCtxMenu =
   | { kind: 'col'; id: string; x: number; y: number }
-  | { kind: 'row'; id: string; x: number; y: number };
+  | { kind: 'row'; id: string; x: number; y: number }
+  | { kind: 'cell'; rowId: string; envId: string; inEnv: boolean; x: number; y: number };
 
 function EnvContextMenu({
   menu,
@@ -147,6 +149,9 @@ function EnvContextMenu({
   onDeleteCol,
   onDuplicateRow,
   onDeleteRow,
+  onEnableInEnv,
+  onRemoveFromEnv,
+  onScopeToEnvOnly,
 }: {
   menu: EnvCtxMenu;
   canDeleteCol: boolean;
@@ -155,6 +160,9 @@ function EnvContextMenu({
   onDeleteCol: (id: string) => void;
   onDuplicateRow: (id: string) => void;
   onDeleteRow: (id: string) => void;
+  onEnableInEnv: (rowId: string, envId: string) => void;
+  onRemoveFromEnv: (rowId: string, envId: string) => void;
+  onScopeToEnvOnly: (rowId: string, envId: string) => void;
 }) {
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -170,6 +178,41 @@ function EnvContextMenu({
     onClose();
     fn();
   };
+
+  if (menu.kind === 'cell') {
+    return (
+      <div
+        ref={menuRef}
+        className="context-menu env-context-menu"
+        style={{ left: menu.x, top: menu.y }}
+        onContextMenu={(e) => e.preventDefault()}
+      >
+        {menu.inEnv ? (
+          <>
+            <div
+              className="context-menu-item"
+              onClick={() => run(() => onScopeToEnvOnly(menu.rowId, menu.envId))}
+            >
+              {t('env.scopeToEnvOnly')}
+            </div>
+            <div
+              className="context-menu-item"
+              onClick={() => run(() => onRemoveFromEnv(menu.rowId, menu.envId))}
+            >
+              {t('env.removeFromEnv')}
+            </div>
+          </>
+        ) : (
+          <div
+            className="context-menu-item"
+            onClick={() => run(() => onEnableInEnv(menu.rowId, menu.envId))}
+          >
+            {t('env.enableInEnv')}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   const isCol = menu.kind === 'col';
 
@@ -214,6 +257,8 @@ export default function EnvironmentModal() {
     duplicateVariableRow,
     updateVariableKey,
     updateCell,
+    setVariableInEnv,
+    scopeVariableToEnvOnly,
   } = useEnvironmentStore();
 
   const [rowDropId, setRowDropId] = useState<string | null>(null);
@@ -227,6 +272,15 @@ export default function EnvironmentModal() {
     e.stopPropagation();
     setContextMenu({ kind, id, x: e.clientX, y: e.clientY });
   }, []);
+
+  const openCellContextMenu = useCallback(
+    (e: React.MouseEvent, rowId: string, envId: string, inEnv: boolean) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setContextMenu({ kind: 'cell', rowId, envId, inEnv, x: e.clientX, y: e.clientY });
+    },
+    [],
+  );
 
   const syncDropHints = useCallback(() => {
     setIsDragging(envDrag !== null);
@@ -345,18 +399,36 @@ export default function EnvironmentModal() {
                       />
                     </div>
                   </td>
-                  {environments.map((col) => (
-                    <td key={col.id}>
-                      <input
-                        type="text"
-                        placeholder="{{base_url}}:8001"
-                        value={row.valuesByEnvId[col.id] ?? ''}
-                        onChange={(e) => updateCell(row.id, col.id, e.target.value)}
-                        onMouseDown={focusEnvInput}
-                        style={monoInputStyle}
-                      />
-                    </td>
-                  ))}
+                  {environments.map((col) => {
+                    const inEnv = isVariableInEnv(row, col.id);
+                    return (
+                      <td
+                        key={col.id}
+                        className={inEnv ? undefined : 'env-matrix-cell--absent'}
+                        onContextMenu={(e) => openCellContextMenu(e, row.id, col.id, inEnv)}
+                      >
+                        {inEnv ? (
+                          <input
+                            type="text"
+                            placeholder="{{base_url}}:8001"
+                            value={row.valuesByEnvId[col.id] ?? ''}
+                            onChange={(e) => updateCell(row.id, col.id, e.target.value)}
+                            onMouseDown={focusEnvInput}
+                            style={monoInputStyle}
+                          />
+                        ) : (
+                          <button
+                            type="button"
+                            className="env-matrix-cell-absent-btn"
+                            title={t('env.enableInEnv')}
+                            onClick={() => setVariableInEnv(row.id, col.id, true)}
+                          >
+                            —
+                          </button>
+                        )}
+                      </td>
+                    );
+                  })}
                   <td className="env-matrix-add-col" />
                 </tr>
               ))}
@@ -386,6 +458,9 @@ export default function EnvironmentModal() {
           onDeleteCol={removeEnvironmentColumn}
           onDuplicateRow={duplicateVariableRow}
           onDeleteRow={removeVariableRow}
+          onEnableInEnv={(rowId, envId) => setVariableInEnv(rowId, envId, true)}
+          onRemoveFromEnv={(rowId, envId) => setVariableInEnv(rowId, envId, false)}
+          onScopeToEnvOnly={scopeVariableToEnvOnly}
         />
       )}
     </div>

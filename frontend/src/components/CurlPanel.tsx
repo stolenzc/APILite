@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../store/useStore';
 import { useSettingsStore } from '../store/useSettings';
 import { useEnvironmentStore } from '../store/useEnvironmentStore';
+import { buildRawVarMapForEnv } from '../utils/environmentScope';
 import { resolveVariableMap } from '../utils/envInterpolation';
 import { buildCurlForRequest } from '../utils/curlExport';
 import { highlightCurl } from '../utils/curlHighlight';
@@ -32,13 +33,7 @@ export default function CurlPanel() {
   const autoCompleteProtocol = useSettingsStore((s) => s.autoCompleteProtocol);
   /** Resolved active-env values; changes when switching env or editing variables. */
   const envSig = useEnvironmentStore((s) => {
-    const envId = s.activeEnvironmentId;
-    const raw: Record<string, string> = {};
-    for (const row of s.variables) {
-      const k = row.key.trim();
-      if (!k) continue;
-      raw[k] = row.valuesByEnvId[envId] ?? '';
-    }
+    const raw = buildRawVarMapForEnv(s.variables, s.activeEnvironmentId);
     return JSON.stringify(resolveVariableMap(raw));
   });
 

@@ -1,18 +1,13 @@
 import { useMemo } from 'react';
 import { useEnvironmentStore } from '../store/useEnvironmentStore';
+import { buildRawVarMapForEnv } from '../utils/environmentScope';
 import { resolveVariableMap } from '../utils/envInterpolation';
 
 export type EnvSuggestRow = { name: string; value: string };
 
 export function useEnvVarEntries(): EnvSuggestRow[] {
   const envEntriesSerialized = useEnvironmentStore((s) => {
-    const envId = s.activeEnvironmentId;
-    const raw: Record<string, string> = {};
-    for (const row of s.variables) {
-      const k = row.key.trim();
-      if (!k) continue;
-      raw[k] = row.valuesByEnvId[envId] ?? '';
-    }
+    const raw = buildRawVarMapForEnv(s.variables, s.activeEnvironmentId);
     const map = resolveVariableMap(raw);
     const pairs = Object.keys(map)
       .sort((a, b) => a.localeCompare(b))

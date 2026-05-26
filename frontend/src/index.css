@@ -2792,6 +2792,29 @@ input[type="checkbox"].kv-checkbox-lg {
   text-align: center;
 }
 
+.env-matrix-cell--absent {
+  background: color-mix(in srgb, var(--bg-input) 55%, transparent);
+}
+
+.env-matrix-cell-absent-btn {
+  width: 100%;
+  min-height: 32px;
+  padding: 6px 8px;
+  border: 1px dashed var(--border-color);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.env-matrix-cell-absent-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--bg-input);
+}
+
 tr.env-row-drop-target td {
   box-shadow: inset 0 2px 0 var(--accent);
 }
