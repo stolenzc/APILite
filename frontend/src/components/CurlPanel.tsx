@@ -190,12 +190,7 @@ export default function CurlPanel() {
             value={curl}
             onValueChange={handleValueChange}
             language="curl"
-            features={{
-              lineNumbers: true,
-              highlight: true,
-              wordWrap: true,
-              editable: true,
-            }}
+            features={{ lineNumbers: true, highlight: true, wordWrap: true }}
             fill
             placeholder={placeholder}
             onFocus={() => {

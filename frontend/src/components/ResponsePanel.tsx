@@ -94,12 +94,7 @@ export default function ResponsePanel() {
             <CodeEditor
               value={formattedBody}
               language={jsonValid ? 'json' : 'plain'}
-              features={{
-                lineNumbers: true,
-                highlight: jsonValid,
-                wordWrap,
-                editable: false,
-              }}
+              features={{ lineNumbers: true, highlight: jsonValid, wordWrap }}
             />
           ) : responseTab === 'headers' ? (
             <div className="kv-table-wrap">
@@ -116,7 +111,7 @@ export default function ResponsePanel() {
             <CodeEditor
               value={rawHttp}
               language="plain"
-              features={{ lineNumbers: true, wordWrap, editable: false }}
+              features={{ lineNumbers: true, wordWrap }}
             />
           )
         ) : null}

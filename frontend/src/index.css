@@ -598,17 +598,6 @@ body {
   min-height: 0;
 }
 
-.curl-panel-content {
-  margin: 0;
-  padding: 12px;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  word-break: break-all;
-  color: var(--text-secondary);
-}
-
 /* cURL syntax highlighting */
 .curl-highlight .curl-cmd {
   color: var(--accent);
@@ -1060,13 +1049,6 @@ body {
   position: relative;
   width: 100%;
   min-width: 0;
-}
-
-.env-var-field:has(> .body-editor-flex) {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-height: 0;
 }
 
 .env-var-suggest,
@@ -1521,18 +1503,6 @@ input[type="checkbox"].kv-checkbox-lg {
 }
 
 /* Body Editor */
-.body-editor {
-  width: 100%;
-  background: var(--bg-input);
-  color: var(--text-primary);
-  border: none;
-  padding: 12px;
-  font-size: 12px;
-  font-family: var(--font-mono);
-  resize: none;
-  outline: none;
-}
-
 .body-editor-root {
   display: flex;
   flex-direction: column;
@@ -1550,12 +1520,6 @@ input[type="checkbox"].kv-checkbox-lg {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-}
-
-.body-editor-flex {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
 }
 
 .env-var-suggest--float {
@@ -1623,37 +1587,7 @@ input[type="checkbox"].kv-checkbox-lg {
 .json-highlight .json-punct { color: var(--text-muted); }
 .json-highlight .json-comment { color: var(--text-muted); font-style: italic; }
 
-/* Line numbers (request body + response) */
-.line-numbered-area {
-  display: flex;
-  flex: 1;
-  min-height: 0;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.line-numbered-area--body-fill {
-  height: 100%;
-}
-
-.line-numbered-area--body-fill .line-numbered-main {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
-.line-numbered-area--body-fill .line-numbered-main > .env-var-field {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.line-numbered-area--readonly {
-  flex: 1;
-  min-height: 0;
-}
-
+/* Line numbers (CodeEditor gutter + read-only line-sync grid) */
 .line-number-gutter {
   flex-shrink: 0;
   align-self: stretch;
@@ -1679,17 +1613,6 @@ input[type="checkbox"].kv-checkbox-lg {
   line-height: 1.5;
 }
 
-.line-numbered-main {
-  flex: 1;
-  min-width: 0;
-  min-height: 0;
-  overflow: auto;
-}
-
-.line-numbered-textarea.body-editor {
-  padding-left: 8px;
-}
-
 /* Unified code editor (body / response / curl) */
 .code-editor {
   display: flex;
@@ -1704,16 +1627,14 @@ input[type="checkbox"].kv-checkbox-lg {
   height: 100%;
 }
 
-.code-editor-overlay,
+.code-editor-input-root,
 .code-editor-with-gutter {
   display: flex;
   flex: 1;
   min-height: 0;
+  min-width: 0;
   overflow: hidden;
   align-items: stretch;
-}
-
-.code-editor-with-gutter {
   width: 100%;
 }
 
@@ -1775,11 +1696,18 @@ input[type="checkbox"].kv-checkbox-lg {
   z-index: 0;
 }
 
+/* Metrics only on .code-editor-layer — reset global .json-highlight padding */
 .code-editor-highlight.json-highlight,
 .code-editor-highlight.curl-highlight {
+  padding: 0;
+  margin: 0;
   overflow: auto;
-  padding: 12px;
   background: transparent;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
+  white-space: inherit;
 }
 
 .code-editor-highlight .json-comment {
@@ -1790,11 +1718,15 @@ input[type="checkbox"].kv-checkbox-lg {
   display: none;
 }
 
-.code-editor-input-wrap,
-.code-editor-input-wrap > .env-var-field {
-  position: relative;
+.code-editor-input-wrap {
+  position: absolute;
+  inset: 0;
   z-index: 1;
-  flex: 1;
+  overflow: hidden;
+}
+
+.code-editor-input-wrap > .env-var-field {
+  height: 100%;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -1802,9 +1734,10 @@ input[type="checkbox"].kv-checkbox-lg {
 }
 
 .code-editor-input {
-  flex: 1;
-  min-height: 0;
+  display: block;
+  height: 100%;
   width: 100%;
+  min-height: 0;
   overflow: auto;
   resize: none;
   background: transparent;
@@ -1814,6 +1747,7 @@ input[type="checkbox"].kv-checkbox-lg {
 
 .code-editor-input--transparent {
   color: transparent;
+  -webkit-text-fill-color: transparent;
 }
 
 .code-editor-input::placeholder {
@@ -1830,11 +1764,6 @@ input[type="checkbox"].kv-checkbox-lg {
 }
 
 .curl-panel-body > .code-editor--fill {
-  flex: 1;
-  min-height: 0;
-}
-
-.response-body--line-numbers > .code-editor {
   flex: 1;
   min-height: 0;
 }

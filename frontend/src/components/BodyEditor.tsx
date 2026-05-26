@@ -207,8 +207,8 @@ function JsonBody() {
     <CodeEditor
       value={body}
       onValueChange={setBody}
-      language="jsonc"
-      features={{ lineNumbers: true, highlight: true, envVars: true, editable: true }}
+      language="json"
+      features={{ lineNumbers: true, highlight: true, envVars: true }}
       fill
       onKeyDown={handleKeyDown}
       placeholder={t('body.json.placeholder')}
@@ -234,7 +234,7 @@ function RawContentEditor({ rawContentType }: { rawContentType: RawContentType }
       value={body}
       onValueChange={setBody}
       language="plain"
-      features={{ lineNumbers: true, envVars: true, editable: true }}
+      features={{ lineNumbers: true, envVars: true }}
       fill
       onKeyDown={handleKeyDown}
       placeholder={placeholderKey ? t(placeholderKey) : ''}
