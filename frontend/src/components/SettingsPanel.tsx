@@ -13,6 +13,7 @@ const SHORTCUT_LABELS: Record<keyof ShortcutConfig, string> = {
   saveRequest: 'shortcut.saveRequest',
   focusUrl: 'shortcut.focusUrl',
   focusFolderSearch: 'shortcut.focusFolderSearch',
+  focusEnvironment: 'shortcut.focusEnvironment',
   toggleSettings: 'shortcut.toggleSettings',
   toggleHistory: 'shortcut.toggleHistory',
   toggleFolderSidebar: 'shortcut.toggleFolderSidebar',

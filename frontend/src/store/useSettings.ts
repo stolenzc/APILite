@@ -9,6 +9,7 @@ export interface ShortcutConfig {
   saveRequest: string;
   focusUrl: string;
   focusFolderSearch: string;
+  focusEnvironment: string;
   toggleSettings: string;
   toggleHistory: string;
   toggleFolderSidebar: string;
@@ -28,6 +29,7 @@ export const defaultShortcuts: ShortcutConfig = {
   saveRequest: `${mod}+S`,
   focusUrl: `${mod}+L`,
   focusFolderSearch: `${mod}+Shift+F`,
+  focusEnvironment: `${mod}+Shift+E`,
   toggleSettings: `${mod}+,`,
   toggleHistory: 'Ctrl+`',
   toggleFolderSidebar: `${mod}+B`,
@@ -411,6 +413,14 @@ export function initKeyboardShortcuts(): () => void {
     if (matchesShortcutCombo(e, shortcuts.focusFolderSearch)) {
       e.preventDefault();
       window.dispatchEvent(new CustomEvent('app:focus-folder-search'));
+      return;
+    }
+
+    if (matchesShortcutCombo(e, shortcuts.focusEnvironment)) {
+      e.preventDefault();
+      if (useEnvironmentStore.getState().envModalOpen) return;
+      if (useSettingsStore.getState().settingsOpen) return;
+      window.dispatchEvent(new CustomEvent('app:focus-environment'));
       return;
     }
 

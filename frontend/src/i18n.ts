@@ -36,6 +36,7 @@ const messages: Record<Locale, Record<string, string>> = {
 
     'env.active': 'Environment',
     'env.quickHint': 'Use {{name}} in URL, Params, Headers & Body. Values resolve on send.',
+    'env.cycleHint': 'change env',
     'env.manage': 'Manage…',
     'env.modalTitle': 'Environment variables',
     'env.modalHint':
@@ -144,6 +145,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'shortcut.saveRequest': 'Save Request',
     'shortcut.focusUrl': 'Focus URL Bar',
     'shortcut.focusFolderSearch': 'Focus Folder Search',
+    'shortcut.focusEnvironment': 'Focus Environment',
     'shortcut.toggleSettings': 'Open Settings',
     'shortcut.toggleHistory': 'Toggle History Panel',
     'shortcut.toggleFolderSidebar': 'Toggle Folders Sidebar',
@@ -213,6 +215,7 @@ const messages: Record<Locale, Record<string, string>> = {
 
     'env.active': '当前环境',
     'env.quickHint': '在地址、参数、请求头、请求体中可用 {{变量名}}，发送时替换。',
+    'env.cycleHint': '切换环境',
     'env.manage': '管理…',
     'env.modalTitle': '环境变量',
     'env.modalHint':
@@ -321,6 +324,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'shortcut.saveRequest': '保存请求',
     'shortcut.focusUrl': '聚焦地址栏',
     'shortcut.focusFolderSearch': '聚焦文件夹搜索',
+    'shortcut.focusEnvironment': '聚焦环境切换',
     'shortcut.toggleSettings': '打开设置',
     'shortcut.toggleHistory': '切换历史记录面板',
     'shortcut.toggleFolderSidebar': '切换文件夹侧栏',
