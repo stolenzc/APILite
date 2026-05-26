@@ -7,6 +7,7 @@ import { getFoldersDir } from '../utils/storagePaths';
 import { showToast } from '../utils/toast';
 import { t } from '../i18n';
 import { useStore } from './useStore';
+import { useSettingsStore } from './useSettings';
 import {
   normalizeFolderTree,
   normalizeFolderChildren,
@@ -175,6 +176,61 @@ function expandFolderInTree(nodes: TreeNode[], folderId: string): TreeNode[] {
   });
 }
 
+function expandFolderAndDescendants(folder: TreeFolder): TreeFolder {
+  return {
+    ...folder,
+    collapsed: false,
+    children: folder.children.map((c) =>
+      c.type === 'folder' ? expandFolderAndDescendants(c) : c,
+    ),
+  };
+}
+
+function expandFolderRecursiveInTree(nodes: TreeNode[], folderId: string): TreeNode[] {
+  return nodes.map((n) => {
+    if (n.type !== 'folder') return n;
+    if (n.id === folderId) return expandFolderAndDescendants(n);
+    return { ...n, children: expandFolderRecursiveInTree(n.children, folderId) };
+  });
+}
+
+function collapseAllFoldersInTree(nodes: TreeNode[]): TreeNode[] {
+  return nodes.map((n) =>
+    n.type === 'folder' ? collapseFolderAndDescendants(n) : n,
+  );
+}
+
+function expandAllFoldersInTree(nodes: TreeNode[]): TreeNode[] {
+  return nodes.map((n) =>
+    n.type === 'folder' ? expandFolderAndDescendants(n) : n,
+  );
+}
+
+export function areAllFoldersCollapsed(nodes: TreeNode[]): boolean {
+  for (const n of nodes) {
+    if (n.type === 'folder') {
+      if (!n.collapsed) return false;
+      if (!areAllFoldersCollapsed(n.children)) return false;
+    }
+  }
+  return true;
+}
+
+export function isFolderSubtreeFullyCollapsed(folder: TreeFolder): boolean {
+  if (!folder.collapsed) return false;
+  return folder.children.every(
+    (c) => c.type === 'request' || isFolderSubtreeFullyCollapsed(c),
+  );
+}
+
+async function persistAllDiskRoots(folders: TreeNode[]) {
+  for (const node of folders) {
+    if (node.type === 'folder' && node.fileName) {
+      await saveTopLevelDiskFolder(node);
+    }
+  }
+}
+
 function duplicateNode(node: TreeNode): TreeNode {
   if (node.type === 'folder') {
     const copy: TreeFolder = {
@@ -230,6 +286,10 @@ interface FolderStore {
   updateRequest: (id: string, name: string, request: HttpRequest) => void;
   deleteNode: (id: string) => void;
   toggleCollapse: (id: string) => void;
+  collapseAllFolders: () => void;
+  expandAllFolders: () => void;
+  toggleAllFoldersCollapse: () => void;
+  toggleFolderSubtreeCollapse: (id: string) => void;
   cloneNode: (id: string) => void;
   setActiveNode: (id: string | null) => void;
   revealNode: (id: string | null) => void;
@@ -281,7 +341,7 @@ export const useFolderStore = create<FolderStore>((set, get) => ({
         name: trimmed,
         type: 'folder',
         children: [],
-        collapsed: false,
+        collapsed: useSettingsStore.getState().folderDefaultCollapsed,
         fileName: '',
       };
       set(state => ({
@@ -314,7 +374,7 @@ export const useFolderStore = create<FolderStore>((set, get) => ({
       name: 'New Folder',
       type: 'folder',
       children: [],
-      collapsed: false,
+      collapsed: useSettingsStore.getState().folderDefaultCollapsed,
     };
     const parent = findNode(folders, parentKey).node;
     if (parent?.type !== 'folder') return undefined;
@@ -459,6 +519,44 @@ export const useFolderStore = create<FolderStore>((set, get) => ({
     set({ folders });
     void persistForNodeId(id, folders).catch(err =>
       console.error('Failed to save collapse state:', err),
+    );
+  },
+
+  collapseAllFolders: () => {
+    const folders = collapseAllFoldersInTree([...get().folders]);
+    set({ folders });
+    void persistAllDiskRoots(folders).catch(err =>
+      console.error('Failed to save collapse all:', err),
+    );
+  },
+
+  expandAllFolders: () => {
+    const folders = expandAllFoldersInTree([...get().folders]);
+    set({ folders });
+    void persistAllDiskRoots(folders).catch(err =>
+      console.error('Failed to save expand all:', err),
+    );
+  },
+
+  toggleAllFoldersCollapse: () => {
+    const folders = areAllFoldersCollapsed(get().folders)
+      ? expandAllFoldersInTree([...get().folders])
+      : collapseAllFoldersInTree([...get().folders]);
+    set({ folders });
+    void persistAllDiskRoots(folders).catch(err =>
+      console.error('Failed to save toggle all folders:', err),
+    );
+  },
+
+  toggleFolderSubtreeCollapse: (id) => {
+    const { node } = findNode(get().folders, id);
+    if (!node || node.type !== 'folder') return;
+    const folders = isFolderSubtreeFullyCollapsed(node)
+      ? expandFolderRecursiveInTree([...get().folders], id)
+      : collapseSubtreeInTree([...get().folders], id);
+    set({ folders });
+    void persistForNodeId(id, folders).catch(err =>
+      console.error('Failed to save toggle folder subtree:', err),
     );
   },
 

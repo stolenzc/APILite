@@ -1,6 +1,12 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { nanoid } from 'nanoid';
-import { useFolderStore, getFolderPath, nodeInTree } from '../store/useFolderStore';
+import {
+  useFolderStore,
+  getFolderPath,
+  nodeInTree,
+  areAllFoldersCollapsed,
+  isFolderSubtreeFullyCollapsed,
+} from '../store/useFolderStore';
 import { useStore } from '../store/useStore';
 import type { TreeFolder, TreeNode, TreeRequest } from '../types';
 import { t } from '../i18n';
@@ -123,7 +129,7 @@ function filterFolderTree(nodes: TreeNode[], query: string): TreeNode[] {
 
 function TreeNode({ node, depth = 0 }: { node: TreeNode; depth?: number }) {
   const {
-    toggleCollapse, setActiveNode, activeNodeId,
+    toggleCollapse, toggleFolderSubtreeCollapse, setActiveNode, activeNodeId,
     openContextMenu, closeContextMenu, contextMenu,
     addFolder, addRequest, renameNode, loadRequest,
     moveRequest, moveFolder, pendingRenameNodeId, consumePendingRename,
@@ -131,7 +137,9 @@ function TreeNode({ node, depth = 0 }: { node: TreeNode; depth?: number }) {
   const { openTabFromFolder } = useStore();
 
   const isFolder = node.type === 'folder';
-  const hasDiskFile = isFolder && !!(node as TreeFolder).fileName;
+  const folderNode = isFolder ? (node as TreeFolder) : null;
+  const hasDiskFile = !!folderNode?.fileName;
+  const subtreeFullyCollapsed = folderNode ? isFolderSubtreeFullyCollapsed(folderNode) : false;
   const canDrag = !hasDiskFile;
   const isActive = activeNodeId === node.id;
   const [renaming, setRenaming] = useState(false);
@@ -337,6 +345,24 @@ function TreeNode({ node, depth = 0 }: { node: TreeNode; depth?: number }) {
         )}
         {hovered && !renaming && (
           <span className="tree-actions">
+            {isFolder && hasDiskFile && (
+              <button
+                type="button"
+                className="tree-action-toggle-subtree"
+                title={
+                  subtreeFullyCollapsed
+                    ? t('folder.expandAllSubtree')
+                    : t('folder.collapseAllSubtree')
+                }
+                aria-pressed={!subtreeFullyCollapsed}
+                onClick={e => {
+                  e.stopPropagation();
+                  toggleFolderSubtreeCollapse(node.id);
+                }}
+              >
+                {subtreeFullyCollapsed ? '⊞' : '⊟'}
+              </button>
+            )}
             <button title={t('folder.addRequest')} onClick={e => {
               e.stopPropagation();
               const id = nanoid();
@@ -430,7 +456,7 @@ function ContextMenu({ nodeId, isFolder, onStartRename }: { nodeId: string; isFo
 
 export default function FolderSidebar() {
   const folderSidebarWidth = useSettingsStore((s) => s.folderSidebarWidth);
-  const { folders, addFolder, activeNodeId, revealNode } = useFolderStore();
+  const { folders, addFolder, toggleAllFoldersCollapse, activeNodeId, revealNode } = useFolderStore();
   const focusFolderSearch = useSettingsStore((s) => s.shortcuts.focusFolderSearch);
   const activeTabRequestNodeId = useStore(
     (s) => s.tabs.find((t) => t.id === s.activeTabId)?.requestNodeId ?? null,
@@ -447,6 +473,10 @@ export default function FolderSidebar() {
   );
 
   const searching = searchQuery.trim().length > 0;
+  const allFoldersCollapsed = useMemo(
+    () => areAllFoldersCollapsed(folders),
+    [folders],
+  );
 
   /** Only clear search when switching tabs (or folders reload): if the new active node is hidden by the current filter. Never clear while the user is typing (that would use stale activeTabRequestNodeId with changing visibleFolders). */
   useEffect(() => {
@@ -479,6 +509,17 @@ export default function FolderSidebar() {
         <div className="sidebar-section-header">
           <span>{t('folder.title')}</span>
           <div className="sidebar-section-actions">
+            {folders.length > 0 && (
+              <button
+                type="button"
+                className="sidebar-toggle-all-folders"
+                title={allFoldersCollapsed ? t('folder.expandAll') : t('folder.collapseAll')}
+                aria-pressed={!allFoldersCollapsed}
+                onClick={() => toggleAllFoldersCollapse()}
+              >
+                {allFoldersCollapsed ? '⊞' : '⊟'}
+              </button>
+            )}
             <button type="button" title={t('folder.addFolder')} onClick={() => addFolder(null)}>+</button>
           </div>
         </div>

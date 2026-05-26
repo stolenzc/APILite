@@ -134,6 +134,10 @@ const messages: Record<Locale, Record<string, string>> = {
       'History is saved locally. Entries older than the age limit or beyond the max count are removed automatically.',
     'settings.history.maxAgeDays': 'Keep (days)',
     'settings.history.maxCount': 'Max entries',
+    'settings.folders.title': 'Folders',
+    'settings.folders.hint': 'Applies when creating new folders. Use ⊟/⊞ in the sidebar to collapse or expand all.',
+    'settings.folders.defaultExpanded': 'Expanded by default',
+    'settings.folders.defaultCollapsed': 'Collapsed by default',
 
     // Shortcut labels
     'shortcut.sendRequest': 'Send Request',
@@ -162,6 +166,10 @@ const messages: Record<Locale, Record<string, string>> = {
     'folder.searchNoResults': 'No matches',
     'folder.collapseHint': 'Click to collapse this folder and all nested folders',
     'folder.expandHint': 'Click to expand',
+    'folder.collapseAll': 'Collapse all folders',
+    'folder.expandAll': 'Expand all folders',
+    'folder.expandAllSubtree': 'Expand this collection and all nested folders',
+    'folder.collapseAllSubtree': 'Collapse this collection and all nested folders',
     'folder.rename.placeholder': 'Enter name...',
     'folder.rename.confirm': 'Confirm',
 
@@ -303,6 +311,10 @@ const messages: Record<Locale, Record<string, string>> = {
       '历史记录保存在本地。超出保留天数或超过条数上限的旧记录会自动清理。',
     'settings.history.maxAgeDays': '保留天数',
     'settings.history.maxCount': '最多条数',
+    'settings.folders.title': '文件夹',
+    'settings.folders.hint': '仅影响新建文件夹。侧栏 ⊟/⊞ 可折叠或展开全部。',
+    'settings.folders.defaultExpanded': '默认全部展开',
+    'settings.folders.defaultCollapsed': '默认全部折叠',
 
     // Shortcut labels
     'shortcut.sendRequest': '发送请求',
@@ -331,6 +343,10 @@ const messages: Record<Locale, Record<string, string>> = {
     'folder.searchNoResults': '没有匹配项',
     'folder.collapseHint': '单击折叠此文件夹及所有子文件夹',
     'folder.expandHint': '单击展开',
+    'folder.collapseAll': '折叠全部文件夹',
+    'folder.expandAll': '展开全部文件夹',
+    'folder.expandAllSubtree': '展开此集合及所有子文件夹',
+    'folder.collapseAllSubtree': '折叠此集合及所有子文件夹',
     'folder.rename.placeholder': '输入名称...',
     'folder.rename.confirm': '确认',
 

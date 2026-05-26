@@ -33,6 +33,7 @@ export default function SettingsPanel() {
     dataDir, setDataDir,
     historyMaxAgeDays, setHistoryMaxAgeDays,
     historyMaxCount, setHistoryMaxCount,
+    folderDefaultCollapsed, setFolderDefaultCollapsed,
   } = useSettingsStore();
   const overlayDismiss = useModalOverlayDismiss(() => setSettingsOpen(false));
 
@@ -160,6 +161,29 @@ export default function SettingsPanel() {
                 onChange={(e) => setHistoryMaxCount(Number(e.target.value))}
               />
             </label>
+          </div>
+        </div>
+
+        <div className="settings-section">
+          <h4>{t('settings.folders.title')}</h4>
+          <p className="settings-storage-hint">{t('settings.folders.hint')}</p>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className={`btn ${!folderDefaultCollapsed ? 'btn-send' : 'btn-secondary'}`}
+              style={{ fontSize: 13, padding: '8px 20px' }}
+              onClick={() => setFolderDefaultCollapsed(false)}
+            >
+              {t('settings.folders.defaultExpanded')}
+            </button>
+            <button
+              type="button"
+              className={`btn ${folderDefaultCollapsed ? 'btn-send' : 'btn-secondary'}`}
+              style={{ fontSize: 13, padding: '8px 20px' }}
+              onClick={() => setFolderDefaultCollapsed(true)}
+            >
+              {t('settings.folders.defaultCollapsed')}
+            </button>
           </div>
         </div>
 

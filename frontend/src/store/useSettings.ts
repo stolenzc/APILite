@@ -57,6 +57,8 @@ export interface AppSettings {
   historyMaxAgeDays: number;
   /** Maximum number of history entries to keep (newest first). */
   historyMaxCount: number;
+  /** New folders start collapsed when true, expanded when false. */
+  folderDefaultCollapsed: boolean;
 }
 
 export const defaultSettings: AppSettings = {
@@ -75,6 +77,7 @@ export const defaultSettings: AppSettings = {
   autoCompleteProtocol: true,
   historyMaxAgeDays: 30,
   historyMaxCount: 1000,
+  folderDefaultCollapsed: false,
 };
 
 const HISTORY_AGE_MIN = 1;
@@ -128,6 +131,8 @@ function loadSettings(): AppSettings {
         historyMaxCount: clampHistoryMaxCount(
           parsed.historyMaxCount ?? defaultSettings.historyMaxCount,
         ),
+        folderDefaultCollapsed:
+          parsed.folderDefaultCollapsed ?? defaultSettings.folderDefaultCollapsed,
       };
     }
   } catch { /* ignore */ }
@@ -160,6 +165,7 @@ interface SettingsState extends AppSettings {
   setAutoCompleteProtocol: (auto: boolean) => void;
   setHistoryMaxAgeDays: (days: number) => void;
   setHistoryMaxCount: (count: number) => void;
+  setFolderDefaultCollapsed: (collapsed: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState>((set) => {
@@ -292,6 +298,12 @@ export const useSettingsStore = create<SettingsState>((set) => {
       import('./useStore').then(({ useStore }) => {
         useStore.getState().syncHistoryRetention();
       });
+      return next;
+    }),
+
+    setFolderDefaultCollapsed: (folderDefaultCollapsed) => set(state => {
+      const next = { ...state, folderDefaultCollapsed };
+      saveSettings(next);
       return next;
     }),
   };
