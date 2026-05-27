@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { EnvVarField } from './EnvVarField';
 import LineNumberGutter, { type LineNumberGutterHandle } from './LineNumberGutter';
 import {
@@ -57,25 +57,61 @@ function inputLayerClass(highlight: boolean): string {
   return `code-editor-input code-editor-layer${highlight ? ' code-editor-input--transparent' : ''}`;
 }
 
-/** Read-only + word wrap: line-sync grid so numbers align with wrapped rows. */
+function selectAllLineContent(stack: HTMLElement) {
+  const cells = stack.querySelectorAll<HTMLElement>('.line-content-cell');
+  if (cells.length === 0) return;
+  const range = document.createRange();
+  range.setStart(cells[0], 0);
+  const last = cells[cells.length - 1];
+  range.setEnd(last, last.childNodes.length);
+  const sel = window.getSelection();
+  if (!sel) return;
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+/** Read-only viewer: one row per logical line; gutter bg spans full scroll height. */
 function CodeEditorLineGridView({
   value,
   language,
   highlight,
+  wordWrap,
 }: {
   value: string;
   language: CodeEditorLanguage;
   highlight: boolean;
+  wordWrap: boolean;
 }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
   const lines = useMemo(() => splitLogicalLines(value), [value]);
   const themeClass = syntaxHighlightClass(language);
 
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== 'a') return;
+    e.preventDefault();
+    const stack = scrollRef.current?.querySelector<HTMLElement>('.line-sync-stack');
+    if (stack) selectAllLineContent(stack);
+  }, []);
+
   return (
-    <div className="line-sync-scroll line-sync-scroll--wrap">
+    <div
+      ref={scrollRef}
+      className={`line-sync-scroll${wordWrap ? ' line-sync-scroll--wrap' : ''}`}
+      tabIndex={0}
+      role="region"
+      aria-label="Code content"
+      onKeyDown={handleKeyDown}
+      onMouseDown={(e) => {
+        if (e.button !== 0) return;
+        scrollRef.current?.focus();
+      }}
+    >
       <div className="line-sync-stack">
         {lines.map((line, index) => (
-          <Fragment key={index}>
-            <div className="line-number-cell">{index + 1}</div>
+          <div className="line-sync-row" key={index}>
+            <div className="line-number-cell" aria-hidden>
+              {index + 1}
+            </div>
             <div className="line-content-cell">
               {highlight ? (
                 <code
@@ -86,7 +122,7 @@ function CodeEditorLineGridView({
                 <span className="line-content-plain">{line || '\u00a0'}</span>
               )}
             </div>
-          </Fragment>
+          </div>
         ))}
       </div>
     </div>
@@ -119,6 +155,7 @@ function CodeEditorInputView({
   const readOnly = isReadOnly(features, onValueChange);
   const highlightRef = useRef<HTMLPreElement>(null);
   const gutterRef = useRef<LineNumberGutterHandle>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   const highlightedHtml = useMemo(
     () => (features.highlight ? highlightCode(value, language) : ''),
@@ -134,6 +171,24 @@ function CodeEditorInputView({
     }
     gutterRef.current?.syncScrollTop(scrollTop);
   };
+
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    const onScroll = (e: Event) => {
+      if (!(e.target instanceof HTMLTextAreaElement)) return;
+      if (!root.contains(e.target)) return;
+      const { scrollTop, scrollLeft } = e.target;
+      const layer = highlightRef.current;
+      if (layer) {
+        layer.scrollTop = scrollTop;
+        layer.scrollLeft = scrollLeft;
+      }
+      gutterRef.current?.syncScrollTop(scrollTop);
+    };
+    root.addEventListener('scroll', onScroll, { capture: true, passive: true });
+    return () => root.removeEventListener('scroll', onScroll, { capture: true });
+  }, []);
 
   const inputClass = inputLayerClass(features.highlight);
   const wrapAttr = features.wordWrap ? 'soft' : 'off';
@@ -186,7 +241,7 @@ function CodeEditorInputView({
   const rootClass = features.lineNumbers ? 'code-editor-with-gutter' : 'code-editor-input-root';
 
   return (
-    <div className={rootClass}>
+    <div ref={rootRef} className={rootClass}>
       {features.lineNumbers && (
         <LineNumberGutter ref={gutterRef} text={value} className="code-editor-gutter" />
       )}
@@ -216,13 +271,14 @@ export default function CodeEditor({
     .filter(Boolean)
     .join(' ');
 
-  if (readOnly && features.wordWrap) {
+  if (readOnly) {
     return (
       <div className={rootClass}>
         <CodeEditorLineGridView
           value={value}
           language={language}
           highlight={features.highlight}
+          wordWrap={features.wordWrap}
         />
       </div>
     );

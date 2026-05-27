@@ -1602,15 +1602,15 @@ input[type="checkbox"].kv-checkbox-lg {
   padding: 12px 10px 12px 12px;
   font-family: var(--font-mono);
   font-size: 12px;
-  line-height: 1.5;
+  line-height: 18px;
   color: var(--text-muted);
   text-align: right;
   min-width: 2.5em;
 }
 
 .line-number-row {
-  height: calc(12px * 1.5);
-  line-height: 1.5;
+  height: 18px;
+  line-height: 18px;
 }
 
 /* Unified code editor (body / response / curl) */
@@ -1675,7 +1675,7 @@ input[type="checkbox"].kv-checkbox-lg {
   outline: none;
   font-family: var(--font-mono);
   font-size: 12px;
-  line-height: 1.5;
+  line-height: 18px;
   letter-spacing: 0;
   tab-size: 2;
   -moz-tab-size: 2;
@@ -1685,33 +1685,39 @@ input[type="checkbox"].kv-checkbox-lg {
   font-style: normal;
   font-weight: 400;
   font-variant-ligatures: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .code-editor-highlight {
   position: absolute;
   inset: 0;
+  display: block;
   overflow: auto;
   pointer-events: none;
   scrollbar-width: none;
   z-index: 0;
 }
 
-/* Metrics only on .code-editor-layer — reset global .json-highlight padding */
+/* Token colors only — layout/metrics come from .code-editor-layer (keep gutter padding-left) */
 .code-editor-highlight.json-highlight,
 .code-editor-highlight.curl-highlight {
-  padding: 0;
-  margin: 0;
   overflow: auto;
   background: transparent;
-  font-family: inherit;
-  font-size: inherit;
-  line-height: inherit;
-  letter-spacing: inherit;
-  white-space: inherit;
 }
 
-.code-editor-highlight .json-comment {
+.code-editor-highlight .json-key,
+.code-editor-highlight .json-string,
+.code-editor-highlight .json-number,
+.code-editor-highlight .json-bool,
+.code-editor-highlight .json-punct,
+.code-editor-highlight .json-comment,
+.code-editor-highlight [class^='curl-'] {
+  font: inherit;
   font-style: normal;
+  font-weight: inherit;
+  line-height: inherit;
+  letter-spacing: inherit;
 }
 
 .code-editor-highlight::-webkit-scrollbar {
@@ -1725,7 +1731,8 @@ input[type="checkbox"].kv-checkbox-lg {
   overflow: hidden;
 }
 
-.code-editor-input-wrap > .env-var-field {
+.code-editor-input-wrap > .env-var-field,
+.code-editor-viewport > .env-var-field {
   height: 100%;
   min-height: 0;
   display: flex;
@@ -1742,12 +1749,14 @@ input[type="checkbox"].kv-checkbox-lg {
   resize: none;
   background: transparent;
   color: var(--text-primary);
-  caret-color: var(--accent);
+  caret-color: var(--text-primary);
+  appearance: none;
+  -webkit-appearance: none;
 }
 
 .code-editor-input--transparent {
   color: transparent;
-  -webkit-text-fill-color: transparent;
+  caret-color: var(--text-primary);
 }
 
 .code-editor-input::placeholder {
@@ -1764,6 +1773,11 @@ input[type="checkbox"].kv-checkbox-lg {
 }
 
 .curl-panel-body > .code-editor--fill {
+  flex: 1;
+  min-height: 0;
+}
+
+.response-body--line-numbers > .code-editor {
   flex: 1;
   min-height: 0;
 }
@@ -1933,42 +1947,56 @@ input[type="checkbox"].kv-checkbox-lg {
   min-width: min-content;
 }
 
-/* Single vertical rule for the whole gutter (avoids per-row border gaps). */
-.line-sync-stack::after {
+/* Gutter bg + divider: column 1 tracks widest line number (no fixed width). */
+.line-sync-stack::before {
   content: '';
   grid-column: 1;
   grid-row: 1 / -1;
-  justify-self: end;
-  align-self: stretch;
-  width: 0;
+  background: color-mix(in srgb, var(--bg-secondary) 92%, var(--bg-input));
   border-right: 1px solid var(--border-color);
   pointer-events: none;
-  z-index: 1;
+  z-index: 0;
+}
+
+.line-sync-row {
+  display: contents;
 }
 
 .line-number-cell {
   grid-column: 1;
+  box-sizing: border-box;
   padding: 0 10px 0 12px;
   text-align: right;
   font-family: var(--font-mono);
   font-size: 12px;
-  line-height: 1.5;
+  line-height: 18px;
   color: var(--text-muted);
+  background: transparent;
   user-select: none;
-  background: color-mix(in srgb, var(--bg-secondary) 92%, var(--bg-input));
+  -webkit-user-select: none;
+  pointer-events: none;
+  position: relative;
+  z-index: 1;
 }
 
 .line-content-cell {
   grid-column: 2;
-  padding: 0 12px 0 8px;
   min-width: 0;
+  padding: 0 12px 0 8px;
   font-family: var(--font-mono);
   font-size: 12px;
-  line-height: 1.5;
+  line-height: 18px;
   color: var(--text-primary);
   white-space: pre;
   overflow-wrap: normal;
   word-break: normal;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.line-sync-scroll:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: -2px;
 }
 
 .line-sync-scroll--wrap .line-content-cell {
