@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../store/useStore';
 import { matchesShortcutCombo, useSettingsStore } from '../store/useSettings';
 import type { BodyType, RawContentType } from '../types';
@@ -91,7 +91,7 @@ function BinaryBody() {
   );
 }
 
-function JsonBody() {
+function JsonBody({ wordWrap }: { wordWrap: boolean }) {
   const body = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.body ?? '');
   const setBody = useStore((s) => s.setBody);
 
@@ -208,7 +208,7 @@ function JsonBody() {
       value={body}
       onValueChange={setBody}
       language="json"
-      features={{ lineNumbers: true, highlight: true, envVars: true }}
+      features={{ lineNumbers: true, highlight: true, envVars: true, wordWrap }}
       fill
       onKeyDown={handleKeyDown}
       placeholder={t('body.json.placeholder')}
@@ -216,7 +216,13 @@ function JsonBody() {
   );
 }
 
-function RawContentEditor({ rawContentType }: { rawContentType: RawContentType }) {
+function RawContentEditor({
+  rawContentType,
+  wordWrap,
+}: {
+  rawContentType: RawContentType;
+  wordWrap: boolean;
+}) {
   const body = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.body ?? '');
   const setBody = useStore((s) => s.setBody);
 
@@ -234,7 +240,7 @@ function RawContentEditor({ rawContentType }: { rawContentType: RawContentType }
       value={body}
       onValueChange={setBody}
       language="plain"
-      features={{ lineNumbers: true, envVars: true }}
+      features={{ lineNumbers: true, envVars: true, wordWrap }}
       fill
       onKeyDown={handleKeyDown}
       placeholder={placeholderKey ? t(placeholderKey) : ''}
@@ -303,7 +309,13 @@ export default function BodyEditor() {
   };
 
   const isJsonBody = bodyType === 'raw' && rawContentType === 'json';
+  const isTextBody = bodyType === 'raw' && rawContentType === 'text';
   const fillEditor = bodyType === 'raw';
+  const [wordWrap, setWordWrap] = useState(isTextBody);
+
+  useEffect(() => {
+    if (isTextBody) setWordWrap(true);
+  }, [isTextBody]);
 
   return (
     <div className={`body-editor-root${fillEditor ? ' body-editor-root--fill' : ''}`}>
@@ -329,19 +341,32 @@ export default function BodyEditor() {
             ))}
           </select>
         )}
-        {isJsonBody && (
+        {fillEditor && (
           <div className="body-json-toolbar">
-            {body.length > 0 && (
+            <button
+              type="button"
+              className={`body-toolbar-btn body-wrap-btn${wordWrap ? ' body-wrap-btn--active' : ''}`}
+              title={wordWrap ? t('response.wordWrapOff') : t('response.wordWrapOn')}
+              aria-pressed={wordWrap}
+              onClick={() => setWordWrap((v) => !v)}
+            >
+              {t('response.wordWrap')}
+            </button>
+            {isJsonBody && body.length > 0 && (
               <span className={`json-status ${jsonValid ? 'valid' : 'invalid'}`}>
                 {jsonValid ? t('body.json.valid') : t('body.json.invalid')}
               </span>
             )}
-            <button className="body-toolbar-btn" onClick={handleFormat} disabled={!body}>
-              {t('body.json.format')}
-            </button>
-            <button className="body-toolbar-btn" onClick={handleMinify} disabled={!body}>
-              {t('body.json.minify')}
-            </button>
+            {isJsonBody && (
+              <>
+                <button type="button" className="body-toolbar-btn" onClick={handleFormat} disabled={!body}>
+                  {t('body.json.format')}
+                </button>
+                <button type="button" className="body-toolbar-btn" onClick={handleMinify} disabled={!body}>
+                  {t('body.json.minify')}
+                </button>
+              </>
+            )}
           </div>
         )}
       </div>
@@ -350,8 +375,10 @@ export default function BodyEditor() {
       <div className="body-editor-content">
         {bodyType === 'none' && <NoneBody />}
         {bodyType === 'binary' && <BinaryBody />}
-        {bodyType === 'raw' && rawContentType === 'json' && <JsonBody />}
-        {bodyType === 'raw' && rawContentType !== 'json' && <RawContentEditor rawContentType={rawContentType} />}
+        {bodyType === 'raw' && rawContentType === 'json' && <JsonBody wordWrap={wordWrap} />}
+        {bodyType === 'raw' && rawContentType !== 'json' && (
+          <RawContentEditor rawContentType={rawContentType} wordWrap={wordWrap} />
+        )}
         {bodyType === 'form-data' && <FormBody />}
         {bodyType === 'x-www-form-urlencoded' && <UrlencodedBody />}
       </div>

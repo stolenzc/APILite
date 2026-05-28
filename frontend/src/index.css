@@ -1547,6 +1547,11 @@ input[type="checkbox"].kv-checkbox-lg {
   cursor: not-allowed;
 }
 
+.body-wrap-btn--active {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
 .body-json-toolbar {
   display: flex;
   align-items: center;
