@@ -4,6 +4,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { useStore } from './store/useStore';
 import { useSettingsStore, initKeyboardShortcuts } from './store/useSettings';
+import { initTextNavigationKeys } from './utils/textNavigationKeys';
 import { useFolderStore, getFolderPath } from './store/useFolderStore';
 import { applyTheme } from './themes';
 import { setLocale, t } from './i18n';
@@ -169,6 +170,7 @@ export default function App() {
 
   useEffect(() => {
     const removeKeyboardShortcuts = initKeyboardShortcuts();
+    const removeTextNavigationKeys = initTextNavigationKeys();
 
     const onNewTab = () => createTabRef.current();
     const onSaveRequest = () => {
@@ -242,6 +244,7 @@ export default function App() {
 
     return () => {
       removeKeyboardShortcuts();
+      removeTextNavigationKeys();
       window.removeEventListener('shortcut:toggle-settings', onToggleSettings);
       window.removeEventListener('shortcut:new-tab', onNewTab);
       window.removeEventListener('shortcut:save-request', onSaveRequest);
