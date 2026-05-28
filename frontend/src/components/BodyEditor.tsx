@@ -4,7 +4,7 @@ import { useStore } from '../store/useStore';
 import { matchesShortcutCombo, useSettingsStore } from '../store/useSettings';
 import type { BodyType, RawContentType } from '../types';
 import { t } from '../i18n';
-import { formatJsonc, isJsonc, jsoncToStrictJson, parseJsonc } from '../utils/jsonUtils';
+import { formatJsonc, isJsonc, jsoncToStrictJson, normalizeToJsonText, parseJsonc } from '../utils/jsonUtils';
 import CodeEditor from './CodeEditor';
 import BodyFormTable from './BodyFormTable';
 import { pickFilePath, readBrowserFileAsBase64 } from '../utils/filePicker';
@@ -208,6 +208,13 @@ export default function BodyEditor() {
     if (parseJsonc(body, { ignoreEnvPlaceholders: true }).valid) setBody(jsoncToStrictJson(body));
   };
 
+  const handleNormalizeToJson = () => {
+    if (!body) return;
+    const res = normalizeToJsonText(body);
+    if (!res.ok) return;
+    if (res.text !== body) setBody(res.text);
+  };
+
   const isJsonBody = bodyType === 'raw' && rawContentType === 'json';
   const isTextBody = bodyType === 'raw' && rawContentType === 'text';
   const fillEditor = bodyType === 'raw';
@@ -264,6 +271,9 @@ export default function BodyEditor() {
                 </button>
                 <button type="button" className="body-toolbar-btn" onClick={handleMinify} disabled={!body}>
                   {t('body.json.minify')}
+                </button>
+                <button type="button" className="body-toolbar-btn" onClick={handleNormalizeToJson} disabled={!body}>
+                  {t('body.json.normalize')}
                 </button>
               </>
             )}

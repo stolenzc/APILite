@@ -2,9 +2,10 @@ import { useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import CodeMirror from '@uiw/react-codemirror';
 import type { ViewUpdate } from '@codemirror/view';
-import { EditorView } from '@codemirror/view';
+import { EditorView, keymap } from '@codemirror/view';
 import { closeBrackets } from '@codemirror/autocomplete';
 import { lintGutter } from '@codemirror/lint';
+import { search, searchKeymap, highlightSelectionMatches } from '@codemirror/search';
 import type { EditorView as EditorViewType } from '@codemirror/view';
 import EnvVarSuggestList from './EnvVarSuggestList';
 import { useEnvVarCodeMirrorSuggest } from '../hooks/useEnvVarCodeMirrorSuggest';
@@ -27,6 +28,8 @@ export interface CodeEditorFeatures {
   envVars?: boolean;
   lintJsonc?: boolean;
   editable?: boolean;
+  /** Enable find/replace (Cmd/Ctrl+F, Cmd/Ctrl+H). Default on for editable editors. */
+  search?: boolean;
 }
 
 export interface CodeEditorProps {
@@ -51,6 +54,7 @@ type ResolvedFeatures = {
   envVars: boolean;
   lintJsonc: boolean;
   editable: boolean;
+  search: boolean;
 };
 
 function resolveFeatures(
@@ -64,6 +68,7 @@ function resolveFeatures(
     envVars: features?.envVars ?? false,
     lintJsonc: features?.lintJsonc ?? false,
     editable,
+    search: features?.search ?? editable,
   };
 }
 
@@ -113,8 +118,22 @@ function useCodeEditorSetup(
     if (features.lintJsonc && !readOnly) {
       exts.push(jsoncCodeEditorLinter, lintGutter());
     }
+    if (features.search && !readOnly) {
+      exts.push(
+        search(),
+        keymap.of(searchKeymap),
+        highlightSelectionMatches(),
+      );
+    }
     return exts;
-  }, [cmLanguage, readOnly, features.wordWrap, features.lintJsonc, features.foldGutter]);
+  }, [
+    cmLanguage,
+    readOnly,
+    features.wordWrap,
+    features.lintJsonc,
+    features.foldGutter,
+    features.search,
+  ]);
 
   const rootClass = [
     'code-editor',

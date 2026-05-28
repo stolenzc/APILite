@@ -135,6 +135,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'body.placeholder.javascript': '// Enter JavaScript code...',
     'body.json.format': 'Format',
     'body.json.minify': 'Minify',
+    'body.json.normalize': 'Normalize to JSON',
     'body.json.valid': 'JSONC valid',
     'body.json.invalid': 'JSONC invalid',
 
@@ -364,6 +365,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'body.placeholder.javascript': '// 输入 JavaScript 代码...',
     'body.json.format': '格式化',
     'body.json.minify': '压缩',
+    'body.json.normalize': '转为 JSON',
     'body.json.valid': 'JSONC 有效',
     'body.json.invalid': 'JSONC 无效',
 

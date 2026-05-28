@@ -456,6 +456,158 @@ export function isJson(input: string): boolean {
   return parseJsonTokens(input) !== null;
 }
 
+export type NormalizeToJsonResult =
+  | { ok: true; text: string }
+  | { ok: false; text: string; reason: string };
+
+function isIdentChar(ch: string | undefined): boolean {
+  return ch !== undefined && /[A-Za-z0-9_$]/.test(ch);
+}
+
+/**
+ * Best-effort normalize "object-like" text to JSON:
+ * - single-quoted strings -> double-quoted JSON strings
+ * - False/True/None -> false/true/null (outside strings)
+ * - skips transformations inside `{{ ... }}` env placeholders
+ */
+export function normalizeToJsonText(input: string): NormalizeToJsonResult {
+  if (!input) return { ok: true, text: input };
+
+  let out = '';
+  let i = 0;
+  let mode: 'code' | 's' | 'd' = 'code';
+  let sBuf = '';
+  let braceDepth = 0;
+
+  const flushSingle = () => {
+    // Convert single-quoted string content to JSON double-quoted string.
+    // Treat \' as ', keep other escapes as-is (best-effort).
+    let content = '';
+    for (let k = 0; k < sBuf.length; k++) {
+      const ch = sBuf[k];
+      if (ch === '\\' && k + 1 < sBuf.length) {
+        const next = sBuf[k + 1];
+        if (next === "'") {
+          content += "'";
+          k++;
+          continue;
+        }
+        // Keep the backslash escape sequence; JSON allows most escapes we emit here.
+        content += ch + next;
+        k++;
+        continue;
+      }
+      content += ch;
+    }
+
+    // Escape for JSON string.
+    out += JSON.stringify(content);
+    sBuf = '';
+  };
+
+  while (i < input.length) {
+    const ch = input[i];
+
+    // Skip transforms inside env placeholders {{ ... }}
+    if (mode === 'code' && ch === '{' && input[i + 1] === '{') {
+      const start = i;
+      i += 2;
+      braceDepth = 1;
+      while (i < input.length) {
+        if (input[i] === '{' && input[i + 1] === '{') {
+          braceDepth++;
+          i += 2;
+          continue;
+        }
+        if (input[i] === '}' && input[i + 1] === '}') {
+          braceDepth--;
+          i += 2;
+          if (braceDepth === 0) break;
+          continue;
+        }
+        i++;
+      }
+      out += input.slice(start, i);
+      continue;
+    }
+
+    if (mode === 's') {
+      if (ch === '\\') {
+        if (i + 1 < input.length) {
+          sBuf += ch + input[i + 1];
+          i += 2;
+          continue;
+        }
+      }
+      if (ch === "'") {
+        flushSingle();
+        mode = 'code';
+        i++;
+        continue;
+      }
+      sBuf += ch;
+      i++;
+      continue;
+    }
+
+    if (mode === 'd') {
+      out += ch;
+      if (ch === '\\') {
+        if (i + 1 < input.length) {
+          out += input[i + 1];
+          i += 2;
+          continue;
+        }
+      }
+      if (ch === '"') mode = 'code';
+      i++;
+      continue;
+    }
+
+    // code mode
+    if (ch === "'") {
+      mode = 's';
+      sBuf = '';
+      i++;
+      continue;
+    }
+    if (ch === '"') {
+      mode = 'd';
+      out += ch;
+      i++;
+      continue;
+    }
+
+    if (ch === 'F' && input.startsWith('False', i) && !isIdentChar(input[i - 1]) && !isIdentChar(input[i + 5])) {
+      out += 'false';
+      i += 5;
+      continue;
+    }
+    if (ch === 'T' && input.startsWith('True', i) && !isIdentChar(input[i - 1]) && !isIdentChar(input[i + 4])) {
+      out += 'true';
+      i += 4;
+      continue;
+    }
+    if (ch === 'N' && input.startsWith('None', i) && !isIdentChar(input[i - 1]) && !isIdentChar(input[i + 4])) {
+      out += 'null';
+      i += 4;
+      continue;
+    }
+
+    out += ch;
+    i++;
+  }
+
+  if (mode === 's') {
+    return { ok: false, text: input, reason: "Unterminated single-quoted string" };
+  }
+  if (mode === 'd') {
+    return { ok: false, text: input, reason: "Unterminated double-quoted string" };
+  }
+
+  return { ok: true, text: out };
+}
+
 // Simple regex-based JSON syntax highlighter
 // Returns HTML-like string with <span class="json-*"> wrappers
 // Groups: 1=key, 2=colon ws, 3=string, 4=bool/null, 5=number, 6=punctuation
