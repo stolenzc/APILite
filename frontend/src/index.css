@@ -3076,7 +3076,10 @@ th.env-col-drop-target {
   padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
+  min-height: 0;
+  height: 100%;
+  box-sizing: border-box;
 }
 
 .script-tab-section {
@@ -3132,6 +3135,18 @@ th.env-col-drop-target {
   padding-left: 2px;
 }
 
+.script-tab-section--vars {
+  flex: 1;
+  min-height: 0;
+}
+
+.script-vars-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .script-tab-vars-title {
   font-size: 13px;
   font-weight: 600;
@@ -3139,14 +3154,116 @@ th.env-col-drop-target {
   margin: 0;
 }
 
-.script-tab-vars-table {
-  max-width: 640px;
+.script-vars-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  background: rgba(100, 181, 246, 0.12);
+  border: 1px solid rgba(100, 181, 246, 0.35);
+  border-radius: 10px;
+  padding: 1px 8px;
+  line-height: 1.4;
 }
 
-.script-tab-var-value {
+.script-vars-empty {
+  margin: 0;
+  padding: 20px 16px;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.55;
+  border: 1px dashed var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-input);
+}
+
+.script-vars-scroll {
+  flex: 1;
+  min-height: 80px;
+  max-height: min(360px, 40vh);
+  overflow: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-input);
+}
+
+.script-vars-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  table-layout: fixed;
+}
+
+.script-vars-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 8px 12px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-color);
+  box-shadow: 0 1px 0 var(--border-color);
+}
+
+.script-vars-th-name {
+  width: 38%;
+}
+
+.script-vars-th-value {
+  width: 62%;
+}
+
+.script-vars-table tbody td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color);
+  vertical-align: top;
+}
+
+.script-vars-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.script-vars-table tbody tr:nth-child(even) td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.script-vars-table tbody tr:hover td {
+  background: var(--bg-tertiary);
+}
+
+.script-vars-td-name {
+  word-break: break-word;
+}
+
+.script-var-placeholder {
+  display: inline-block;
   font-family: var(--font-mono, ui-monospace, monospace);
   font-size: 12px;
+  font-weight: 500;
+  color: var(--accent);
+  background: rgba(100, 181, 246, 0.1);
+  border: 1px solid rgba(100, 181, 246, 0.25);
+  border-radius: 4px;
+  padding: 2px 6px;
+  line-height: 1.4;
   word-break: break-all;
+}
+
+.script-vars-td-value {
+  word-break: break-word;
+}
+
+.script-var-value {
+  display: block;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 /* Scrollbar */

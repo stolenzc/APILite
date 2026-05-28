@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useStore } from '../store/useStore';
 import { useScriptStore } from '../store/useScriptStore';
 import { t } from '../i18n';
@@ -13,7 +14,10 @@ export default function ScriptTab() {
   });
 
   const selected = scripts.find((sc) => sc.id === preScriptId) ?? null;
-  const varEntries = Object.entries(scriptVars);
+  const varEntries = useMemo(
+    () => Object.entries(scriptVars).sort(([a], [b]) => a.localeCompare(b)),
+    [scriptVars],
+  );
 
   return (
     <div className="script-tab">
@@ -45,30 +49,48 @@ export default function ScriptTab() {
         ) : null}
       </div>
 
-      {varEntries.length > 0 && (
-        <div className="script-tab-section">
+      <div className="script-tab-section script-tab-section--vars">
+        <div className="script-vars-header">
           <h4 className="script-tab-vars-title">{t('scripts.varsTitle')}</h4>
-          <p className="script-tab-hint">{t('scripts.varsHint')}</p>
-          <table className="kv-table script-tab-vars-table">
-            <thead>
-              <tr>
-                <th>{t('kv.key')}</th>
-                <th>{t('kv.value')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {varEntries.map(([key, value]) => (
-                <tr key={key}>
-                  <td>
-                    <code>{`{{${key}}}`}</code>
-                  </td>
-                  <td className="script-tab-var-value">{value}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {varEntries.length > 0 && (
+            <span className="script-vars-count">
+              {t('scripts.varsCount').replace('{count}', String(varEntries.length))}
+            </span>
+          )}
         </div>
-      )}
+        <p className="script-tab-hint">{t('scripts.varsHint')}</p>
+
+        {varEntries.length === 0 ? (
+          <p className="script-vars-empty">{t('scripts.varsEmpty')}</p>
+        ) : (
+          <div className="script-vars-scroll">
+            <table className="script-vars-table">
+              <thead>
+                <tr>
+                  <th className="script-vars-th-name">{t('scripts.varsColPlaceholder')}</th>
+                  <th className="script-vars-th-value">{t('kv.value')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {varEntries.map(([key, value]) => (
+                  <tr key={key}>
+                    <td className="script-vars-td-name">
+                      <code className="script-var-placeholder" title={key}>
+                        {`{{${key}}}`}
+                      </code>
+                    </td>
+                    <td className="script-vars-td-value">
+                      <span className="script-var-value" title={value}>
+                        {value}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
