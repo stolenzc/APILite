@@ -57,7 +57,16 @@ function inputLayerClass(highlight: boolean): string {
   return `code-editor-input code-editor-layer${highlight ? ' code-editor-input--transparent' : ''}`;
 }
 
-function selectAllLineContent(stack: HTMLElement) {
+function selectAllReadonlyContent(pre: HTMLElement) {
+  const range = document.createRange();
+  range.selectNodeContents(pre);
+  const sel = window.getSelection();
+  if (!sel) return;
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+function selectAllLineGridContent(stack: HTMLElement) {
   const cells = stack.querySelectorAll<HTMLElement>('.line-content-cell');
   if (cells.length === 0) return;
   const range = document.createRange();
@@ -70,17 +79,15 @@ function selectAllLineContent(stack: HTMLElement) {
   sel.addRange(range);
 }
 
-/** Read-only viewer: one row per logical line; gutter bg spans full scroll height. */
+/** Word wrap: one grid row per logical line; gutter cell height follows wrapped content. */
 function CodeEditorLineGridView({
   value,
   language,
   highlight,
-  wordWrap,
 }: {
   value: string;
   language: CodeEditorLanguage;
   highlight: boolean;
-  wordWrap: boolean;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const lines = useMemo(() => splitLogicalLines(value), [value]);
@@ -90,13 +97,13 @@ function CodeEditorLineGridView({
     if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== 'a') return;
     e.preventDefault();
     const stack = scrollRef.current?.querySelector<HTMLElement>('.line-sync-stack');
-    if (stack) selectAllLineContent(stack);
+    if (stack) selectAllLineGridContent(stack);
   }, []);
 
   return (
     <div
       ref={scrollRef}
-      className={`line-sync-scroll${wordWrap ? ' line-sync-scroll--wrap' : ''}`}
+      className="line-sync-scroll line-sync-scroll--wrap"
       tabIndex={0}
       role="region"
       aria-label="Code content"
@@ -124,6 +131,74 @@ function CodeEditorLineGridView({
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+/** No wrap: LineNumberGutter + single <pre> for continuous selection (same layout as body/curl). */
+function CodeEditorReadonlyView({
+  value,
+  language,
+  highlight,
+  lineNumbers,
+}: {
+  value: string;
+  language: CodeEditorLanguage;
+  highlight: boolean;
+  lineNumbers: boolean;
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const preRef = useRef<HTMLPreElement>(null);
+  const gutterRef = useRef<LineNumberGutterHandle>(null);
+
+  const html = useMemo(
+    () => (highlight ? highlightCode(value, language) : highlightCode(value, 'plain')),
+    [value, language, highlight],
+  );
+
+  const themeClass = syntaxHighlightClass(language);
+
+  const syncGutterScroll = () => {
+    const top = preRef.current?.scrollTop ?? 0;
+    gutterRef.current?.syncScrollTop(top);
+  };
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== 'a') return;
+    e.preventDefault();
+    const pre = scrollRef.current?.querySelector<HTMLElement>('.code-editor-readonly');
+    if (pre) selectAllReadonlyContent(pre);
+  }, []);
+
+  const rootClass = lineNumbers ? 'code-editor-with-gutter' : 'code-editor-input-root';
+  const preClass = ['code-editor-readonly', 'code-editor-layer', themeClass]
+    .filter(Boolean)
+    .join(' ');
+
+  return (
+    <div
+      ref={scrollRef}
+      className="line-sync-scroll"
+      tabIndex={0}
+      role="region"
+      aria-label="Code content"
+      onKeyDown={handleKeyDown}
+      onMouseDown={(e) => {
+        if (e.button !== 0) return;
+        scrollRef.current?.focus();
+      }}
+    >
+      <div className={rootClass}>
+        {lineNumbers && (
+          <LineNumberGutter ref={gutterRef} text={value} className="code-editor-gutter" />
+        )}
+        <pre
+          ref={preRef}
+          className={preClass}
+          onScroll={syncGutterScroll}
+          dangerouslySetInnerHTML={{ __html: html || '\n' }}
+        />
       </div>
     </div>
   );
@@ -274,12 +349,20 @@ export default function CodeEditor({
   if (readOnly) {
     return (
       <div className={rootClass}>
-        <CodeEditorLineGridView
-          value={value}
-          language={language}
-          highlight={features.highlight}
-          wordWrap={features.wordWrap}
-        />
+        {features.wordWrap ? (
+          <CodeEditorLineGridView
+            value={value}
+            language={language}
+            highlight={features.highlight}
+          />
+        ) : (
+          <CodeEditorReadonlyView
+            value={value}
+            language={language}
+            highlight={features.highlight}
+            lineNumbers={features.lineNumbers}
+          />
+        )}
       </div>
     );
   }

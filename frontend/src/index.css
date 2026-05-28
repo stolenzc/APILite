@@ -1933,13 +1933,43 @@ input[type="checkbox"].kv-checkbox-lg {
   min-height: 0;
 }
 
-/* Per-logical-line grid: gutter row height follows wrapped content (Postman-style). */
+/* Response read-only: scroll shell + gutter/pre layout (matches body/curl CodeEditor). */
 .line-sync-scroll {
   flex: 1;
   min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.line-sync-scroll > .code-editor-with-gutter,
+.line-sync-scroll > .code-editor-input-root {
+  flex: 1;
+  min-height: 0;
+}
+
+.code-editor-readonly {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: auto;
+  margin: 0;
+  color: var(--text-primary);
+  background: transparent;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.line-sync-scroll--wrap {
   overflow: auto;
 }
 
+.line-sync-scroll:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: -2px;
+}
+
+/* Word wrap: per logical line — gutter row grows with wrapped content */
 .line-sync-stack {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -1947,13 +1977,11 @@ input[type="checkbox"].kv-checkbox-lg {
   min-width: min-content;
 }
 
-/* Gutter bg + divider: column 1 tracks widest line number (no fixed width). */
 .line-sync-stack::before {
   content: '';
   grid-column: 1;
   grid-row: 1 / -1;
   background: color-mix(in srgb, var(--bg-secondary) 92%, var(--bg-input));
-  border-right: 1px solid var(--border-color);
   pointer-events: none;
   z-index: 0;
 }
@@ -1965,6 +1993,7 @@ input[type="checkbox"].kv-checkbox-lg {
 .line-number-cell {
   grid-column: 1;
   box-sizing: border-box;
+  min-width: 2.5em;
   padding: 0 10px 0 12px;
   text-align: right;
   font-family: var(--font-mono);
@@ -1977,6 +2006,9 @@ input[type="checkbox"].kv-checkbox-lg {
   pointer-events: none;
   position: relative;
   z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
 }
 
 .line-content-cell {
@@ -1987,22 +2019,12 @@ input[type="checkbox"].kv-checkbox-lg {
   font-size: 12px;
   line-height: 18px;
   color: var(--text-primary);
-  white-space: pre;
-  overflow-wrap: normal;
-  word-break: normal;
-  user-select: text;
-  -webkit-user-select: text;
-}
-
-.line-sync-scroll:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent);
-  outline-offset: -2px;
-}
-
-.line-sync-scroll--wrap .line-content-cell {
   white-space: pre-wrap;
   word-break: break-word;
   overflow-wrap: anywhere;
+  user-select: text;
+  -webkit-user-select: text;
+  box-shadow: inset 1px 0 0 var(--border-color);
 }
 
 .line-content-plain,
