@@ -12,7 +12,9 @@ import TitleBar from './components/TitleBar';
 import ParamsTab from './components/ParamsTab';
 import HeadersTab from './components/HeadersTab';
 import EnvironmentModal from './components/EnvironmentModal';
+import ScriptManagerModal from './components/ScriptManagerModal';
 import BodyEditor from './components/BodyEditor';
+import ScriptTab from './components/ScriptTab';
 import ResponsePanel from './components/ResponsePanel';
 import HistoryPanel from './components/HistoryPanel';
 import SettingsPanel from './components/SettingsPanel';
@@ -32,6 +34,9 @@ export default function App() {
   const { activeTab, setActiveTab, createTab, closeTab, switchToPreviousTab, switchToNextTab, tabs, activeTabId } = useStore();
   const hasRequestTab = useStore(
     (s) => s.activeTabId != null && s.tabs.some((t) => t.id === s.activeTabId),
+  );
+  const preScriptId = useStore(
+    (s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.preScriptId ?? null,
   );
   const {
     theme,
@@ -279,11 +284,20 @@ export default function App() {
                     <span className={`tab ${activeTab === 'params' ? 'active' : ''}`} onClick={() => setActiveTab('params')}>{t('tab.params')}</span>
                     <span className={`tab ${activeTab === 'headers' ? 'active' : ''}`} onClick={() => setActiveTab('headers')}>{t('tab.headers')}</span>
                     <span className={`tab ${activeTab === 'body' ? 'active' : ''}`} onClick={() => setActiveTab('body')}>{t('tab.body')}</span>
+                    {isTauri() && (
+                      <span
+                        className={`tab${activeTab === 'script' ? ' active' : ''}${preScriptId ? ' tab--script-bound' : ''}`}
+                        onClick={() => setActiveTab('script')}
+                      >
+                        {t('tab.script')}
+                      </span>
+                    )}
                   </div>
                   <div style={{ flex: 1, borderBottom: '1px solid var(--border-color)', overflow: 'auto', minHeight: 0 }}>
                     {activeTab === 'params' && <ParamsTab />}
                     {activeTab === 'headers' && <HeadersTab />}
                     {activeTab === 'body' && <BodyEditor />}
+                    {isTauri() && activeTab === 'script' && <ScriptTab />}
                   </div>
                 </div>
                 <ResizableSplitter />
@@ -314,6 +328,7 @@ export default function App() {
       </div>
       <SettingsPanel />
       <EnvironmentModal />
+      <ScriptManagerModal />
       {saveModalOpen && (
         <SaveRequestModal
           onClose={() => setSaveModalOpen(false)}

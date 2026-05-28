@@ -1,10 +1,8 @@
 import { useCallback, useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import { useSettingsStore } from '../store/useSettings';
-import { invoke } from '@tauri-apps/api/core';
 import type { HttpMethod } from '../types';
 import { t } from '../i18n';
-import { formatRawHttpResponse } from '../utils/httpUtils';
 import { hasHttpProtocol, interpolateEnvVars } from '../utils/envInterpolation';
 import { useEnvironmentStore } from '../store/useEnvironmentStore';
 import { isCurlCommand } from '../utils/curlUtils';
@@ -12,15 +10,18 @@ import { parseAndApplyCurlCommand } from '../utils/parseCurlCommand';
 import { isImeComposing } from '../utils/keyboard';
 import { focusUrlInput } from '../utils/focusUrl';
 import { EnvVarField } from './EnvVarField';
-import { kvToMap, resolveOutboundRequest } from '../utils/outboundRequest';
+import { sendHttpRequest } from '../utils/sendHttpRequest';
+import { ensureProtocol } from '../utils/outboundRequest';
 
 const METHODS: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
 
 export default function UrlBar() {
-  const { setMethod, setUrl, syncParamsFromUrl, setLoading, setResponse, addHistory } = useStore();
+  const { setMethod, setUrl, syncParamsFromUrl } = useStore();
   const requestMethod = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.method ?? 'GET');
   const requestUrl = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.url ?? '');
-  const loading = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.loading ?? false);
+  const tab = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId));
+  const loading = tab?.loading ?? false;
+  const sending = tab?.sending ?? false;
 
   useEffect(() => {
     const onFocusUrl = () => focusUrlInput();
@@ -60,70 +61,7 @@ export default function UrlBar() {
       }
     }
 
-    const req = (() => {
-      const s = useStore.getState();
-      const tab = s.tabs.find((t) => t.id === s.activeTabId);
-      return tab?.request ?? null;
-    })();
-    if (!req?.url?.trim()) return;
-
-    setLoading(true);
-
-    const vars = useEnvironmentStore.getState().getActiveVarMap();
-    const resolved = resolveOutboundRequest(req, vars, autoProtocol);
-
-    try {
-      const res: {
-        status: number;
-        status_text: string;
-        headers: Record<string, string>;
-        body: string;
-        request_raw: string;
-        raw: string;
-        duration_ms: number;
-      } = await invoke('send_request', {
-        method: req.method,
-        url: resolved.finalUrl,
-        headers: kvToMap(resolved.headers),
-        bodyType: resolved.effectiveBodyType,
-        body: resolved.body,
-        formFields: resolved.formFields,
-        binaryFilePath: resolved.binaryFile?.filePath ?? null,
-        binaryFileName: resolved.binaryFile?.fileName ?? null,
-        binaryDataBase64: resolved.binaryFile?.fileDataBase64 ?? null,
-      });
-
-      setResponse({
-        status: res.status,
-        statusText: res.status_text,
-        headers: res.headers,
-        body: res.body,
-        raw: res.raw,
-        durationMs: res.duration_ms,
-      });
-
-      addHistory({
-        method: req.method,
-        url: resolved.finalUrl,
-        status: res.status,
-        requestRaw: res.request_raw,
-        responseRaw: res.raw,
-      });
-    } catch (err) {
-      const errorResponse = {
-        status: 0,
-        statusText: 'Error',
-        headers: {} as Record<string, string>,
-        body: String(err),
-        durationMs: 0,
-      };
-      setResponse({
-        ...errorResponse,
-        raw: formatRawHttpResponse(errorResponse),
-      });
-    } finally {
-      setLoading(false);
-    }
+    await sendHttpRequest();
   };
 
   return (
@@ -156,16 +94,9 @@ export default function UrlBar() {
           suggestListId="url-env-suggest-list"
         />
       </div>
-      <button className="btn btn-send" disabled={loading} onClick={handleSend}>
-        {loading ? t('url.sending') : t('url.send')}
+      <button className="btn btn-send" disabled={loading || sending} onClick={handleSend}>
+        {loading || sending ? t('url.sending') : t('url.send')}
       </button>
     </div>
   );
-}
-
-function ensureProtocol(url: string): string {
-  if (!hasHttpProtocol(url)) {
-    return 'http://' + url;
-  }
-  return url;
 }

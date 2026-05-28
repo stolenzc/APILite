@@ -26,6 +26,7 @@
   - [项目结构](#项目结构)
 - [界面概览](#界面概览)
 - [环境变量](#环境变量)
+- [Pre 请求脚本（Python）](#pre-请求脚本python)
 - [保存请求到文件夹](#保存请求到文件夹)
 - [发送请求](#发送请求)
   - [发送步骤](#发送步骤)
@@ -76,7 +77,9 @@ APILite/
 │   │   ├── histories.rs     # 历史记录持久化（按日分片）
 │   │   ├── storage.rs       # 数据目录结构
 │   │   ├── environments.rs  # 环境变量文件
-│   │   └── folders.rs       # 磁盘上的已保存请求树
+│   │   ├── folders.rs       # 磁盘上的已保存请求树
+│   │   ├── scripts.rs       # Pre 请求脚本清单与文件
+│   │   └── script_runner.rs # Python venv 运行器
 │   ├── Cargo.toml
 │   └── tauri.conf.json
 ├── frontend/            # React + TypeScript 前端
@@ -99,7 +102,7 @@ APILite/
 | **标签栏**       | 请求标签、**+** 新建标签、环境下拉与管理（⚙）。                                             |
 | **文件夹侧栏**   | 可选左侧面板 — 文件夹与已保存请求的树形结构。                                               |
 | **地址栏**     | HTTP 方法、URL、**发送**。                                                                |
-| **请求编辑器** | **参数**、**请求头**、**请求体** 标签页。                                                 |
+| **请求编辑器** | **参数**、**请求头**、**请求体**、**Pre 脚本** 标签页（脚本仅桌面版）。                   |
 | **响应面板**   | 状态码、耗时、响应体 / 响应头 / 原始 HTTP；请求进行中显示加载遮罩。                       |
 | **cURL 面板**  | 可选右侧面板 — 当前请求的实时 cURL，支持**复制**。                                        |
 | **历史面板**   | 可选底部停靠区 — 持久化历史记录；可拖拽上边缘调整高度。                                   |
@@ -111,6 +114,105 @@ APILite/
 ## 环境变量
 
 在**标签栏**右侧选择环境。在 URL、参数、请求头、请求体中使用 `{{变量名}}`，发送时自动替换。点击下拉框旁的 **⚙** 管理多环境变量（同一环境内可用 `{{其他变量}}` 相互引用）。
+
+---
+
+## Pre 请求脚本（Python）
+
+**仅桌面版（Tauri）可用。** 在每次 HTTP 请求发出**之前**，可运行 Python **Pre 请求**脚本，用于设置变量和/或修改即将发送的请求。脚本在全局共享：多个标签页或已保存请求可绑定同一脚本 ID。
+
+### 环境准备
+
+1. 打开 **设置 → 本地存储**，确认数据目录（默认 `~/.APILite`）。
+2. 在 scripts 目录创建虚拟环境：
+
+   ```bash
+   cd ~/.APILite/scripts
+   python3 -m venv .venv
+   ```
+
+3. 在虚拟环境中安装所需依赖（例如 `pip install requests`）。
+
+应用会自动在 `scripts/` 下生成运行器 `.apilite_runner.py`。用户脚本为同目录下的 `.py` 文件，清单保存在 `scripts.json`（名称、备注、文件路径）。
+
+### 管理脚本
+
+1. 在请求编辑器打开 **Pre 脚本** 标签页。
+2. 点击 **管理脚本** 打开脚本管理器：新建脚本、填写**名称**与**备注**、编辑 Python 源码、保存或删除。
+3. 管理器会显示是否检测到 `.venv` 以及 scripts 目录路径。
+
+### 为请求绑定脚本
+
+在 **Pre 脚本** 标签页的下拉框中选择脚本（或选 **无**）。绑定保存在请求的 `preScriptId` 字段中，随文件夹请求一并持久化。该页还会列出当前标签页由脚本写入的**脚本变量**。
+
+### 执行时机
+
+点击 **发送** 时（HTTP 之前）：
+
+1. 合并**环境变量**与当前标签页的**脚本变量**（同名时脚本变量优先）。
+2. 运行所选 Pre 脚本。
+3. 若脚本返回 `ok: false` 或执行异常，**中止发送**并提示错误。
+4. 将返回的 `vars` 并入本次 `{{变量名}}` 插值，并写入标签页供后续请求使用。
+5. 应用返回的 `request` 补丁（URL、方法、请求头、请求体、body 类型）。
+6. 解析占位符并发送 HTTP 请求。
+
+响应区显示的耗时**仅包含 HTTP 往返**，不含 Pre 脚本执行时间。脚本由常驻 Python 进程执行并缓存已加载模块，避免每次请求冷启动 Python。
+
+当前仅支持 **Pre 请求**脚本，不在 HTTP 响应返回后执行脚本。
+
+### 脚本约定
+
+每个 `.py` 文件需定义：
+
+```python
+def run(ctx):
+    ...
+    return {"ok": True, "vars": {}, "request": {}}
+```
+
+**`ctx`**（传入 Python 的 JSON）：
+
+| 字段        | 说明 |
+| ----------- | ---- |
+| `phase`     | 固定为 `"pre"`。 |
+| `request`   | 当前请求：`method`、`url`、`headers`（字典）、`bodyType`。JSON/JSONC 时 `body` 为去掉注释后的严格 JSON 字符串，`bodyJson` 为解析后的对象；无效时为 `bodyParseError`。签名/处理逻辑请优先用 `bodyJson`。 |
+| `env`       | 当前激活环境的变量表。 |
+| `vars`      | 本标签页脚本变量与环境变量合并结果（同名时脚本优先）。 |
+
+**返回值**（stdout 输出 JSON）：
+
+| 字段       | 必填 | 说明 |
+| ---------- | ---- | ---- |
+| `ok`       | 是   | `true` 继续发送；`false` 取消发送。 |
+| `vars`     | 否   | 并入本次发送的 `{{name}}`，并保存在标签页。 |
+| `request`  | 否   | 部分更新：`url`、`method`、`headers`（字典）、`body`、`bodyType`。 |
+| `error`    | 否   | `ok` 为 `false` 时的错误信息。 |
+
+### 示例
+
+```python
+def run(ctx):
+    req = ctx.get("request", {})
+    token = ctx.get("vars", {}).get("token") or "demo-token"
+    headers = dict(req.get("headers") or {})
+    headers["Authorization"] = f"Bearer {token}"
+    return {
+        "ok": True,
+        "vars": {"token": token},
+        "request": {
+            "headers": headers,
+        },
+    }
+```
+
+### 磁盘文件
+
+数据目录下：
+
+- `scripts/scripts.json` — 脚本清单（id、名称、备注、文件名）
+- `scripts/*.py` — 脚本源码
+- `scripts/.venv/` — Python 虚拟环境（需自行创建）
+- `scripts/.apilite_runner.py` — 加载器（自动生成）
 
 ---
 
@@ -284,6 +386,7 @@ APILite/
 - `folders/` — 已保存的请求（文件夹树）
 - `histories/` — 请求历史（按日一个 JSON 文件）
 - `environments.json` — 环境变量
+- `scripts/` — Pre 请求 Python 脚本（`scripts.json`、`.py`、`.venv`）
 
 ### 历史记录保留
 

@@ -29,7 +29,7 @@ export function kvToMap(kvs: KeyValue[]): Record<string, string> {
   return map;
 }
 
-function ensureProtocol(url: string): string {
+export function ensureProtocol(url: string): string {
   if (!hasHttpProtocol(url)) {
     return 'http://' + url;
   }

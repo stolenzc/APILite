@@ -8,6 +8,9 @@ mod curl_export;
 mod curl_parser;
 mod http_client;
 mod proxy_config;
+mod script_daemon;
+mod script_runner;
+mod scripts;
 use std::collections::HashMap;
 use tauri::Emitter;
 
@@ -151,6 +154,77 @@ fn force_close_window(window: tauri::Window) {
     let _ = window.close();
 }
 
+#[tauri::command]
+fn scripts_list(data_dir: String) -> Result<scripts::ScriptsManifest, String> {
+    scripts::list_scripts(&data_dir)
+}
+
+#[tauri::command]
+fn scripts_venv_ready(data_dir: String) -> bool {
+    script_runner::venv_status(&data_dir)
+}
+
+#[tauri::command]
+fn scripts_dir_path(data_dir: String) -> String {
+    scripts::scripts_dir_display(&data_dir)
+}
+
+#[tauri::command]
+fn scripts_create(
+    data_dir: String,
+    id: String,
+    name: String,
+    description: String,
+) -> Result<scripts::ScriptEntry, String> {
+    scripts::create_script(&data_dir, id, name, description)
+}
+
+#[tauri::command]
+fn scripts_update(
+    data_dir: String,
+    id: String,
+    name: Option<String>,
+    description: Option<String>,
+    source: Option<String>,
+) -> Result<scripts::ScriptEntry, String> {
+    scripts::update_script(&data_dir, &id, name, description, source)
+}
+
+#[tauri::command]
+fn scripts_delete(data_dir: String, id: String) -> Result<(), String> {
+    scripts::delete_script(&data_dir, &id)
+}
+
+#[tauri::command]
+fn scripts_read_source(data_dir: String, id: String) -> Result<String, String> {
+    scripts::read_script_source(&data_dir, &id)
+}
+
+#[tauri::command]
+async fn scripts_run_pre(
+    data_dir: String,
+    script_id: String,
+    payload_json: String,
+) -> Result<script_runner::RunScriptResult, String> {
+    let entry = scripts::entry_by_id(&data_dir, &script_id)?;
+    let scripts_root = script_runner::scripts_dir(&data_dir);
+    let script_path = script_runner::resolve_script_path(&scripts_root, &entry.file)?;
+    let mut payload: serde_json::Value =
+        serde_json::from_str(&payload_json).map_err(|e| format!("Invalid payload JSON: {e}"))?;
+    if let serde_json::Value::Object(ref mut map) = payload {
+        map.insert(
+            "scriptPath".to_string(),
+            serde_json::Value::String(script_path.to_string_lossy().to_string()),
+        );
+        map.insert(
+            "phase".to_string(),
+            serde_json::Value::String("pre".to_string()),
+        );
+    }
+    let merged = serde_json::to_string(&payload).map_err(|e| e.to_string())?;
+    script_runner::run_script(&data_dir, &entry.file, &merged, None).await
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
@@ -179,6 +253,14 @@ fn main() {
             folders_delete,
             folders_rename,
             force_close_window,
+            scripts_list,
+            scripts_venv_ready,
+            scripts_dir_path,
+            scripts_create,
+            scripts_update,
+            scripts_delete,
+            scripts_read_source,
+            scripts_run_pre,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

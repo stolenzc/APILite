@@ -40,6 +40,8 @@ export interface RequestTab {
   request: HttpRequest;
   response: HttpResponse | null;
   loading: boolean;
+  /** True while pre-script runs or HTTP is in flight (disables Send). */
+  sending: boolean;
   sourceType: TabSource;
   /** Breadcrumb path in the folder tree (e.g. `APIs > Auth`); empty for unsaved tabs. */
   folderTreePath: string;
@@ -47,12 +49,14 @@ export interface RequestTab {
   /** Request snapshot when opened or last saved; used to clear unsaved after revert. */
   savedRequest: HttpRequest | null;
   requestNodeId: string | null; // id of the saved request node in the folder tree, for Cmd+S auto-save
+  /** Variables written by pre-request scripts (available as {{name}} in this tab). */
+  scriptVars: Record<string, string>;
 }
 
 interface AppState {
   tabs: RequestTab[];
   activeTabId: string | null;
-  activeTab: 'params' | 'headers' | 'body';
+  activeTab: 'params' | 'headers' | 'body' | 'script';
   responseTab: 'body' | 'headers' | 'raw';
   history: HistoryEntry[];
   historyHasMore: boolean;
@@ -93,6 +97,8 @@ interface AppState {
   updateUrlEncodedField: (index: number, field: 'key' | 'value' | 'enabled', val: string | boolean) => void;
   removeUrlEncodedField: (index: number) => void;
   setBinaryFile: (file: BinaryBodyFile | null) => void;
+  setPreScriptId: (scriptId: string | null) => void;
+  mergeScriptVars: (vars: Record<string, string>) => void;
   applyParsedCurl: (parsed: {
     method: string;
     url: string;
@@ -105,6 +111,7 @@ interface AppState {
   // Response actions
   setResponse: (res: HttpResponse) => void;
   setLoading: (loading: boolean) => void;
+  setSending: (sending: boolean) => void;
 
   // History actions
   addHistory: (entry: Omit<HistoryEntry, 'id' | 'time' | 'timestamp'>) => void;
@@ -123,11 +130,13 @@ function newEmptyTab(): RequestTab {
     request: { ...defaultRequest },
     response: null,
     loading: false,
+    sending: false,
     sourceType: 'temporary',
     folderTreePath: '',
     unsaved: false,
     savedRequest: cloneHttpRequest(defaultRequest),
     requestNodeId: null,
+    scriptVars: {},
   };
 }
 
@@ -269,11 +278,13 @@ export const useStore = create<AppState>((set, get) => ({
       request: cloneHttpRequest(req),
       response: null,
       loading: false,
+      sending: false,
       sourceType: 'folder',
       folderTreePath: folderPath,
       unsaved: false,
       savedRequest: cloneHttpRequest(req),
       requestNodeId,
+      scriptVars: {},
     };
     return { tabs: [...state.tabs, tab], activeTabId: tab.id };
   }),
@@ -502,6 +513,26 @@ export const useStore = create<AppState>((set, get) => ({
     return withRequestUpdate(state, { ...req, binaryFile });
   }),
 
+  setPreScriptId: (scriptId) => set(state => {
+    const req = activeRequest(state);
+    if (!req) return state;
+    const normalized = normalizeHttpRequest({
+      ...req,
+      preScriptId: scriptId?.trim() ? scriptId.trim() : null,
+    });
+    return withRequestUpdate(state, normalized);
+  }),
+
+  mergeScriptVars: (vars) => set(state => {
+    if (!state.activeTabId || Object.keys(vars).length === 0) return state;
+    return updateActiveTab(state, {
+      scriptVars: {
+        ...(state.tabs.find((t) => t.id === state.activeTabId)?.scriptVars ?? {}),
+        ...vars,
+      },
+    });
+  }),
+
   applyParsedCurl: (parsed) => set(state => {
     if (!state.activeTabId) {
       const tab = newEmptyTab();
@@ -525,6 +556,7 @@ export const useStore = create<AppState>((set, get) => ({
 
   setResponse: (response) => set(state => updateActiveTab(state, { response })),
   setLoading: (loading) => set(state => updateActiveTab(state, { loading })),
+  setSending: (sending) => set(state => updateActiveTab(state, { sending })),
 
   addHistory: (entry) => {
     const timestamp = Date.now();

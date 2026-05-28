@@ -45,6 +45,21 @@ export interface HttpRequest {
   urlEncodedFields: KeyValue[];
   /** application/octet-stream file body */
   binaryFile: BinaryBodyFile | null;
+  /** Pre-request script id from scripts.json (shared across requests). */
+  preScriptId: string | null;
+}
+
+export interface ScriptEntry {
+  id: string;
+  name: string;
+  description: string;
+  file: string;
+  updatedAt: number;
+}
+
+export interface ScriptsManifest {
+  version: number;
+  scripts: ScriptEntry[];
 }
 
 export interface HttpResponse {

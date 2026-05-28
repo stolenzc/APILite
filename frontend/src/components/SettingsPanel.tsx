@@ -107,6 +107,7 @@ export default function SettingsPanel() {
             <li><code>{FOLDERS_SUBDIR}/</code> — {t('settings.storage.folders')}</li>
             <li><code>{HISTORIES_SUBDIR}/{HISTORY_DAY_FILE_PATTERN}</code> — {t('settings.storage.histories')}</li>
             <li><code>{ENVIRONMENTS_FILE}</code> — {t('settings.storage.environments')}</li>
+            <li><code>scripts/</code> — {t('settings.storage.scripts')}</li>
           </ul>
           <div className="settings-storage-dir">
             <span

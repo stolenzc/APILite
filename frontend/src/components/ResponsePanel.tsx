@@ -60,7 +60,9 @@ export default function ResponsePanel() {
           {response ? (
             <>
               <span className={`status-badge ${statusClass}`}>{response.status} {response.statusText}</span>
-              <span className="response-time">{response.durationMs}ms</span>
+              <span className="response-time" title={t('response.httpDurationHint')}>
+                {response.durationMs}ms
+              </span>
               {responseTab === 'body' && jsonValid && (
                 <span className="json-status valid" style={{ fontSize: 11 }}>JSON</span>
               )}

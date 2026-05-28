@@ -1,14 +1,15 @@
 import { invoke } from '@tauri-apps/api/core';
 import type { HttpRequest } from '../types';
-import { useEnvironmentStore } from '../store/useEnvironmentStore';
 import { useSettingsStore } from '../store/useSettings';
 import { kvToMap, resolveOutboundRequest } from './outboundRequest';
 
-export async function buildCurlForRequest(req: HttpRequest): Promise<string> {
+export async function buildCurlForRequest(
+  req: HttpRequest,
+  vars: Record<string, string>,
+): Promise<string> {
   if (!req.url?.trim()) return '';
 
   const autoProtocol = useSettingsStore.getState().autoCompleteProtocol;
-  const vars = useEnvironmentStore.getState().getActiveVarMap();
   const resolved = resolveOutboundRequest(req, vars, autoProtocol);
 
   return invoke<string>('to_curl', {

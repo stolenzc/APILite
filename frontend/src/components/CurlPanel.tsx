@@ -5,8 +5,11 @@ import { useEnvironmentStore } from '../store/useEnvironmentStore';
 import { buildRawVarMapForEnv } from '../utils/environmentScope';
 import { resolveVariableMap } from '../utils/envInterpolation';
 import { buildCurlForRequest } from '../utils/curlExport';
+import { getMergedInterpolationVars } from '../utils/interpolationVars';
+import { resolvePreScriptId } from '../utils/normalizeRequest';
 import { isCurlCommand } from '../utils/curlUtils';
 import { parseAndApplyCurlCommand } from '../utils/parseCurlCommand';
+import { OUTBOUND_CURL_EVENT } from '../utils/sendHttpRequest';
 import { showToast } from '../utils/toast';
 import { t } from '../i18n';
 import type { HttpRequest } from '../types';
@@ -23,6 +26,7 @@ function requestSignature(req: HttpRequest | null): string {
     formFields: req.formFields,
     urlEncodedFields: req.urlEncodedFields,
     binaryFile: req.binaryFile,
+    preScriptId: resolvePreScriptId(req),
   });
 }
 
@@ -31,6 +35,10 @@ export default function CurlPanel() {
   const activeRequest = useStore((s) => {
     const tab = s.tabs.find((t) => t.id === s.activeTabId);
     return tab?.request ?? null;
+  });
+  const scriptVarsSig = useStore((s) => {
+    const tab = s.tabs.find((t) => t.id === s.activeTabId);
+    return JSON.stringify(tab?.scriptVars ?? {});
   });
   const { curlPanelWidth, curlPanelCollapsed, setCurlPanelCollapsed } = useSettingsStore();
   const autoCompleteProtocol = useSettingsStore((s) => s.autoCompleteProtocol);
@@ -55,6 +63,19 @@ export default function CurlPanel() {
   }, [activeTabId]);
 
   useEffect(() => {
+    const onOutboundCurl = (e: Event) => {
+      const { tabId, curl: outbound } = (e as CustomEvent<{ tabId: string; curl: string }>).detail;
+      if (tabId !== activeTabId) return;
+      skipExportRef.current = true;
+      setCurl(outbound);
+      setError(null);
+      setLoading(false);
+    };
+    window.addEventListener(OUTBOUND_CURL_EVENT, onOutboundCurl);
+    return () => window.removeEventListener(OUTBOUND_CURL_EVENT, onOutboundCurl);
+  }, [activeTabId]);
+
+  useEffect(() => {
     if (exportDebounceRef.current) clearTimeout(exportDebounceRef.current);
     if (focusedRef.current) return;
     if (skipExportRef.current) {
@@ -69,10 +90,12 @@ export default function CurlPanel() {
       return;
     }
 
+    const vars = getMergedInterpolationVars();
+
     setLoading(true);
     let cancelled = false;
     exportDebounceRef.current = setTimeout(() => {
-      void buildCurlForRequest(activeRequest)
+      void buildCurlForRequest(activeRequest, vars)
         .then((text) => {
           if (cancelled || focusedRef.current) return;
           setCurl(text);
@@ -91,7 +114,7 @@ export default function CurlPanel() {
       cancelled = true;
       if (exportDebounceRef.current) clearTimeout(exportDebounceRef.current);
     };
-  }, [sig, activeRequest, envSig, autoCompleteProtocol]);
+  }, [sig, activeRequest, envSig, scriptVarsSig, autoCompleteProtocol]);
 
   const scheduleParse = useCallback((command: string) => {
     if (parseDebounceRef.current) clearTimeout(parseDebounceRef.current);
@@ -123,8 +146,9 @@ export default function CurlPanel() {
       return;
     }
 
+    const vars = getMergedInterpolationVars();
     setLoading(true);
-    void buildCurlForRequest(activeRequest)
+    void buildCurlForRequest(activeRequest, vars)
       .then((text) => {
         setCurl(text);
         setError(null);

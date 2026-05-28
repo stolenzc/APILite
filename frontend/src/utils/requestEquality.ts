@@ -45,6 +45,7 @@ export function canonicalizeRequest(req: HttpRequest): string {
     formFields: canonicalizeFormFields(req.formFields),
     urlEncodedFields: canonicalizeKeyValues(req.urlEncodedFields),
     binaryFile: canonicalizeBinaryFile(req.binaryFile),
+    preScriptId: req.preScriptId ?? null,
   });
 }
 

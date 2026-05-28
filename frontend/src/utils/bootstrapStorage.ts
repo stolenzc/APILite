@@ -11,6 +11,7 @@ import {
   saveFullHistory,
 } from './historyStorage';
 import { joinPath, FOLDERS_SUBDIR } from './storagePaths';
+import { useScriptStore } from '../store/useScriptStore';
 
 /** Resolve data root, ensure layout, load folders and environments from disk. */
 export async function bootstrapLocalStorage(): Promise<void> {
@@ -28,6 +29,7 @@ export async function bootstrapLocalStorage(): Promise<void> {
   const foldersDir = joinPath(root, FOLDERS_SUBDIR);
   await useFolderStore.getState().initFolders(foldersDir);
   await hydrateEnvironmentsFromDisk();
+  await useScriptStore.getState().hydrate();
 
   const fromDisk = await hydrateHistoryFromDisk();
   if (fromDisk != null) {

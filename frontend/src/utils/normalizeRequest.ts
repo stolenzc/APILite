@@ -9,6 +9,20 @@ export function emptyFormField(): FormField {
   return { key: '', value: '', enabled: true, fieldType: 'text' };
 }
 
+type RequestWithLegacyScript = Partial<HttpRequest> & {
+  postScriptId?: string | null;
+};
+
+/** Resolve pre-script id; explicit `preScriptId: null` must not fall back to legacy postScriptId. */
+export function resolvePreScriptId(req: RequestWithLegacyScript): string | null {
+  if (Object.prototype.hasOwnProperty.call(req, 'preScriptId')) {
+    const id = req.preScriptId;
+    return id && String(id).trim() ? String(id).trim() : null;
+  }
+  const legacy = req.postScriptId;
+  return legacy && String(legacy).trim() ? String(legacy).trim() : null;
+}
+
 /** Fill defaults for requests loaded from older saved-request JSON. */
 export function normalizeHttpRequest(req: Partial<HttpRequest> & Pick<HttpRequest, 'method' | 'url'>): HttpRequest {
   return {
@@ -34,6 +48,7 @@ export function normalizeHttpRequest(req: Partial<HttpRequest> & Pick<HttpReques
       emptyKeyValue,
     ),
     binaryFile: req.binaryFile ? { ...req.binaryFile } : null,
+    preScriptId: resolvePreScriptId(req as RequestWithLegacyScript),
   };
 }
 

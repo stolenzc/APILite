@@ -26,6 +26,7 @@
   - [Project Structure](#project-structure)
 - [Interface Overview](#interface-overview)
 - [Environments](#environments)
+- [Pre-request Scripts (Python)](#pre-request-scripts-python)
 - [Saving Requests to Folders](#saving-requests-to-folders)
 - [Making Requests](#making-requests)
   - [Sending a Request](#sending-a-request)
@@ -76,7 +77,9 @@ APILite/
 │   │   ├── histories.rs     # History persistence (daily JSON shards)
 │   │   ├── storage.rs       # Data directory layout
 │   │   ├── environments.rs  # Environment variables on disk
-│   │   └── folders.rs       # Saved request tree on disk
+│   │   ├── folders.rs       # Saved request tree on disk
+│   │   ├── scripts.rs       # Pre-request script manifest & files
+│   │   └── script_runner.rs # Python venv runner (.apilite_runner.py)
 │   ├── Cargo.toml
 │   └── tauri.conf.json
 ├── frontend/            # React + TypeScript frontend
@@ -99,7 +102,7 @@ APILite/
 | **Tab bar**          | Request tabs, **+** for a new tab, environment dropdown and manage (⚙).                                                                     |
 | **Folders sidebar**  | Optional left panel — tree of folders and saved requests.                                                                                   |
 | **URL bar**             | HTTP method, URL, **Send**.                                                                                                                 |
-| **Request editor**      | **Params**, **Headers**, **Body** tabs.                                                                                                     |
+| **Request editor**      | **Params**, **Headers**, **Body**, **Pre Script** tabs (scripts are desktop-only).                                                          |
 | **Response panel**      | Status, duration, body / headers / raw HTTP. A loading overlay appears while a request is in flight.                                        |
 | **cURL panel**          | Optional right panel — live cURL for the current request with **Copy**.                                                                     |
 | **History panel**       | Optional bottom dock — persisted history; drag the top edge to resize.                                                                      |
@@ -111,6 +114,105 @@ Thin drag handles (same style as the history dock) resize the response area, fol
 ## Environments
 
 Pick an environment from the dropdown on the **tab bar**. Use `{{variable_name}}` in the URL, params, headers, or body; values are resolved when you send. Click **⚙** beside the dropdown to edit variables (multiple environments, `{{other_var}}` references within the same environment).
+
+---
+
+## Pre-request Scripts (Python)
+
+**Desktop app only (Tauri).** Before each request is sent, APILite can run a Python **pre-request** script to set variables and/or modify the outgoing request. Scripts are shared: many saved requests or tabs can reference the same script by ID.
+
+### Setup
+
+1. Open **Settings → Local Storage** and note your data directory (default `~/.APILite`).
+2. Create a virtual environment under the scripts folder:
+
+   ```bash
+   cd ~/.APILite/scripts
+   python3 -m venv .venv
+   ```
+
+3. Install any packages you need into that venv (e.g. `pip install requests`).
+
+APILite writes a small runner (`.apilite_runner.py`) into `scripts/` automatically. User scripts live as `.py` files alongside `scripts.json` (name, notes, file path).
+
+### Manage scripts
+
+1. In the request editor, open the **Pre Script** tab.
+2. Click **Manage scripts** to open the script manager: create scripts, set **Name** and **Notes**, edit Python source, save or delete.
+3. The manager shows whether `.venv` was detected and the scripts directory path.
+
+### Bind a script to a request
+
+On the **Pre Script** tab, choose a script from the dropdown (or **No script**). The binding is stored on the request as `preScriptId` and is saved with folder requests. The tab also lists **script variables** produced by earlier runs in the current tab.
+
+### When it runs
+
+On **Send** (before HTTP):
+
+1. Merge **environment variables** and **script variables** from the active tab (`script` vars override env keys with the same name).
+2. Run the selected pre-request script with that context.
+3. If the script returns `ok: false` or throws, the send is **aborted** and an error toast is shown.
+4. Merge returned `vars` into interpolation for this send (and persist them on the tab for later requests).
+5. Apply returned `request` patches (URL, method, headers, body, body type).
+6. Resolve `{{var}}` placeholders and send the HTTP request.
+
+The response **duration** is **HTTP round-trip only** (not script time). Scripts run in a persistent Python daemon with module caching to avoid per-request cold starts.
+
+Only **pre-request** scripts are supported; nothing runs after the HTTP response.
+
+### Script contract
+
+Each script file must define:
+
+```python
+def run(ctx):
+    ...
+    return {"ok": True, "vars": {}, "request": {}}
+```
+
+**`ctx`** (JSON object passed to Python):
+
+| Field       | Description |
+| ----------- | ----------- |
+| `phase`     | Always `"pre"`. |
+| `request`   | Current request: `method`, `url`, `headers` (map), `bodyType`. For JSON/JSONC, `body` is strict JSON (comments stripped) and `bodyJson` is the parsed object; `bodyParseError` when invalid. Prefer `bodyJson` in Python. |
+| `env`       | Active environment variables (resolved map). |
+| `vars`      | Script variables already on this tab plus env (script wins on conflicts). |
+
+**Return value** (printed as JSON on stdout):
+
+| Field      | Required | Description |
+| ---------- | -------- | ----------- |
+| `ok`       | yes      | `true` to continue sending; `false` to cancel. |
+| `vars`     | no       | Keys merged for this send and stored on the tab; use `{{name}}` in URL/headers/body. |
+| `request`  | no       | Partial update: `url`, `method`, `headers` (map), `body`, `bodyType`. |
+| `error`    | no       | Message when `ok` is `false`. |
+
+### Example
+
+```python
+def run(ctx):
+    req = ctx.get("request", {})
+    token = ctx.get("vars", {}).get("token") or "demo-token"
+    headers = dict(req.get("headers") or {})
+    headers["Authorization"] = f"Bearer {token}"
+    return {
+        "ok": True,
+        "vars": {"token": token},
+        "request": {
+            "headers": headers,
+        },
+    }
+```
+
+### Data on disk
+
+Under your data directory:
+
+- `scripts/scripts.json` — manifest (id, name, description, file)
+- `scripts/*.py` — script sources
+- `scripts/.venv/` — Python environment (you create this)
+- `scripts/.apilite_runner.py` — loader (auto-created)
 
 ---
 
@@ -280,6 +382,7 @@ Choose a folder for app data (default `~/.APILite`). The app creates:
 - `folders/` — saved requests (folder tree)
 - `histories/` — request history (one JSON file per day)
 - `environments.json` — environment variables
+- `scripts/` — pre-request Python scripts (`scripts.json`, `.py` files, `.venv`)
 
 ### History Retention
 
