@@ -456,7 +456,7 @@ export function isJson(input: string): boolean {
   return parseJsonTokens(input) !== null;
 }
 
-export type NormalizeToJsonResult =
+type NormalizeToJsonTextResult =
   | { ok: true; text: string }
   | { ok: false; text: string; reason: string };
 
@@ -470,7 +470,7 @@ function isIdentChar(ch: string | undefined): boolean {
  * - False/True/None -> false/true/null (outside strings)
  * - skips transformations inside `{{ ... }}` env placeholders
  */
-export function normalizeToJsonText(input: string): NormalizeToJsonResult {
+export function normalizeToJsonText(input: string): NormalizeToJsonTextResult {
   if (!input) return { ok: true, text: input };
 
   let out = '';
