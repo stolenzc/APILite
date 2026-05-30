@@ -115,6 +115,10 @@ function SaveFolderTree({
               aria-expanded={expandable ? expanded : undefined}
               aria-selected={selected}
               onContextMenu={(e) => onFolderContextMenu(folder, e)}
+              onDoubleClick={() => {
+                if (expandable) onToggleExpand(folder.id);
+                // else onSave();
+              }}
             >
               {expandable ? (
                 <button
@@ -135,7 +139,6 @@ function SaveFolderTree({
                 type="button"
                 className="save-request-tree-row"
                 onClick={() => onSelectFolder(folder.id)}
-                onDoubleClick={onSave}
               >
                 <span className="save-request-tree-folder" aria-hidden>📁</span>
                 <span className="save-request-tree-name">{folder.name}</span>
