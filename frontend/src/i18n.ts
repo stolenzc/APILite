@@ -43,6 +43,9 @@ const messages: Record<Locale, Record<string, string>> = {
     'env.modalTitle': 'Environment variables',
     'env.modalHint':
       'Each column is one environment; each row is one variable. Cell values can reference other variables in the same environment with {{other_var}} (e.g. {{base_url}}:8001). Resolution is multi-pass within the active environment before request substitution.',
+    'env.builtinHint':
+      'Built-ins (recomputed on each send): {{$timestamp}} Unix seconds, {{$timestampMs}} milliseconds, {{$isoTimestamp}} ISO 8601, {{$date}} local date, {{$time}} local time, {{$uuid}} random UUID.',
+    'env.builtinTag': 'built-in',
     'env.varName': 'Variable',
     'env.addEnvColumn': '+ Environment',
     'env.addVarRow': '+ Variable',
@@ -265,6 +268,9 @@ const messages: Record<Locale, Record<string, string>> = {
     'env.modalTitle': '环境变量',
     'env.modalHint':
       '横向每一列是一个环境，纵向每一行是一个变量。单元格内可引用同一环境下其他变量，如 {{base_url}}:8001；先在当前环境内多轮解析，再用于请求中的 {{}}。',
+    'env.builtinHint':
+      '内置变量（每次发送时重新计算）：{{$timestamp}} Unix 秒级时间戳，{{$timestampMs}} 毫秒时间戳，{{$isoTimestamp}} ISO 8601，{{$date}} 本地日期，{{$time}} 本地时间，{{$uuid}} 随机 UUID。',
+    'env.builtinTag': '内置',
     'env.varName': '变量名',
     'env.addEnvColumn': '+ 环境列',
     'env.addVarRow': '+ 变量行',

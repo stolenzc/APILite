@@ -3,9 +3,8 @@ import { nanoid } from 'nanoid';
 import { invoke } from '@tauri-apps/api/core';
 import { isTauri } from '../tauri/setupMenu';
 import { getDataDir } from '../utils/storagePaths';
-import { resolveVariableMap } from '../utils/envInterpolation';
+import { buildActiveVarMap } from '../utils/builtinEnvVars';
 import {
-  buildRawVarMapForEnv,
   isVariableInEnv,
   normalizePresentInEnvIds,
   presentInEnvIdsAfterDisable,
@@ -413,8 +412,7 @@ export const useEnvironmentStore = create<EnvironmentState>((set, get) => {
 
     getActiveVarMap: (): Record<string, string> => {
       const s = get();
-      const raw = buildRawVarMapForEnv(s.variables, s.activeEnvironmentId);
-      return resolveVariableMap(raw);
+      return buildActiveVarMap(s.variables, s.activeEnvironmentId);
     },
   };
 });

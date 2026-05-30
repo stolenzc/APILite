@@ -334,6 +334,7 @@ export default function EnvironmentModal() {
           {' '}
           {t('env.contextMenu')}
         </p>
+        <p className="env-modal-hint env-modal-hint--builtin">{t('env.builtinHint')}</p>
         <div className={`env-matrix-scroll${isDragging ? ' env-matrix-scroll--dragging' : ''}`}>
           <div className="env-matrix-scroll-inner">
           <table className="env-matrix-table">

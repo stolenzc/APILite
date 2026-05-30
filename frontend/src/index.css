@@ -1091,6 +1091,19 @@ body {
   user-select: none;
 }
 
+.env-var-suggest-badge {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  padding: 0 4px;
+  line-height: 1.4;
+  user-select: none;
+}
+
 .env-var-suggest-sep,
 .url-env-suggest-sep {
   flex-shrink: 0;
@@ -2728,6 +2741,10 @@ input[type="checkbox"].kv-checkbox-lg {
   line-height: 1.55;
   margin-bottom: 12px;
   flex-shrink: 0;
+}
+
+.env-modal-hint--builtin {
+  margin-top: -4px;
 }
 
 .env-modal-actions {

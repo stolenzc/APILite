@@ -1,4 +1,5 @@
 import type { EnvSuggestState } from '../hooks/useEnvVarSuggest';
+import { t } from '../i18n';
 
 type Props = {
   suggest: EnvSuggestState;
@@ -33,6 +34,9 @@ export default function EnvVarSuggestList({
           title={row.value !== '' ? `${row.name} = ${row.value}` : row.name}
         >
           <span className="env-var-suggest-name">{row.name}</span>
+          {row.builtin && (
+            <span className="env-var-suggest-badge">{t('env.builtinTag')}</span>
+          )}
           {row.value !== '' && (
             <>
               <span className="env-var-suggest-sep" aria-hidden>

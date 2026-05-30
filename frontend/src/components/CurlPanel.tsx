@@ -43,6 +43,7 @@ export default function CurlPanel() {
   const { curlPanelWidth, curlPanelCollapsed, setCurlPanelCollapsed } = useSettingsStore();
   const autoCompleteProtocol = useSettingsStore((s) => s.autoCompleteProtocol);
   /** Resolved active-env values; changes when switching env or editing variables. */
+  /** User env vars only; built-ins are applied at export time via getMergedInterpolationVars(). */
   const envSig = useEnvironmentStore((s) => {
     const raw = buildRawVarMapForEnv(s.variables, s.activeEnvironmentId);
     return JSON.stringify(resolveVariableMap(raw));
