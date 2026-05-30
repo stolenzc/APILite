@@ -3,8 +3,11 @@ import {
   hasHttpProtocol,
   interpolateEnvVars,
   interpolateKeyValues,
+  interpolateEnvVarsSelected,
+  interpolateKeyValuesSelected,
 } from './envInterpolation';
 import { resolveOutboundBody } from './requestBody';
+import { resolveOutboundBodySelected } from './requestBody';
 
 /** Resolve env placeholders for outbound HTTP and cURL export (not for editor UI). */
 export function resolveOutboundRequest(
@@ -18,6 +21,22 @@ export function resolveOutboundRequest(
   if (autoProtocol) finalUrl = ensureProtocol(finalUrl);
 
   const outbound = resolveOutboundBody(req, vars);
+  return { finalUrl, headers, ...outbound };
+}
+
+/** Like `resolveOutboundRequest`, but only interpolates vars whose names are in `allowed`. */
+export function resolveOutboundRequestSelected(
+  req: HttpRequest,
+  vars: Record<string, string>,
+  autoProtocol: boolean,
+  allowed: ReadonlySet<string>,
+) {
+  const interpolatedUrl = interpolateEnvVarsSelected(req.url, vars, allowed);
+  const headers = interpolateKeyValuesSelected(req.headers, vars, allowed);
+  let finalUrl = interpolatedUrl;
+  if (autoProtocol) finalUrl = ensureProtocol(finalUrl);
+
+  const outbound = resolveOutboundBodySelected(req, vars, allowed);
   return { finalUrl, headers, ...outbound };
 }
 

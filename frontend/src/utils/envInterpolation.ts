@@ -31,6 +31,27 @@ export function interpolateEnvVars(input: string, vars: Record<string, string>):
   });
 }
 
+/**
+ * Interpolate only placeholders whose names are in `allowed`.
+ * - Not allowed: keep the original `{{ ... }}` text.
+ * - Allowed but missing: keep the placeholder (do not blank it).
+ *
+ * Used for two-phase interpolation around pre-request scripts:
+ * phase 1 resolves known vars, phase 2 resolves only script-updated vars.
+ */
+export function interpolateEnvVarsSelected(
+  input: string,
+  vars: Record<string, string>,
+  allowed: ReadonlySet<string>,
+): string {
+  return input.replace(PLACEHOLDER, (full: string, rawName: string) => {
+    const name = String(rawName).trim();
+    if (!name) return '';
+    if (!allowed.has(name)) return full;
+    return Object.prototype.hasOwnProperty.call(vars, name) ? vars[name]! : full;
+  });
+}
+
 /** Resolve `{{other}}` references between variables (same environment), multi-pass. */
 const MAX_RESOLVE_PASSES = 48;
 
@@ -58,5 +79,17 @@ export function interpolateKeyValues(
     ...kv,
     key: interpolateEnvVars(kv.key, vars),
     value: interpolateEnvVars(kv.value, vars),
+  }));
+}
+
+export function interpolateKeyValuesSelected(
+  kvs: { key: string; value: string; enabled: boolean }[],
+  vars: Record<string, string>,
+  allowed: ReadonlySet<string>,
+): { key: string; value: string; enabled: boolean }[] {
+  return kvs.map((kv) => ({
+    ...kv,
+    key: interpolateEnvVarsSelected(kv.key, vars, allowed),
+    value: interpolateEnvVarsSelected(kv.value, vars, allowed),
   }));
 }

@@ -99,6 +99,8 @@ interface AppState {
   setBinaryFile: (file: BinaryBodyFile | null) => void;
   setPreScriptId: (scriptId: string | null) => void;
   mergeScriptVars: (vars: Record<string, string>) => void;
+  /** Clear script output vars for the active tab (done before each send). */
+  clearScriptVars: () => void;
   applyParsedCurl: (parsed: {
     method: string;
     url: string;
@@ -531,6 +533,13 @@ export const useStore = create<AppState>((set, get) => ({
         ...vars,
       },
     });
+  }),
+
+  clearScriptVars: () => set(state => {
+    if (!state.activeTabId) return state;
+    const tab = state.tabs.find((t) => t.id === state.activeTabId);
+    if (!tab || Object.keys(tab.scriptVars ?? {}).length === 0) return state;
+    return updateActiveTab(state, { scriptVars: {} });
   }),
 
   applyParsedCurl: (parsed) => set(state => {
