@@ -10,7 +10,7 @@ import { parseAndApplyCurlCommand } from '../utils/parseCurlCommand';
 import { isImeComposing } from '../utils/keyboard';
 import { focusUrlInput } from '../utils/focusUrl';
 import { EnvVarField } from './EnvVarField';
-import { sendHttpRequest } from '../utils/sendHttpRequest';
+import { cancelHttpRequest, sendHttpRequest } from '../utils/sendHttpRequest';
 import { ensureProtocol } from '../utils/outboundRequest';
 
 const METHODS: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
@@ -94,9 +94,19 @@ export default function UrlBar() {
           suggestListId="url-env-suggest-list"
         />
       </div>
-      <button className="btn btn-send" disabled={loading || sending} onClick={handleSend}>
-        {loading || sending ? t('url.sending') : t('url.send')}
-      </button>
+      {sending ? (
+        <button
+          className="btn btn-secondary"
+          onClick={() => cancelHttpRequest()}
+          title={t('url.cancel')}
+        >
+          {t('url.cancel')}
+        </button>
+      ) : (
+        <button className="btn btn-send" disabled={loading} onClick={handleSend}>
+          {loading ? t('url.sending') : t('url.send')}
+        </button>
+      )}
     </div>
   );
 }

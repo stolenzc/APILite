@@ -17,6 +17,16 @@ function showToast(message: string) {
 
 export const OUTBOUND_CURL_EVENT = 'app:outbound-curl';
 
+let activeSendSeq = 0;
+let cancelledSeq = 0;
+
+export function cancelHttpRequest(): void {
+  cancelledSeq = activeSendSeq;
+  const { setLoading, setSending } = useStore.getState();
+  setLoading(false);
+  setSending(false);
+}
+
 export async function sendHttpRequest(): Promise<void> {
   const req = getActiveHttpRequest();
   if (!req?.url?.trim()) return;
@@ -25,9 +35,13 @@ export async function sendHttpRequest(): Promise<void> {
   const autoProtocol = useSettingsStore.getState().autoCompleteProtocol;
   const activeTabId = useStore.getState().activeTabId;
 
+  const seq = ++activeSendSeq;
+  cancelledSeq = 0;
+
   setSending(true);
   try {
     const { request: reqToSend, vars } = await prepareOutboundRequest(req);
+    if (seq === cancelledSeq) return;
 
     try {
       const curl = await buildCurlForRequest(reqToSend, vars);
@@ -41,6 +55,7 @@ export async function sendHttpRequest(): Promise<void> {
     } catch {
       /* cURL preview is best-effort */
     }
+    if (seq === cancelledSeq) return;
 
     const resolved = resolveOutboundRequest(reqToSend, vars, autoProtocol);
 
@@ -65,6 +80,7 @@ export async function sendHttpRequest(): Promise<void> {
         binaryFileName: resolved.binaryFile?.fileName ?? null,
         binaryDataBase64: resolved.binaryFile?.fileDataBase64 ?? null,
       });
+      if (seq === cancelledSeq) return;
 
       const response: HttpResponse = {
         status: res.status,
@@ -85,6 +101,7 @@ export async function sendHttpRequest(): Promise<void> {
         responseRaw: response.raw ?? res.raw,
       });
     } catch (err) {
+      if (seq === cancelledSeq) return;
       const errorResponse = {
         status: 0,
         statusText: 'Error',
@@ -97,15 +114,16 @@ export async function sendHttpRequest(): Promise<void> {
         raw: formatRawHttpResponse(errorResponse),
       });
     } finally {
-      setLoading(false);
+      if (seq !== cancelledSeq) setLoading(false);
     }
   } catch (err) {
+    if (seq === cancelledSeq) return;
     if (err instanceof OutboundPrepareError) {
       showToast(err.message);
     } else {
       showToast(String(err));
     }
   } finally {
-    setSending(false);
+    if (seq !== cancelledSeq) setSending(false);
   }
 }
