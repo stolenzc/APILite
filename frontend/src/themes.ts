@@ -12,7 +12,68 @@ export interface ThemeColors {
   '--success': string;
   '--warning': string;
   '--error': string;
+  '--syntax-keyword': string;
+  '--syntax-property': string;
+  '--syntax-string': string;
+  '--syntax-number': string;
+  '--syntax-bool': string;
+  '--syntax-comment': string;
+  '--syntax-bracket': string;
+  '--syntax-def': string;
 }
+
+const syntax = {
+  dark: {
+    '--syntax-keyword': '#56b6c2',
+    '--syntax-property': '#e06c75',
+    '--syntax-string': '#98c379',
+    '--syntax-number': '#d19a66',
+    '--syntax-bool': '#56b6c2',
+    '--syntax-comment': '#6a6a7a',
+    '--syntax-bracket': '#a0a0b0',
+    '--syntax-def': '#61afef',
+  },
+  light: {
+    '--syntax-keyword': '#0550ae',
+    '--syntax-property': '#953800',
+    '--syntax-string': '#0a3069',
+    '--syntax-number': '#0550ae',
+    '--syntax-bool': '#0550ae',
+    '--syntax-comment': '#6e7781',
+    '--syntax-bracket': '#57606a',
+    '--syntax-def': '#8250df',
+  },
+  nord: {
+    '--syntax-keyword': '#81a1c1',
+    '--syntax-property': '#8fbcbb',
+    '--syntax-string': '#a3be8c',
+    '--syntax-number': '#b48ead',
+    '--syntax-bool': '#81a1c1',
+    '--syntax-comment': '#616e88',
+    '--syntax-bracket': '#d8dee9',
+    '--syntax-def': '#88c0d0',
+  },
+  solarized: {
+    '--syntax-keyword': '#268bd2',
+    '--syntax-property': '#2aa198',
+    '--syntax-string': '#859900',
+    '--syntax-number': '#d33682',
+    '--syntax-bool': '#268bd2',
+    '--syntax-comment': '#586e75',
+    '--syntax-bracket': '#839496',
+    '--syntax-def': '#b58900',
+  },
+  monokai: {
+    '--syntax-keyword': '#f92672',
+    '--syntax-property': '#a6e22e',
+    '--syntax-string': '#e6db74',
+    '--syntax-number': '#ae81ff',
+    '--syntax-bool': '#66d9ef',
+    '--syntax-comment': '#75715e',
+    '--syntax-bracket': '#f8f8f2',
+    '--syntax-def': '#66d9ef',
+  },
+} as const;
 
 export const themes: Record<string, { label: string; colors: ThemeColors }> = {
   dark: {
@@ -31,6 +92,7 @@ export const themes: Record<string, { label: string; colors: ThemeColors }> = {
       '--success': '#00c853',
       '--warning': '#ffd600',
       '--error': '#ff1744',
+      ...syntax.dark,
     },
   },
   light: {
@@ -49,6 +111,7 @@ export const themes: Record<string, { label: string; colors: ThemeColors }> = {
       '--success': '#00a844',
       '--warning': '#cc9900',
       '--error': '#cc0033',
+      ...syntax.light,
     },
   },
   nord: {
@@ -67,6 +130,7 @@ export const themes: Record<string, { label: string; colors: ThemeColors }> = {
       '--success': '#a3be8c',
       '--warning': '#ebcb8b',
       '--error': '#bf616a',
+      ...syntax.nord,
     },
   },
   solarized: {
@@ -85,6 +149,7 @@ export const themes: Record<string, { label: string; colors: ThemeColors }> = {
       '--success': '#859900',
       '--warning': '#b58900',
       '--error': '#dc322f',
+      ...syntax.solarized,
     },
   },
   monokai: {
@@ -103,6 +168,7 @@ export const themes: Record<string, { label: string; colors: ThemeColors }> = {
       '--success': '#a6e22e',
       '--warning': '#e6db74',
       '--error': '#f92672',
+      ...syntax.monokai,
     },
   },
 };

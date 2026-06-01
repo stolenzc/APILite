@@ -34,6 +34,15 @@
   --kv-table-row-hover: color-mix(in srgb, var(--bg-input) 65%, var(--bg-secondary) 35%);
   --kv-cell-focus-bg: color-mix(in srgb, var(--accent) 22%, var(--bg-tertiary));
   --kv-cell-focus-ring: var(--accent);
+  /* Code / JSON syntax (overridden per theme in themes.ts) */
+  --syntax-keyword: #56b6c2;
+  --syntax-property: #e06c75;
+  --syntax-string: #98c379;
+  --syntax-number: #d19a66;
+  --syntax-bool: #56b6c2;
+  --syntax-comment: #6a6a7a;
+  --syntax-bracket: #a0a0b0;
+  --syntax-def: #61afef;
 }
 
 /* Autocomplete */
@@ -1795,6 +1804,180 @@ input[type="checkbox"].kv-checkbox-lg {
   min-height: 0;
 }
 
+/* CodeMirror selection variables */
+:root {
+  --code-editor-selection-bg: color-mix(in srgb, var(--accent) 48%, var(--bg-input));
+  --code-editor-selection-bg-focused: color-mix(in srgb, var(--accent) 62%, var(--bg-input));
+  --code-editor-selection-ring: color-mix(in srgb, var(--accent) 75%, var(--bg-input));
+}
+
+/* Native browser selection inside CodeMirror (no drawSelection) */
+.cm-content ::selection {
+  background: #e9456066;
+}
+
+.cm-focused .cm-content ::selection {
+  background: #e9456099;
+}
+
+/* Also ensure the old textarea-based editor selection works */
+.code-editor-input::selection {
+  background: #e9456066;
+}
+
+/* CodeEditor (CodeMirror) — shared tokens for body / response / curl */
+.code-editor--cm {
+  --code-editor-bg: var(--bg-input);
+  --code-editor-gutter-bg: color-mix(in srgb, var(--bg-input) 80%, var(--bg-secondary) 20%);
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  font-size: 12px;
+  overflow: hidden;
+  background: var(--code-editor-bg);
+  color: var(--text-primary);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.code-editor--cm.code-editor--fill {
+  display: flex;
+  flex-direction: column;
+}
+
+.code-editor--cm .code-editor--cm-inner {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Override @uiw default light theme (#fff) if it leaks in */
+.code-editor--cm .cm-editor,
+.code-editor--cm .cm-scroller {
+  height: 100%;
+  background-color: var(--code-editor-bg) !important;
+  color: var(--text-primary) !important;
+}
+
+.code-editor--cm .cm-content {
+  background-color: var(--code-editor-bg) !important;
+  color: var(--text-primary) !important;
+}
+
+.code-editor--cm .cm-editor {
+  flex: 1;
+  min-height: 0;
+}
+
+.code-editor--cm .cm-editor.cm-focused {
+  outline: none;
+}
+
+.code-editor--cm .cm-gutters {
+  background-color: var(--code-editor-gutter-bg) !important;
+  color: var(--text-muted) !important;
+  border-right: 1px solid var(--border-color) !important;
+}
+
+/* field = body / cURL (bordered inset) */
+.code-editor--field {
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+}
+
+.code-editor--field:has(.cm-editor.cm-focused) {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+/* surface = response text (full bleed) */
+.code-editor--surface {
+  border: none;
+  border-radius: 0;
+}
+
+.code-editor--surface:has(.cm-editor.cm-focused) {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+.code-editor--readonly .cm-activeLine,
+.code-editor--readonly .cm-activeLineGutter {
+  background: color-mix(in srgb, var(--accent) 6%, transparent) !important;
+}
+
+/* Scrollbar — applies to CodeMirror scroller + response-body */
+.code-editor--cm .cm-scroller::-webkit-scrollbar,
+.response-body::-webkit-scrollbar,
+.curl-panel-body::-webkit-scrollbar {
+  width: 14px;
+  height: 14px;
+}
+
+.code-editor--cm .cm-scroller::-webkit-scrollbar-track,
+.response-body::-webkit-scrollbar-track,
+.curl-panel-body::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+.code-editor--cm .cm-scroller::-webkit-scrollbar-thumb,
+.response-body::-webkit-scrollbar-thumb,
+.curl-panel-body::-webkit-scrollbar-thumb {
+  background: var(--text-muted);
+  border-radius: 7px;
+  border: 3px solid var(--bg-secondary);
+  background-clip: content-box;
+}
+
+.code-editor--cm .cm-scroller::-webkit-scrollbar-thumb:hover,
+.response-body::-webkit-scrollbar-thumb:hover,
+.curl-panel-body::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+.body-editor-content .code-editor--cm {
+  margin: 8px 12px;
+}
+
+.body-editor-root--fill .body-editor-content .code-editor--cm {
+  margin: 0;
+  border-radius: 0;
+  border: none;
+  border-top: 1px solid var(--border-color);
+}
+
+.body-editor-root--fill .body-editor-content .code-editor--cm:has(.cm-editor.cm-focused) {
+  border-top-color: var(--accent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+.curl-panel-body .code-editor--cm {
+  margin: 8px;
+}
+
+/* Response body fill mode */
+.response-body--fill {
+  flex: 1;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.response-body--fill > .code-editor--cm {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  border-radius: 0;
+  border: none;
+}
+
+.response-body--padded {
+  padding: 12px;
+  overflow: auto;
+}
+
 .response-body--line-numbers > .code-editor {
   flex: 1;
   min-height: 0;
@@ -1934,8 +2117,8 @@ input[type="checkbox"].kv-checkbox-lg {
 
 .response-body {
   flex: 1;
+  min-height: 0;
   overflow: auto;
-  padding: 12px;
 }
 
 .response-body--line-numbers {

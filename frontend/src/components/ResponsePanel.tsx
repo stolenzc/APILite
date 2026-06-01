@@ -87,16 +87,18 @@ export default function ResponsePanel() {
         </div>
       </div>
       <div
-        className={`response-body${wordWrap ? ' response-body--wrap' : ''}${
-          response && responseTab !== 'headers' ? ' response-body--line-numbers' : ''
-        }`}
+        className={`response-body${
+          response && responseTab !== 'headers' ? ' response-body--fill' : ''
+        }${responseTab === 'headers' ? ' response-body--padded' : ''}`}
       >
         {response ? (
           responseTab === 'body' ? (
             <CodeEditor
               value={formattedBody}
               language={jsonValid ? 'json' : 'plain'}
-              features={{ lineNumbers: true, highlight: jsonValid, wordWrap }}
+              variant="surface"
+              features={{ wordWrap, editable: false, foldGutter: false }}
+              fill
             />
           ) : responseTab === 'headers' ? (
             <div className="kv-table-wrap">
@@ -113,7 +115,9 @@ export default function ResponsePanel() {
             <CodeEditor
               value={rawHttp}
               language="plain"
-              features={{ lineNumbers: true, wordWrap }}
+              variant="surface"
+              features={{ wordWrap, editable: false, foldGutter: false }}
+              fill
             />
           )
         ) : null}

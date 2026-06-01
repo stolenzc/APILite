@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import type { EditorKeyEvent } from '../utils/keyboard';
 import { useStore } from '../store/useStore';
 import { matchesShortcutCombo, useSettingsStore } from '../store/useSettings';
 import type { BodyType, RawContentType } from '../types';
@@ -10,7 +11,7 @@ import { pickFilePath, readBrowserFileAsBase64 } from '../utils/filePicker';
 import { isTauri } from '../tauri/setupMenu';
 import { isImeComposing } from '../utils/keyboard';
 
-function isSendRequestShortcut(e: React.KeyboardEvent): boolean {
+function isSendRequestShortcut(e: EditorKeyEvent): boolean {
   return matchesShortcutCombo(e, useSettingsStore.getState().shortcuts.sendRequest);
 }
 
@@ -95,111 +96,10 @@ function JsonBody({ wordWrap }: { wordWrap: boolean }) {
   const body = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.body ?? '');
   const setBody = useStore((s) => s.setBody);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyDown = (e: EditorKeyEvent) => {
     if (isImeComposing(e)) return;
     if (isSendRequestShortcut(e)) {
       e.preventDefault();
-      return;
-    }
-
-    if (e.key === 'Tab' && !e.ctrlKey && !e.metaKey) {
-      e.preventDefault();
-      const ta = e.currentTarget;
-      const start = ta.selectionStart;
-      const end = ta.selectionEnd;
-      const before = body.substring(0, start);
-      const after = body.substring(end);
-      if (e.shiftKey) {
-        const lineStart = before.lastIndexOf('\n') + 1;
-        const linePrefix = before.substring(lineStart);
-        const removed = linePrefix.replace(/^ {1,2}/, '');
-        setBody(before.substring(0, lineStart) + removed + after);
-        const newPos = start - (linePrefix.length - removed.length);
-        setTimeout(() => { ta.selectionStart = ta.selectionEnd = newPos; }, 0);
-      } else {
-        setBody(before + '  ' + after);
-        setTimeout(() => { ta.selectionStart = ta.selectionEnd = start + 2; }, 0);
-      }
-    }
-
-    if (e.key === 'Enter' && !e.metaKey && !e.ctrlKey) {
-      const ta = e.currentTarget;
-      const start = ta.selectionStart;
-      const lineStart = body.lastIndexOf('\n', start - 1) + 1;
-      const linePrefix = body.substring(lineStart, start).match(/^(\s*)/)?.[1] ?? '';
-
-      const charBefore = body[start - 1];
-      const charAfter = body[start];
-      if ((charBefore === '{' || charBefore === '[') && (charAfter === '}' || charAfter === ']')) {
-        e.preventDefault();
-        const indent = linePrefix + '  ';
-        const insert = '\n' + indent + '\n' + linePrefix;
-        setBody(body.substring(0, start) + insert + body.substring(start));
-        setTimeout(() => {
-          ta.selectionStart = ta.selectionEnd = start + 1 + indent.length;
-        }, 0);
-      } else if (charBefore === '{' || charBefore === '[') {
-        e.preventDefault();
-        const indent = linePrefix + '  ';
-        const insert = '\n' + indent;
-        setBody(body.substring(0, start) + insert + body.substring(start));
-        setTimeout(() => { ta.selectionStart = ta.selectionEnd = start + insert.length; }, 0);
-      } else if (charBefore === ',') {
-        e.preventDefault();
-        const insert = '\n' + linePrefix;
-        setBody(body.substring(0, start) + insert + body.substring(start));
-        setTimeout(() => { ta.selectionStart = ta.selectionEnd = start + insert.length; }, 0);
-      } else if (linePrefix) {
-        e.preventDefault();
-        const insert = '\n' + linePrefix;
-        setBody(body.substring(0, start) + insert + body.substring(start));
-        setTimeout(() => { ta.selectionStart = ta.selectionEnd = start + insert.length; }, 0);
-      }
-    }
-
-    const autoClosePairs: [string, string][] = [['[', ']'], ['"', '"']];
-    if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
-      const ta = e.currentTarget;
-      const start = ta.selectionStart;
-      const charAfter = body[start];
-      if (e.key === '{') {
-        const charBefore = body[start - 1];
-        // Second "{" of "{{env}}" — let default input run (do not insert "}").
-        if (charBefore === '{') return;
-        if (charAfter === '}') {
-          e.preventDefault();
-          setTimeout(() => { ta.selectionStart = ta.selectionEnd = start + 1; }, 0);
-          return;
-        }
-        e.preventDefault();
-        setBody(body.substring(0, start) + '{}' + body.substring(start));
-        setTimeout(() => { ta.selectionStart = ta.selectionEnd = start + 1; }, 0);
-        return;
-      }
-      for (const [open, close] of autoClosePairs) {
-        if (e.key === open) {
-          if (charAfter === close) {
-            e.preventDefault();
-            setTimeout(() => { ta.selectionStart = ta.selectionEnd = start + 1; }, 0);
-            return;
-          } else if (open === '"') {
-            const charBefore = body[start - 1];
-            const shouldClose = !charBefore || /[\s{[\(,:]/.test(charBefore);
-            if (shouldClose) {
-              e.preventDefault();
-              const insert = '""';
-              setBody(body.substring(0, start) + insert + body.substring(start));
-              setTimeout(() => { ta.selectionStart = ta.selectionEnd = start + 1; }, 0);
-            }
-          } else {
-            e.preventDefault();
-            const insert = open + close;
-            setBody(body.substring(0, start) + insert + body.substring(start));
-            setTimeout(() => { ta.selectionStart = ta.selectionEnd = start + 1; }, 0);
-          }
-          return;
-        }
-      }
     }
   };
 
@@ -208,7 +108,7 @@ function JsonBody({ wordWrap }: { wordWrap: boolean }) {
       value={body}
       onValueChange={setBody}
       language="json"
-      features={{ lineNumbers: true, highlight: true, envVars: true, wordWrap }}
+      features={{ envVars: true, lintJsonc: true, wordWrap }}
       fill
       onKeyDown={handleKeyDown}
       placeholder={t('body.json.placeholder')}
@@ -228,7 +128,7 @@ function RawContentEditor({
 
   const placeholderKey = PLACEHOLDER_KEYS[rawContentType] ?? '';
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyDown = (e: EditorKeyEvent) => {
     if (isImeComposing(e)) return;
     if (isSendRequestShortcut(e)) {
       e.preventDefault();
@@ -240,7 +140,7 @@ function RawContentEditor({
       value={body}
       onValueChange={setBody}
       language="plain"
-      features={{ lineNumbers: true, envVars: true, wordWrap }}
+      features={{ envVars: true, wordWrap }}
       fill
       onKeyDown={handleKeyDown}
       placeholder={placeholderKey ? t(placeholderKey) : ''}
@@ -295,7 +195,7 @@ export default function BodyEditor() {
   const setRawContentType = useStore((s) => s.setRawContentType);
   const setBody = useStore((s) => s.setBody);
 
-  const jsonValid = body.length > 0 && isJsonc(body);
+  const jsonValid = body.length > 0 && isJsonc(body, { ignoreEnvPlaceholders: true });
 
   const handleFormat = () => {
     if (!body) return;
@@ -305,7 +205,7 @@ export default function BodyEditor() {
 
   const handleMinify = () => {
     if (!body) return;
-    if (parseJsonc(body).valid) setBody(jsoncToStrictJson(body));
+    if (parseJsonc(body, { ignoreEnvPlaceholders: true }).valid) setBody(jsoncToStrictJson(body));
   };
 
   const isJsonBody = bodyType === 'raw' && rawContentType === 'json';

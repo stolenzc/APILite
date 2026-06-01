@@ -1,15 +1,35 @@
 import * as jsonc from 'jsonc-parser';
 
-export function parseJsonc(input: string): { value: unknown; valid: boolean } {
+/** `{{var}}` placeholders — stripped only for JSONC validation, not for send/minify. */
+const ENV_PLACEHOLDER = /\{\{\s*[^}]*?\s*\}\}/g;
+
+export type ParseJsoncOptions = {
+  /** Treat `{{name}}` as empty for validity checks (body editor / linter). */
+  ignoreEnvPlaceholders?: boolean;
+};
+
+export function stripEnvPlaceholdersForJsonc(input: string): string {
+  return input.replace(ENV_PLACEHOLDER, '');
+}
+
+function jsoncTextForParse(input: string, options?: ParseJsoncOptions): string {
+  return options?.ignoreEnvPlaceholders ? stripEnvPlaceholdersForJsonc(input) : input;
+}
+
+export function parseJsonc(
+  input: string,
+  options?: ParseJsoncOptions,
+): { value: unknown; valid: boolean } {
+  const text = jsoncTextForParse(input, options);
   const errors: jsonc.ParseError[] = [];
-  const value = jsonc.parse(input, errors, { allowTrailingComma: true });
+  const value = jsonc.parse(text, errors, { allowTrailingComma: true });
   return { value, valid: errors.length === 0 };
 }
 
 /** True when input is valid JSONC (comments and trailing commas allowed). */
-export function isJsonc(input: string): boolean {
+export function isJsonc(input: string, options?: ParseJsoncOptions): boolean {
   if (!input.trim()) return false;
-  return parseJsonc(input).valid;
+  return parseJsonc(input, { ignoreEnvPlaceholders: true, ...options }).valid;
 }
 
 /** Remove JSONC comments outside of string literals. */
@@ -55,11 +75,95 @@ function stripJsoncComments(input: string): string {
   return out;
 }
 
+/** Format JSONC while keeping comments at their nearest structural position. */
 export function formatJsonc(input: string): { formatted: string; valid: boolean } {
   if (!input.trim()) return { formatted: input, valid: false };
-  const { valid } = parseJsonc(input);
+  const { valid } = parseJsonc(input, { ignoreEnvPlaceholders: true });
   if (!valid) return { formatted: input, valid: false };
-  return formatJson(stripJsoncComments(input));
+
+  const segments = splitJsoncSegments(input);
+
+  // Classify each comment as inline or standalone.
+  type CommentInfo = {
+    inline: boolean;
+    anchor: string; // trimmed code line the comment is anchored to
+    text: string;
+  };
+  const comments: CommentInfo[] = [];
+  let codeLine = 0;
+  let codeLineContent = '';
+  let codeLineHasContent = false;
+
+  for (const seg of segments) {
+    if (seg.type === 'comment') {
+      comments.push({
+        inline: codeLineHasContent,
+        anchor: codeLineContent.trim(),
+        text: seg.text,
+      });
+    } else {
+      for (let i = 0; i < seg.text.length; i++) {
+        const ch = seg.text[i];
+        if (ch === '\n') {
+          codeLine++;
+          codeLineContent = '';
+          codeLineHasContent = false;
+        } else {
+          codeLineContent += ch;
+          if (ch !== ' ' && ch !== '\t' && ch !== '\r') {
+            codeLineHasContent = true;
+          }
+        }
+      }
+    }
+  }
+
+  const codeOnly = segments
+    .filter((seg): seg is JsoncSegment & { type: 'code' } => seg.type === 'code')
+    .map((seg) => seg.text)
+    .join('');
+  const trimmed = codeOnly.trim();
+  if (!trimmed) return { formatted: input, valid: false };
+
+  const { formatted, valid: fmtOk } = formatJson(trimmed);
+  if (!fmtOk) return { formatted: input, valid: false };
+  if (comments.length === 0) return { formatted, valid: true };
+
+  const lines = formatted.split('\n');
+
+  // Find the formatted line that contains a given anchor substring.
+  const findLine = (anchor: string): number => {
+    if (!anchor) return -1;
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].includes(anchor)) return i;
+    }
+    return -1;
+  };
+
+  // Insert in reverse order so indices don't shift.
+  const sorted = [...comments].sort((a, b) => {
+    const ai = findLine(a.anchor);
+    const bi = findLine(b.anchor);
+    return bi - ai || (b.inline ? 1 : 0) - (a.inline ? 1 : 0);
+  });
+
+  for (const comment of sorted) {
+    const commentText = comment.text.replace(/\n$/, '');
+    if (comment.inline && comment.anchor) {
+      // Inline: append to the same formatted line.
+      const li = findLine(comment.anchor);
+      if (li >= 0) {
+        lines[li] = lines[li] + '  ' + commentText;
+        continue;
+      }
+    }
+    // Standalone: insert before the next code line.
+    const li = findLine(comment.anchor);
+    const insertAt = li >= 0 ? li : lines.length;
+    lines.splice(insertAt, 0, commentText);
+  }
+
+  return { formatted: lines.join('\n'), valid: true };
 }
 
 /** Compact JSONC to strict JSON (comments stripped, large integers preserved). */
