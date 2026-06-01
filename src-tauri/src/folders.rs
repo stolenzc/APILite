@@ -20,6 +20,8 @@ struct HttpRequest {
     pub body_type: String,
     pub raw_content_type: String,
     pub body: String,
+    #[serde(default)]
+    pub pre_script_id: Option<String>,
 }
 
 /// On-disk file: one top-level folder (full tree in `children`).
