@@ -40,6 +40,9 @@ export const defaultShortcuts: ShortcutConfig = {
   nextTab: `${mod}+Alt+ArrowRight`,
 };
 
+/** Pre-request script execution: simple = one Python process per send; fast = long-lived daemon. */
+export type ScriptExecutionMode = 'simple' | 'fast';
+
 export interface AppSettings {
   theme: string;
   locale: Locale;
@@ -61,6 +64,8 @@ export interface AppSettings {
   historyMaxCount: number;
   /** New folders start collapsed when true, expanded when false. */
   folderDefaultCollapsed: boolean;
+  /** Pre-request Python: simple (default) or fast (daemon, lower latency). */
+  scriptExecutionMode: ScriptExecutionMode;
 }
 
 export const defaultSettings: AppSettings = {
@@ -80,7 +85,14 @@ export const defaultSettings: AppSettings = {
   historyMaxAgeDays: 30,
   historyMaxCount: 1000,
   folderDefaultCollapsed: false,
+  scriptExecutionMode: 'simple',
 };
+
+function normalizeScriptExecutionMode(
+  mode: string | undefined,
+): ScriptExecutionMode {
+  return mode === 'fast' ? 'fast' : 'simple';
+}
 
 const HISTORY_AGE_MIN = 1;
 const HISTORY_AGE_MAX = 3650;
@@ -135,6 +147,7 @@ function loadSettings(): AppSettings {
         ),
         folderDefaultCollapsed:
           parsed.folderDefaultCollapsed ?? defaultSettings.folderDefaultCollapsed,
+        scriptExecutionMode: normalizeScriptExecutionMode(parsed.scriptExecutionMode),
       };
     }
   } catch { /* ignore */ }
@@ -168,6 +181,7 @@ interface SettingsState extends AppSettings {
   setHistoryMaxAgeDays: (days: number) => void;
   setHistoryMaxCount: (count: number) => void;
   setFolderDefaultCollapsed: (collapsed: boolean) => void;
+  setScriptExecutionMode: (mode: ScriptExecutionMode) => void;
 }
 
 export const useSettingsStore = create<SettingsState>((set) => {
@@ -306,6 +320,19 @@ export const useSettingsStore = create<SettingsState>((set) => {
     setFolderDefaultCollapsed: (folderDefaultCollapsed) => set(state => {
       const next = { ...state, folderDefaultCollapsed };
       saveSettings(next);
+      return next;
+    }),
+
+    setScriptExecutionMode: (scriptExecutionMode) => set(state => {
+      const next = { ...state, scriptExecutionMode };
+      saveSettings(next);
+      if (scriptExecutionMode === 'simple' && state.dataDir) {
+        void import('@tauri-apps/api/core').then(({ invoke }) =>
+          invoke('scripts_stop_daemon', { dataDir: state.dataDir }).catch(() => {
+            /* desktop only */
+          }),
+        );
+      }
       return next;
     }),
   };

@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import type { HttpRequest } from '../types';
 import { isTauri } from '../tauri/setupMenu';
 import { resolveDataDir } from './storagePaths';
+import { useSettingsStore } from '../store/useSettings';
 import {
   buildPreScriptPayload,
   parseScriptRunResult,
@@ -30,6 +31,7 @@ export async function runPreScript(
     dataDir,
     scriptId,
     payloadJson: payload,
+    useDaemon: useSettingsStore.getState().scriptExecutionMode === 'fast',
   });
 
   return parseScriptRunResult(raw);

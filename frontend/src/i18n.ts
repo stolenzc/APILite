@@ -185,6 +185,11 @@ const messages: Record<Locale, Record<string, string>> = {
     'settings.folders.hint': 'Applies when creating new folders. Use ⊟/⊞ in the sidebar to collapse or expand all.',
     'settings.folders.defaultExpanded': 'Expanded by default',
     'settings.folders.defaultCollapsed': 'Collapsed by default',
+    'settings.scripts.title': 'Pre-request scripts',
+    'settings.scripts.hint':
+      'Simple: start Python only when sending (saves memory). Fast: keep a Python process running (faster repeated sends). Scripts are always loaded from disk on each run.',
+    'settings.scripts.simple': 'Simple (default)',
+    'settings.scripts.fast': 'Fast (daemon)',
 
     // Shortcut labels
     'shortcut.sendRequest': 'Send Request',
@@ -409,6 +414,11 @@ const messages: Record<Locale, Record<string, string>> = {
     'settings.folders.hint': '仅影响新建文件夹。侧栏 ⊟/⊞ 可折叠或展开全部。',
     'settings.folders.defaultExpanded': '默认全部展开',
     'settings.folders.defaultCollapsed': '默认全部折叠',
+    'settings.scripts.title': 'Pre 请求脚本',
+    'settings.scripts.hint':
+      '简单：仅在发送时启动 Python（省资源）。快速：常驻 Python 进程（连发更快）。每次运行都会从磁盘重新加载脚本文件。',
+    'settings.scripts.simple': '简单（默认）',
+    'settings.scripts.fast': '快速（守护进程）',
 
     // Shortcut labels
     'shortcut.sendRequest': '发送请求',

@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 use std::sync::OnceLock;
 use std::time::{Duration, Instant};
@@ -17,18 +19,16 @@ import sys
 import importlib.util
 from pathlib import Path
 
-_MODULE_CACHE = {}
-
 def _load_module(script_path: str):
-    if script_path in _MODULE_CACHE:
-        return _MODULE_CACHE[script_path]
+    """Load script from disk every time (no module cache) so edits take effect immediately."""
     path = Path(script_path)
-    spec = importlib.util.spec_from_file_location(f"apilite_user_{path.stem}", path)
+    mod_name = f"apilite_user_{path.stem}"
+    sys.modules.pop(mod_name, None)
+    spec = importlib.util.spec_from_file_location(mod_name, path)
     if spec is None or spec.loader is None:
         raise RuntimeError(f"Cannot load script: {script_path}")
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
-    _MODULE_CACHE[script_path] = mod
     return mod
 
 def main() -> None:
@@ -65,9 +65,16 @@ struct DaemonProcess {
 }
 
 static DAEMONS: OnceLock<Mutex<HashMap<String, DaemonProcess>>> = OnceLock::new();
+static DAEMON_SOURCE_FP: OnceLock<Mutex<HashMap<String, u64>>> = OnceLock::new();
 
 fn daemons() -> &'static Mutex<HashMap<String, DaemonProcess>> {
     DAEMONS.get_or_init(|| Mutex::new(HashMap::new()))
+}
+
+fn daemon_source_fingerprint() -> u64 {
+    let mut h = DefaultHasher::new();
+    DAEMON_SOURCE.hash(&mut h);
+    h.finish()
 }
 
 pub fn ensure_daemon_script(data_dir: &str) -> Result<PathBuf, String> {
@@ -76,7 +83,7 @@ pub fn ensure_daemon_script(data_dir: &str) -> Result<PathBuf, String> {
     Ok(path)
 }
 
-async fn stop_daemon(data_dir: &str) {
+pub async fn stop_daemon(data_dir: &str) {
     let mut map = daemons().lock().await;
     if let Some(mut proc) = map.remove(data_dir) {
         let _ = proc.child.kill().await;
@@ -123,6 +130,17 @@ async fn spawn_daemon(data_dir: &str) -> Result<(), String> {
 }
 
 async fn ensure_daemon_running(data_dir: &str) -> Result<(), String> {
+    let fp = daemon_source_fingerprint();
+    let fps = DAEMON_SOURCE_FP.get_or_init(|| Mutex::new(HashMap::new()));
+    let mut fp_map = fps.lock().await;
+    if fp_map.get(data_dir) != Some(&fp) {
+        fp_map.insert(data_dir.to_string(), fp);
+        drop(fp_map);
+        stop_daemon(data_dir).await;
+    } else {
+        drop(fp_map);
+    }
+
     let mut map = daemons().lock().await;
     if let Some(proc) = map.get_mut(data_dir) {
         match proc.child.try_wait() {
@@ -167,7 +185,7 @@ fn parse_script_stdout(stdout: &str, stderr: &str, duration_ms: u64) -> Result<R
     })
 }
 
-/// Run via long-lived Python daemon (module cache). Falls back to one-shot on failure.
+/// Run via long-lived Python daemon (reloads script file each request). Falls back to one-shot on failure.
 pub async fn run_script_via_daemon(
     data_dir: &str,
     payload_json: &str,

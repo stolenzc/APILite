@@ -205,6 +205,7 @@ async fn scripts_run_pre(
     data_dir: String,
     script_id: String,
     payload_json: String,
+    use_daemon: bool,
 ) -> Result<script_runner::RunScriptResult, String> {
     let entry = scripts::entry_by_id(&data_dir, &script_id)?;
     let scripts_root = script_runner::scripts_dir(&data_dir);
@@ -222,7 +223,12 @@ async fn scripts_run_pre(
         );
     }
     let merged = serde_json::to_string(&payload).map_err(|e| e.to_string())?;
-    script_runner::run_script(&data_dir, &entry.file, &merged, None).await
+    script_runner::run_script(&data_dir, &entry.file, &merged, None, use_daemon).await
+}
+
+#[tauri::command]
+async fn scripts_stop_daemon(data_dir: String) {
+    script_daemon::stop_daemon(&data_dir).await;
 }
 
 fn main() {
@@ -261,6 +267,7 @@ fn main() {
             scripts_delete,
             scripts_read_source,
             scripts_run_pre,
+            scripts_stop_daemon,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

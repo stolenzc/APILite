@@ -97,20 +97,24 @@ pub fn venv_status(data_dir: &str) -> bool {
 }
 
 /// Run a user script with JSON payload on stdin; expects JSON object on stdout.
+/// When `use_daemon` is false (simple mode), each run spawns a fresh Python process.
 pub async fn run_script(
     data_dir: &str,
     script_rel_path: &str,
     payload_json: &str,
     timeout_secs: Option<u64>,
+    use_daemon: bool,
 ) -> Result<RunScriptResult, String> {
     let scripts_root = scripts_dir(data_dir);
     let _script_path = resolve_script_path(&scripts_root, script_rel_path)?;
 
-    match crate::script_daemon::run_script_via_daemon(data_dir, payload_json, timeout_secs).await
-    {
-        Ok(result) => return Ok(result),
-        Err(daemon_err) => {
-            eprintln!("Script daemon unavailable, falling back to one-shot: {daemon_err}");
+    if use_daemon {
+        match crate::script_daemon::run_script_via_daemon(data_dir, payload_json, timeout_secs).await
+        {
+            Ok(result) => return Ok(result),
+            Err(daemon_err) => {
+                eprintln!("Script daemon unavailable, falling back to one-shot: {daemon_err}");
+            }
         }
     }
 
