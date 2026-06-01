@@ -14,6 +14,7 @@ import { isImeComposing } from '../utils/keyboard';
 import { methodColors } from '../constants';
 import { useSettingsStore } from '../store/useSettings';
 import TreeChevron from './TreeChevron';
+import { dispatchFocusUrl } from '../utils/focusUrl';
 
 // Global drag state shared across all TreeNodes
 let dragSourceId: string | null = null;
@@ -125,6 +126,31 @@ function filterFolderTree(nodes: TreeNode[], query: string): TreeNode[] {
     return out;
   };
   return walk(nodes);
+}
+
+function flattenVisibleNodes(nodes: TreeNode[]): TreeNode[] {
+  const out: TreeNode[] = [];
+  const walk = (list: TreeNode[]) => {
+    for (const n of list) {
+      out.push(n);
+      if (n.type === 'folder' && !n.collapsed) {
+        walk(n.children);
+      }
+    }
+  };
+  walk(nodes);
+  return out;
+}
+
+function findNodeById(nodes: TreeNode[], id: string): TreeNode | null {
+  for (const n of nodes) {
+    if (n.id === id) return n;
+    if (n.type === 'folder') {
+      const found = findNodeById(n.children, id);
+      if (found) return found;
+    }
+  }
+  return null;
 }
 
 function TreeNode({ node, depth = 0 }: { node: TreeNode; depth?: number }) {
@@ -477,6 +503,103 @@ export default function FolderSidebar() {
     () => areAllFoldersCollapsed(folders),
     [folders],
   );
+
+  const keyboardList = useMemo(() => flattenVisibleNodes(visibleFolders), [visibleFolders]);
+
+  // Keyboard shortcuts: arrows navigate; left/right collapse/expand; Enter opens request.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (isImeComposing(e as unknown as React.KeyboardEvent)) return;
+      const key = e.key;
+
+      const el = document.activeElement as HTMLElement | null;
+      const tag = el?.tagName?.toLowerCase() ?? '';
+      const isTypingTarget =
+        tag === 'input' ||
+        tag === 'textarea' ||
+        el?.isContentEditable === true;
+      const isSearchInput = el?.classList?.contains('sidebar-folder-search-input') ?? false;
+
+      // When typing in other inputs, don't steal arrows/enter.
+      if (isTypingTarget && !isSearchInput) return;
+
+      const list = keyboardList;
+      if (list.length === 0) return;
+
+      const curId = useFolderStore.getState().activeNodeId;
+      const curIdx = curId ? list.findIndex((n) => n.id === curId) : -1;
+
+      const setActiveByIndex = (idx: number) => {
+        const clamped = Math.max(0, Math.min(list.length - 1, idx));
+        useFolderStore.getState().setActiveNode(list[clamped]!.id);
+      };
+
+      const move = (delta: number) => {
+        if (curIdx === -1) setActiveByIndex(0);
+        else setActiveByIndex(curIdx + delta);
+      };
+
+      if (key === 'ArrowDown') {
+        e.preventDefault();
+        move(1);
+        return;
+      }
+      if (key === 'ArrowUp') {
+        e.preventDefault();
+        move(-1);
+        return;
+      }
+
+      // In search mode: left/right also move within results.
+      if (searching) {
+        if (key === 'ArrowLeft') {
+          e.preventDefault();
+          move(-1);
+          return;
+        }
+        if (key === 'ArrowRight') {
+          e.preventDefault();
+          move(1);
+          return;
+        }
+      } else {
+        // Tree mode: left collapses folder; right expands folder.
+        if (key === 'ArrowLeft' || key === 'ArrowRight') {
+          const id = useFolderStore.getState().activeNodeId;
+          if (!id) return;
+          const node = findNodeById(useFolderStore.getState().folders, id);
+          if (!node || node.type !== 'folder') return;
+          if (key === 'ArrowLeft' && !node.collapsed) {
+            e.preventDefault();
+            useFolderStore.getState().toggleCollapse(id);
+            return;
+          }
+          if (key === 'ArrowRight' && node.collapsed) {
+            e.preventDefault();
+            useFolderStore.getState().toggleCollapse(id);
+            return;
+          }
+        }
+      }
+
+      if (key === 'Enter') {
+        const id = useFolderStore.getState().activeNodeId;
+        if (!id) return;
+        const node = findNodeById(useFolderStore.getState().folders, id);
+        if (!node || node.type !== 'request') return;
+        e.preventDefault();
+        const req = useFolderStore.getState().loadRequest(id);
+        if (!req) return;
+        const path = getFolderPath(useFolderStore.getState().folders, id);
+        useStore.getState().openTabFromFolder(req, node.name, path, id);
+        // Move focus into request editor (URL bar) after opening.
+        dispatchFocusUrl();
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [keyboardList, searching]);
 
   /** Only clear search when switching tabs (or folders reload): if the new active node is hidden by the current filter. Never clear while the user is typing (that would use stale activeTabRequestNodeId with changing visibleFolders). */
   useEffect(() => {
