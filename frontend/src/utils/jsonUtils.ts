@@ -390,6 +390,9 @@ function prettyPrintJsonTokens(tokens: JsonToken[]): string {
       case '{':
       case '[': {
         const close = t.value === '{' ? '}' : ']';
+        // These can start a value at the beginning of a line (e.g. inside arrays),
+        // so we must write indentation when needed.
+        writeIndent();
         result += t.value;
         if (next?.kind === 'punct' && next.value === close) break;
         depth++;
