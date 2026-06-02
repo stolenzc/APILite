@@ -27,6 +27,13 @@
 - [Interface Overview](#interface-overview)
 - [Environments](#environments)
 - [Pre-request Scripts (Python)](#pre-request-scripts-python)
+  - [Setup](#setup)
+  - [Manage scripts](#manage-scripts)
+  - [Bind a script to a request](#bind-a-script-to-a-request)
+  - [When it runs](#when-it-runs)
+  - [Script contract](#script-contract)
+  - [Example](#example)
+  - [Data on disk](#data-on-disk)
 - [Saving Requests to Folders](#saving-requests-to-folders)
 - [Making Requests](#making-requests)
   - [Sending a Request](#sending-a-request)
@@ -37,6 +44,7 @@
 - [Request Headers](#request-headers)
   - [Autocomplete](#autocomplete)
 - [Request Body](#request-body)
+  - [Body editor tools](#body-editor-tools)
 - [Response Panel](#response-panel)
 - [cURL Import \& Export](#curl-import--export)
   - [Import cURL](#import-curl)
@@ -96,16 +104,16 @@ APILite/
 
 ## Interface Overview
 
-| Area                    | Description                                                                                                                                 |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Title bar**        | Panel toggles: folders (left), history (bottom), cURL (right), and settings (⚙). On macOS the bar sits in the overlay title-bar region. |
-| **Tab bar**          | Request tabs, **+** for a new tab, environment dropdown and manage (⚙).                                                                     |
-| **Folders sidebar**  | Optional left panel — tree of folders and saved requests.                                                                                   |
-| **URL bar**             | HTTP method, URL, **Send**.                                                                                                                 |
-| **Request editor**      | **Params**, **Headers**, **Body**, **Pre Script** tabs (scripts are desktop-only).                                                          |
-| **Response panel**      | Status, duration, body / headers / raw HTTP. A loading overlay appears while a request is in flight.                                        |
-| **cURL panel**          | Optional right panel — live cURL for the current request with **Copy**.                                                                     |
-| **History panel**       | Optional bottom dock — persisted history; drag the top edge to resize.                                                                      |
+| Area                | Description                                                                                                                             |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| **Title bar**       | Panel toggles: folders (left), history (bottom), cURL (right), and settings (⚙). On macOS the bar sits in the overlay title-bar region. |
+| **Tab bar**         | Request tabs, **+** for a new tab, environment dropdown and manage (⚙).                                                                 |
+| **Folders sidebar** | Optional left panel — tree of folders and saved requests.                                                                               |
+| **URL bar**         | HTTP method, URL, **Send**.                                                                                                             |
+| **Request editor**  | **Params**, **Headers**, **Body**, **Pre Script** tabs (scripts are desktop-only).                                                      |
+| **Response panel**  | Status, duration, body / headers / raw HTTP. A loading overlay appears while a request is in flight.                                    |
+| **cURL panel**      | Optional right panel — live cURL for the current request with **Copy**.                                                                 |
+| **History panel**   | Optional bottom dock — persisted history; drag the top edge to resize.                                                                  |
 
 Thin drag handles (same style as the history dock) resize the response area, folders sidebar, cURL panel, and history height.
 
@@ -172,21 +180,21 @@ def run(ctx):
 
 **`ctx`** (JSON object passed to Python):
 
-| Field       | Description |
-| ----------- | ----------- |
-| `phase`     | Always `"pre"`. |
-| `request`   | Current request: `method`, `url`, `headers` (map), `bodyType`. For JSON/JSONC, `body` is strict JSON (comments stripped) and `bodyJson` is the parsed object; `bodyParseError` when invalid. Prefer `bodyJson` in Python. |
-| `env`       | Active environment variables (resolved map). |
-| `vars`      | Script variables already on this tab plus env (script wins on conflicts). |
+| Field     | Description                                                                                                                                                                                                               |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `phase`   | Always `"pre"`.                                                                                                                                                                                                           |
+| `request` | Current request: `method`, `url`, `headers` (map), `bodyType`. For JSON/JSONC, `body` is strict JSON (comments stripped) and `bodyJson` is the parsed object; `bodyParseError` when invalid. Prefer `bodyJson` in Python. |
+| `env`     | Active environment variables (resolved map).                                                                                                                                                                              |
+| `vars`    | Script variables already on this tab plus env (script wins on conflicts).                                                                                                                                                 |
 
 **Return value** (printed as JSON on stdout):
 
-| Field      | Required | Description |
-| ---------- | -------- | ----------- |
-| `ok`       | yes      | `true` to continue sending; `false` to cancel. |
-| `vars`     | no       | Keys merged for this send and stored on the tab; use `{{name}}` in URL/headers/body. |
-| `request`  | no       | Partial update: `url`, `method`, `headers` (map), `body`, `bodyType`. |
-| `error`    | no       | Message when `ok` is `false`. |
+| Field     | Required | Description                                                                          |
+| --------- | -------- | ------------------------------------------------------------------------------------ |
+| `ok`      | yes      | `true` to continue sending; `false` to cancel.                                       |
+| `vars`    | no       | Keys merged for this send and stored on the tab; use `{{name}}` in URL/headers/body. |
+| `request` | no       | Partial update: `url`, `method`, `headers` (map), `body`, `bodyType`.                |
+| `error`   | no       | Message when `ok` is `false`.                                                        |
 
 ### Example
 
@@ -303,6 +311,16 @@ Switch to the **Body** tab to configure the request body. Supported formats:
 
 For **Form Data** and **x-www-form-urlencoded**, use the key/value table in the Body tab (enable rows with the checkbox). File fields open a file picker (desktop) or browser file input. **Raw** subtypes (JSON, XML, etc.) include placeholder templates where helpful.
 
+### Body editor tools
+
+When editing **Raw → JSON**, the body editor includes:
+
+- **Find / Replace**: press **⌘/Ctrl+F** to search; replace is available from the search panel
+- **Format / Minify**: JSONC-aware formatting and minification
+- **Normalize to JSON**: best-effort conversion for object-like text:
+  - single quotes → double quotes
+  - `True/False/None` → `true/false/null`
+
 ---
 
 ## Response Panel
@@ -398,19 +416,19 @@ Configure shortcuts in **Settings**. **Reset Shortcuts** restores defaults; **Re
 
 Most defaults use **⌘** on macOS and **Ctrl** on Windows/Linux. **Toggle History** always uses physical **Ctrl+`** (not Command on Mac). Menu bar items (**APILite** / **Tab**) mirror some actions in the Tauri build and only apply while the app is focused.
 
-| Action                     | macOS   | Windows / Linux      |
-| -------------------------- | ------- | -------------------- |
-| Send Request               | ⌘ Enter | Ctrl+Enter           |
-| Save Request               | ⌘ S     | Ctrl+S               |
-| Toggle Folders Sidebar     | ⌘ B     | Ctrl+B               |
-| Toggle History Panel       | Ctrl+`  | Ctrl+`               |
-| Toggle cURL Panel          | ⌘ ⌥ B   | Ctrl+Alt+B           |
-| Focus URL Bar              | ⌘ L     | Ctrl+L               |
-| Focus Folder Search        | ⌘ ⇧ F   | Ctrl+Shift+F         |
-| Open Settings              | ⌘ ,     | Ctrl+,               |
-| New Tab                    | ⌘ T     | Ctrl+T               |
-| Close Tab                  | ⌘ W     | Ctrl+W               |
-| Previous Tab               | ⌘ ⌥ ←   | Ctrl+Alt+Left Arrow  |
-| Next Tab                   | ⌘ ⌥ →   | Ctrl+Alt+Right Arrow |
+| Action                 | macOS   | Windows / Linux      |
+| ---------------------- | ------- | -------------------- |
+| Send Request           | ⌘ Enter | Ctrl+Enter           |
+| Save Request           | ⌘ S     | Ctrl+S               |
+| Toggle Folders Sidebar | ⌘ B     | Ctrl+B               |
+| Toggle History Panel   | Ctrl+`  | Ctrl+`               |
+| Toggle cURL Panel      | ⌘ ⌥ B   | Ctrl+Alt+B           |
+| Focus URL Bar          | ⌘ L     | Ctrl+L               |
+| Focus Folder Search    | ⌘ ⇧ F   | Ctrl+Shift+F         |
+| Open Settings          | ⌘ ,     | Ctrl+,               |
+| New Tab                | ⌘ T     | Ctrl+T               |
+| Close Tab              | ⌘ W     | Ctrl+W               |
+| Previous Tab           | ⌘ ⌥ ←   | Ctrl+Alt+Left Arrow  |
+| Next Tab               | ⌘ ⌥ →   | Ctrl+Alt+Right Arrow |
 
 All shortcuts can be customized in **Settings**.
