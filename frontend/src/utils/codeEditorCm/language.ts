@@ -1,5 +1,5 @@
 import { json } from '@codemirror/lang-json';
-import { javascript } from '@codemirror/lang-javascript';
+import { jsonc } from '@shopify/lang-jsonc';
 import { StreamLanguage } from '@codemirror/language';
 import { shell } from '@codemirror/legacy-modes/mode/shell';
 
@@ -10,7 +10,7 @@ export function codeEditorCmLanguage(lang: CodeEditorCmLanguage) {
     case 'json':
       return json();
     case 'jsonc':
-      return javascript({ jsx: false, typescript: false });
+      return jsonc();
     case 'shell':
       return StreamLanguage.define(shell);
     default:

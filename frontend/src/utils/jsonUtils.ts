@@ -6,6 +6,8 @@ const ENV_PLACEHOLDER = /\{\{\s*[^}]*?\s*\}\}/g;
 export type ParseJsoncOptions = {
   /** Treat `{{name}}` as empty for validity checks (body editor / linter). */
   ignoreEnvPlaceholders?: boolean;
+  /** Allow trailing commas like JSONC (default true). */
+  allowTrailingComma?: boolean;
 };
 
 export function stripEnvPlaceholdersForJsonc(input: string): string {
@@ -22,7 +24,7 @@ export function parseJsonc(
 ): { value: unknown; valid: boolean } {
   const text = jsoncTextForParse(input, options);
   const errors: jsonc.ParseError[] = [];
-  const value = jsonc.parse(text, errors, { allowTrailingComma: true });
+  const value = jsonc.parse(text, errors, { allowTrailingComma: options?.allowTrailingComma ?? true });
   return { value, valid: errors.length === 0 };
 }
 

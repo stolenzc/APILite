@@ -4,14 +4,14 @@ import { parseJsonc } from '../jsonUtils';
 export const jsoncCodeEditorLinter = linter((view) => {
   const text = view.state.doc.toString();
   if (!text.trim()) return [];
-  const { valid } = parseJsonc(text, { ignoreEnvPlaceholders: true });
+  const { valid } = parseJsonc(text, { ignoreEnvPlaceholders: true, allowTrailingComma: false });
   if (valid) return [];
   return [
     {
       from: 0,
       to: text.length,
       severity: 'error' as const,
-      message: 'Invalid JSONC',
+      message: 'Invalid JSON',
     },
   ];
 });

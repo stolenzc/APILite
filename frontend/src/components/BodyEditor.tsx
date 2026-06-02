@@ -195,7 +195,8 @@ export default function BodyEditor() {
   const setRawContentType = useStore((s) => s.setRawContentType);
   const setBody = useStore((s) => s.setBody);
 
-  const jsonValid = body.length > 0 && isJsonc(body, { ignoreEnvPlaceholders: true });
+  const jsonValid =
+    body.length > 0 && isJsonc(body, { ignoreEnvPlaceholders: true, allowTrailingComma: false });
 
   const handleFormat = () => {
     if (!body) return;
@@ -205,7 +206,9 @@ export default function BodyEditor() {
 
   const handleMinify = () => {
     if (!body) return;
-    if (parseJsonc(body, { ignoreEnvPlaceholders: true }).valid) setBody(jsoncToStrictJson(body));
+    if (parseJsonc(body, { ignoreEnvPlaceholders: true, allowTrailingComma: false }).valid) {
+      setBody(jsoncToStrictJson(body));
+    }
   };
 
   const handleNormalizeToJson = () => {
