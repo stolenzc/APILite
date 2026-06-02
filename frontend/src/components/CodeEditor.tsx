@@ -87,18 +87,6 @@ function useCodeEditorSetup(
 
   const extensions = useMemo(() => {
     const exts: import('@codemirror/state').Extension[] = [
-      EditorView.domEventHandlers({
-        keydown(e, view) {
-          if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
-            e.preventDefault();
-            view.dispatch({
-              selection: { anchor: 0, head: view.state.doc.length },
-            });
-            return true;
-          }
-          return false;
-        },
-      }),
       codeEditorCmTheme,
       codeEditorCmSelection,
       codeEditorCmHighlight,
@@ -109,7 +97,15 @@ function useCodeEditorSetup(
     } else {
       exts.push(
         EditorView.editable.of(false),
-        EditorView.contentAttributes.of({ 'aria-readonly': 'true' }),
+        // When CodeMirror is not editable, the inner content can become unfocusable via click.
+        // Make it focusable so keyboard shortcuts (Cmd/Ctrl+A, find, etc.) work inside read-only views.
+        EditorView.contentAttributes.of({ 'aria-readonly': 'true', tabindex: '0' }),
+        EditorView.domEventHandlers({
+          mousedown(_e, view) {
+            if (!view.hasFocus) view.focus();
+            return false;
+          },
+        }),
       );
     }
     if (features.wordWrap) {
@@ -191,7 +187,10 @@ function CodeMirrorShell({
   useEffect(() => () => resizeObserverRef.current?.disconnect(), []);
 
   return (
-    <div ref={containerRef} className={rootClass}>
+    <div
+      ref={containerRef}
+      className={rootClass}
+    >
     <CodeMirror
       value={value}
       className="code-editor--cm-inner"
