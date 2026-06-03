@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.2",
-    "@codemirror/lang-javascript": "^6.2.5",
     "@codemirror/lang-json": "^6.0.2",
     "@codemirror/legacy-modes": "^6.5.3",
     "@codemirror/lint": "^6.9.6",
