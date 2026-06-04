@@ -4,7 +4,7 @@ import { useStore } from '../store/useStore';
 import { matchesShortcutCombo, useSettingsStore } from '../store/useSettings';
 import type { BodyType, RawContentType } from '../types';
 import { t } from '../i18n';
-import { formatJsonc, isJsonc, jsoncToStrictJson, normalizeToJsonText, parseJsonc } from '../utils/jsonUtils';
+import { formatJsonc, jsoncToStrictJson, normalizeToJsonText, parseJsonc } from '../utils/jsonUtils';
 import CodeEditor from './CodeEditor';
 import BodyFormTable from './BodyFormTable';
 import { pickFilePath, readBrowserFileAsBase64 } from '../utils/filePicker';
@@ -195,9 +195,6 @@ export default function BodyEditor() {
   const setRawContentType = useStore((s) => s.setRawContentType);
   const setBody = useStore((s) => s.setBody);
 
-  const jsonValid =
-    body.length > 0 && isJsonc(body, { ignoreEnvPlaceholders: true, allowTrailingComma: false });
-
   const handleFormat = () => {
     if (!body) return;
     const { formatted, valid } = formatJsonc(body);
@@ -262,11 +259,6 @@ export default function BodyEditor() {
             >
               {t('response.wordWrap')}
             </button>
-            {isJsonBody && body.length > 0 && (
-              <span className={`json-status ${jsonValid ? 'valid' : 'invalid'}`}>
-                {jsonValid ? t('body.json.valid') : t('body.json.invalid')}
-              </span>
-            )}
             {isJsonBody && (
               <>
                 <button type="button" className="body-toolbar-btn" onClick={handleFormat} disabled={!body}>
