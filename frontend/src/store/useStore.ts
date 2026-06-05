@@ -14,6 +14,7 @@ import { cloneHttpRequest, emptyFormField, emptyKeyValue, normalizeHttpRequest }
 import { withTrailingEmptyRow, withTrailingFormFieldRow } from '../utils/kvRows';
 import { requestsEqual } from '../utils/requestEquality';
 import { inferRawContentType } from '../utils/curlUtils';
+import { inferDefaultRequestEditorTab } from '../utils/inferRequestEditorTab';
 import { parseParamsFromUrl, urlWithParams } from '../utils/urlQuery';
 import { dispatchFocusUrl } from '../utils/focusUrl';
 import {
@@ -253,10 +254,12 @@ export const useStore = create<AppState>((set, get) => ({
   }),
 
   openTabFromFolder: (req, name, folderPath, requestNodeId) => set(state => {
+    const editorTab = inferDefaultRequestEditorTab(req);
     const existing = state.tabs.find(t => t.requestNodeId === requestNodeId);
     if (existing) {
       return {
         activeTabId: existing.id,
+        activeTab: editorTab,
         tabs: state.tabs.map(t =>
           t.id === existing.id
             ? {
@@ -288,7 +291,7 @@ export const useStore = create<AppState>((set, get) => ({
       requestNodeId,
       scriptVars: {},
     };
-    return { tabs: [...state.tabs, tab], activeTabId: tab.id };
+    return { tabs: [...state.tabs, tab], activeTabId: tab.id, activeTab: editorTab };
   }),
 
   syncFolderTabName: (requestNodeId, name) => set(state => ({
