@@ -1,9 +1,11 @@
 use base64::{engine::general_purpose::STANDARD, Engine};
 use encoding_rs::Encoding;
+use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::OnceLock;
 use std::time::Instant;
+use tauri::{Emitter, Window};
 
 static HTTP_CLIENT: OnceLock<Result<reqwest::Client, String>> = OnceLock::new();
 
@@ -460,4 +462,152 @@ pub async fn send(req: SendRequest) -> Result<SendResponse, String> {
         raw,
         duration_ms: duration,
     })
+}
+
+#[derive(Serialize, Clone)]
+pub struct StreamMeta {
+    pub stream_id: String,
+    pub status: u16,
+    pub status_text: String,
+    pub headers: HashMap<String, String>,
+    #[serde(rename = "request_raw")]
+    pub request_raw: String,
+}
+
+#[derive(Serialize, Clone)]
+pub struct StreamChunk {
+    pub stream_id: String,
+    pub chunk: String,
+}
+
+#[derive(Serialize, Clone)]
+pub struct StreamDone {
+    pub stream_id: String,
+    pub raw: String,
+    pub duration_ms: u64,
+}
+
+pub async fn send_stream(
+    window: Window,
+    stream_id: String,
+    req: SendRequest,
+) -> Result<(), String> {
+    let client = shared_client()?;
+
+    let binary_name = req.binary_file_name.as_deref();
+    let request_raw = format_raw_request(
+        &req.method,
+        &req.url,
+        &req.headers,
+        &req.body_type,
+        req.body.as_deref(),
+        &req.form_fields,
+        binary_name,
+    );
+
+    let method = reqwest::Method::from_bytes(req.method.as_bytes())
+        .map_err(|e| format!("Invalid HTTP method: {}", e))?;
+
+    let mut builder = client.request(method, &req.url);
+    for (key, value) in &req.headers {
+        builder = builder.header(key, value);
+    }
+
+    if let Some(body) = &req.body {
+        if !body.is_empty() && req.body_type != "none" {
+            match req.body_type.as_str() {
+                "json" => builder = builder.header("Content-Type", "application/json").body(body.clone()),
+                "xml" => builder = builder.header("Content-Type", "application/xml").body(body.clone()),
+                "html" => builder = builder.header("Content-Type", "text/html").body(body.clone()),
+                "text" => builder = builder.header("Content-Type", "text/plain").body(body.clone()),
+                "javascript" => builder = builder.header("Content-Type", "application/javascript").body(body.clone()),
+                "raw" => builder = builder.body(body.clone()),
+                "x-www-form-urlencoded" => {
+                    builder = builder
+                        .header("Content-Type", "application/x-www-form-urlencoded")
+                        .body(body.clone())
+                }
+                _ => builder = builder.body(body.clone()),
+            }
+        }
+    } else {
+        match req.body_type.as_str() {
+            "form-data" if !req.form_fields.is_empty() => {
+                let form = build_multipart_form(&req.form_fields)?;
+                builder = builder.multipart(form);
+            }
+            "binary" => {
+                let (bytes, _name) = load_binary_body(&req)?;
+                builder = builder
+                    .header("Content-Type", "application/octet-stream")
+                    .body(bytes);
+            }
+            _ => {}
+        }
+    }
+
+    let start = Instant::now();
+    let resp = builder.send().await.map_err(|e| e.to_string())?;
+    let status = resp.status().as_u16();
+    let status_text = resp.status().canonical_reason().unwrap_or("").to_string();
+    let http_version = resp.version();
+
+    let mut resp_headers = HashMap::new();
+    for (name, value) in resp.headers() {
+        resp_headers.insert(
+            name.to_string(),
+            String::from_utf8_lossy(value.as_bytes()).to_string(),
+        );
+    }
+
+    window
+        .emit(
+            "http-stream-meta",
+            StreamMeta {
+                stream_id: stream_id.clone(),
+                status,
+                status_text: status_text.clone(),
+                headers: resp_headers.clone(),
+                request_raw,
+            },
+        )
+        .map_err(|e| e.to_string())?;
+
+    let mut full_bytes: Vec<u8> = Vec::new();
+    let mut stream = resp.bytes_stream();
+    while let Some(item) = stream.next().await {
+        let bytes = item.map_err(|e| e.to_string())?;
+        if bytes.is_empty() {
+            continue;
+        }
+        full_bytes.extend_from_slice(&bytes);
+        // SSE is effectively UTF-8; for other encodings this is best-effort during streaming.
+        let chunk = String::from_utf8_lossy(&bytes).to_string();
+        window
+            .emit(
+                "http-stream-chunk",
+                StreamChunk {
+                    stream_id: stream_id.clone(),
+                    chunk,
+                },
+            )
+            .map_err(|e| e.to_string())?;
+    }
+
+    let duration = start.elapsed().as_millis() as u64;
+    let body = decode_http_body(&full_bytes, &resp_headers)?;
+    let raw = format_raw_http(http_version, status, &status_text, &resp_headers, &body);
+
+    window
+        .emit(
+            "http-stream-done",
+            StreamDone {
+                stream_id,
+                raw,
+                duration_ms: duration,
+            },
+        )
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
 }

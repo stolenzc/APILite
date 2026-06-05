@@ -149,6 +149,12 @@ const messages: Record<Locale, Record<string, string>> = {
     'response.copyFailed': 'Failed to copy',
     'response.copyEmpty': 'Nothing to copy',
     'response.httpDurationHint': 'HTTP round-trip only (excludes pre-request script time)',
+    'response.stream.event': 'Event type',
+    'response.stream.id': 'Event ID',
+    'response.stream.retry': 'Reconnect interval (ms)',
+    'response.stream.emptyData': '(empty)',
+    'response.stream.connected': 'Connected to {{url}}',
+    'response.stream.closed': 'Connection closed',
 
     // History
     'history.label': 'History',
@@ -377,6 +383,12 @@ const messages: Record<Locale, Record<string, string>> = {
     'response.copyFailed': '复制失败',
     'response.copyEmpty': '没有可复制的内容',
     'response.httpDurationHint': '仅 HTTP 往返耗时（不含 Pre 脚本执行时间）',
+    'response.stream.event': '事件类型',
+    'response.stream.id': '事件 ID',
+    'response.stream.retry': '重连间隔（毫秒）',
+    'response.stream.emptyData': '（空）',
+    'response.stream.connected': 'Connected to {{url}}',
+    'response.stream.closed': 'Connection closed',
 
     // History
     'history.label': '历史记录',

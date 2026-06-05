@@ -3,8 +3,10 @@ import { useStore } from '../store/useStore';
 import { t } from '../i18n';
 import { isJson, formatJson } from '../utils/jsonUtils';
 import { getRawHttpResponse, getResponseCopyText } from '../utils/httpUtils';
+import { isSseResponse } from '../utils/sseUtils';
 import { showToast } from '../utils/toast';
 import CodeEditor from './CodeEditor';
+import StreamResponseView from './StreamResponseView';
 
 export default function ResponsePanel() {
   const [wordWrap, setWordWrap] = useState(false);
@@ -13,6 +15,7 @@ export default function ResponsePanel() {
   const tab = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId));
   const response = tab?.response ?? null;
   const loading = tab?.loading ?? false;
+  const streamState = tab?.stream ?? null;
 
   const handleCopy = useCallback(async () => {
     if (!response) return;
@@ -42,11 +45,13 @@ export default function ResponsePanel() {
     : response.status >= 400 && response.status < 500 ? 'status-4xx'
     : 'status-5xx');
 
+  const sseResponse = response ? isSseResponse(response.headers, response.body) : false;
   const jsonValid = response ? isJson(response.body) : false;
   const formattedBody = response && responseTab === 'body'
     ? (jsonValid ? formatJson(response.body).formatted : response.body)
     : '';
   const rawHttp = response ? getRawHttpResponse(response) : '';
+  const fillBody = response && responseTab !== 'headers';
 
   return (
     <div className="response-panel">
@@ -88,18 +93,22 @@ export default function ResponsePanel() {
       </div>
       <div
         className={`response-body${
-          response && responseTab !== 'headers' ? ' response-body--fill' : ''
-        }${responseTab === 'headers' ? ' response-body--padded' : ''}`}
+          fillBody ? ' response-body--fill' : ''
+        }${responseTab === 'headers' ? ' response-body--padded' : ''}${responseTab === 'body' && sseResponse ? ' response-body--stream' : ''}`}
       >
         {response ? (
           responseTab === 'body' ? (
-            <CodeEditor
-              value={formattedBody}
-              language={jsonValid ? 'json' : 'plain'}
-              variant="surface"
-              features={{ wordWrap, editable: false, foldGutter: false }}
-              fill
-            />
+            sseResponse ? (
+              <StreamResponseView body={response.body} stream={streamState} />
+            ) : (
+              <CodeEditor
+                value={formattedBody}
+                language={jsonValid ? 'json' : 'plain'}
+                variant="surface"
+                features={{ wordWrap, editable: false, foldGutter: false }}
+                fill
+              />
+            )
           ) : responseTab === 'headers' ? (
             <div className="kv-table-wrap">
             <table className="kv-table">
@@ -122,7 +131,7 @@ export default function ResponsePanel() {
           )
         ) : null}
       </div>
-      {loading && (
+      {loading && !(responseTab === 'body' && sseResponse) && (
         <div className="response-loading-overlay" aria-busy="true">
           <span className="response-spinner" aria-hidden />
         </div>

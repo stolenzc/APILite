@@ -71,6 +71,41 @@ async fn send_request(
 }
 
 #[tauri::command]
+async fn send_request_stream(
+    window: tauri::Window,
+    stream_id: String,
+    method: String,
+    url: String,
+    headers: HashMap<String, String>,
+    body_type: String,
+    body: Option<String>,
+    form_fields: Vec<http_client::FormFieldPart>,
+    binary_file_path: Option<String>,
+    binary_file_name: Option<String>,
+    binary_data_base64: Option<String>,
+) -> Result<(), String> {
+    tauri::async_runtime::spawn(async move {
+        let _ = http_client::send_stream(
+            window,
+            stream_id,
+            http_client::SendRequest {
+                method,
+                url,
+                headers,
+                body_type,
+                body,
+                form_fields,
+                binary_file_path,
+                binary_file_name,
+                binary_data_base64,
+            },
+        )
+        .await;
+    });
+    Ok(())
+}
+
+#[tauri::command]
 fn histories_load(data_dir: String, max_age_days: u32) -> Result<Option<String>, String> {
     histories::load(&data_dir, max_age_days)
 }
@@ -245,6 +280,7 @@ fn main() {
             parse_curl,
             to_curl,
             send_request,
+            send_request_stream,
             get_default_data_dir,
             ensure_data_dir,
             histories_load,

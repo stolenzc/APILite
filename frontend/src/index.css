@@ -2144,6 +2144,119 @@ input[type="checkbox"].kv-checkbox-lg {
   overflow: auto;
 }
 
+.response-body--stream {
+  padding: 12px 16px;
+}
+
+.stream-response-view {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+
+.stream-line {
+  padding: 6px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-secondary);
+  font-size: 12px;
+  color: var(--text-muted);
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+
+.stream-line--closed {
+  color: var(--text-muted);
+}
+
+.stream-event-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stream-event-card {
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-primary);
+  overflow: hidden;
+}
+
+.stream-event-card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  font-size: 11px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+}
+
+.stream-event-card-header::-webkit-details-marker {
+  display: none;
+}
+
+.stream-event-preview {
+  color: var(--text-muted);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1 1 auto;
+  min-width: 200px;
+}
+
+.stream-event-card-body {
+  padding: 0;
+}
+
+.stream-event-index {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.stream-event-type {
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: rgba(100, 181, 246, 0.15);
+  color: var(--accent);
+}
+
+.stream-event-id,
+.stream-event-retry {
+  color: var(--text-muted);
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+
+.stream-event-data {
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text-primary);
+}
+
+.stream-event-data--raw {
+  border: 1px dashed var(--border-color);
+  border-radius: 4px;
+}
+
+.stream-event-json .code-editor {
+  border: 0;
+  background: transparent;
+}
+
+.stream-event-json .cm-editor {
+  background: transparent;
+}
+
 .response-body--line-numbers {
   padding: 0;
   overflow: hidden;

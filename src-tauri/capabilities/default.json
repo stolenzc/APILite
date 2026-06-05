@@ -4,6 +4,9 @@
   "windows": ["main"],
   "permissions": [
     "core:menu:default",
+    "core:event:default",
+    "core:event:allow-listen",
+    "core:event:allow-emit",
     "dialog:allow-open",
     "dialog:allow-save",
     "dialog:allow-message",

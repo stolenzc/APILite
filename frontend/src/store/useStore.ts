@@ -35,12 +35,15 @@ const defaultRequest: HttpRequest = normalizeHttpRequest({
 
 export type TabSource = 'folder' | 'temporary';
 
+export type StreamState = { kind: 'sse' | 'ws'; url: string; state: 'connected' | 'closed' } | null;
+
 export interface RequestTab {
   id: string;
   name: string;
   request: HttpRequest;
   response: HttpResponse | null;
   loading: boolean;
+  stream: StreamState;
   /** True while pre-script runs or HTTP is in flight (disables Send). */
   sending: boolean;
   sourceType: TabSource;
@@ -113,6 +116,7 @@ interface AppState {
 
   // Response actions
   setResponse: (res: HttpResponse) => void;
+  setStreamState: (stream: StreamState) => void;
   setLoading: (loading: boolean) => void;
   setSending: (sending: boolean) => void;
 
@@ -133,6 +137,7 @@ function newEmptyTab(): RequestTab {
     request: { ...defaultRequest },
     response: null,
     loading: false,
+    stream: null,
     sending: false,
     sourceType: 'temporary',
     folderTreePath: '',
@@ -283,6 +288,7 @@ export const useStore = create<AppState>((set, get) => ({
       request: cloneHttpRequest(req),
       response: null,
       loading: false,
+      stream: null,
       sending: false,
       sourceType: 'folder',
       folderTreePath: folderPath,
@@ -522,7 +528,7 @@ export const useStore = create<AppState>((set, get) => ({
     const req = activeRequest(state);
     if (!req) return state;
     const normalized = normalizeHttpRequest({
-      ...req,
+      ...(req as any),
       preScriptId: scriptId?.trim() ? scriptId.trim() : null,
     });
     return withRequestUpdate(state, normalized);
@@ -566,7 +572,8 @@ export const useStore = create<AppState>((set, get) => ({
   setActiveTab: (activeTab) => set({ activeTab }),
   setResponseTab: (responseTab) => set({ responseTab }),
 
-  setResponse: (response) => set(state => updateActiveTab(state, { response })),
+  setResponse: (response) => set((state) => updateActiveTab(state, { response })),
+  setStreamState: (stream) => set((state) => updateActiveTab(state, { stream })),
   setLoading: (loading) => set(state => updateActiveTab(state, { loading })),
   setSending: (sending) => set(state => updateActiveTab(state, { sending })),
 
