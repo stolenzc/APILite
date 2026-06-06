@@ -40,14 +40,6 @@ export default function ResponsePanel() {
     }
   }, [response, responseTab]);
 
-  if (!response && !loading) {
-    return (
-      <div className="response-panel">
-        <div className="response-placeholder">{t('app.response.placeholder')}</div>
-      </div>
-    );
-  }
-
   const statusClass = response && (response.status >= 200 && response.status < 300 ? 'status-2xx'
     : response.status >= 300 && response.status < 400 ? 'status-3xx'
     : response.status >= 400 && response.status < 500 ? 'status-4xx'
@@ -59,7 +51,8 @@ export default function ResponsePanel() {
     ? (jsonValid ? formatJson(response.body).formatted : response.body)
     : '';
   const rawHttp = response ? getRawHttpResponse(response) : '';
-  const fillBody = response && responseTab !== 'headers';
+  const fillBody = responseTab !== 'headers' && (response != null || loading);
+  const showPlaceholder = !response && !loading;
   const durationMs =
     loading && requestStartedAtMs != null
       ? Math.max(0, nowMs - requestStartedAtMs)
@@ -100,15 +93,21 @@ export default function ResponsePanel() {
                 {t('response.copy')}
               </button>
             </>
+          ) : loading && requestStartedAtMs != null ? (
+            <span className="response-time" title={t('response.httpDurationHint')}>
+              {durationMs}ms
+            </span>
           ) : null}
         </div>
       </div>
       <div
         className={`response-body${
           fillBody ? ' response-body--fill' : ''
-        }${responseTab === 'headers' ? ' response-body--padded' : ''}${responseTab === 'body' && sseResponse ? ' response-body--stream' : ''}`}
+        }${responseTab === 'headers' ? ' response-body--padded' : ''}${responseTab === 'body' && sseResponse ? ' response-body--stream' : ''}${showPlaceholder ? ' response-body--placeholder' : ''}`}
       >
-        {response ? (
+        {showPlaceholder ? (
+          <div className="response-placeholder">{t('app.response.placeholder')}</div>
+        ) : response ? (
           responseTab === 'body' ? (
             sseResponse ? (
               <StreamResponseView body={response.body} stream={streamState} />
@@ -142,12 +141,12 @@ export default function ResponsePanel() {
             />
           )
         ) : null}
+        {loading && !(responseTab === 'body' && sseResponse) && (
+          <div className="response-loading-overlay" aria-busy="true">
+            <span className="response-spinner" aria-hidden />
+          </div>
+        )}
       </div>
-      {loading && !(responseTab === 'body' && sseResponse) && (
-        <div className="response-loading-overlay" aria-busy="true">
-          <span className="response-spinner" aria-hidden />
-        </div>
-      )}
     </div>
   );
 }

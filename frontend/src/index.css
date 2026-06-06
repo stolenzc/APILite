@@ -2081,6 +2081,7 @@ input[type="checkbox"].kv-checkbox-lg {
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-color);
   font-size: 12px;
+  flex-shrink: 0;
 }
 
 .response-header-meta {
@@ -2142,6 +2143,12 @@ input[type="checkbox"].kv-checkbox-lg {
   flex: 1;
   min-height: 0;
   overflow: auto;
+  position: relative;
+}
+
+.response-body--placeholder {
+  display: flex;
+  flex-direction: column;
 }
 
 .response-body--stream {
