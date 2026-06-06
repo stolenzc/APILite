@@ -43,6 +43,7 @@ export interface RequestTab {
   request: HttpRequest;
   response: HttpResponse | null;
   loading: boolean;
+  requestStartedAtMs: number | null;
   stream: StreamState;
   /** True while pre-script runs or HTTP is in flight (disables Send). */
   sending: boolean;
@@ -137,6 +138,7 @@ function newEmptyTab(): RequestTab {
     request: { ...defaultRequest },
     response: null,
     loading: false,
+    requestStartedAtMs: null,
     stream: null,
     sending: false,
     sourceType: 'temporary',
@@ -288,6 +290,7 @@ export const useStore = create<AppState>((set, get) => ({
       request: cloneHttpRequest(req),
       response: null,
       loading: false,
+      requestStartedAtMs: null,
       stream: null,
       sending: false,
       sourceType: 'folder',
@@ -574,7 +577,13 @@ export const useStore = create<AppState>((set, get) => ({
 
   setResponse: (response) => set((state) => updateActiveTab(state, { response })),
   setStreamState: (stream) => set((state) => updateActiveTab(state, { stream })),
-  setLoading: (loading) => set(state => updateActiveTab(state, { loading })),
+  setLoading: (loading) =>
+    set((state) =>
+      updateActiveTab(state, {
+        loading,
+        requestStartedAtMs: loading ? Date.now() : null,
+      }),
+    ),
   setSending: (sending) => set(state => updateActiveTab(state, { sending })),
 
   addHistory: (entry) => {

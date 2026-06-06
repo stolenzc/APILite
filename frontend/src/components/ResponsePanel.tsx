@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useStore } from '../store/useStore';
 import { t } from '../i18n';
 import { isJson, formatJson } from '../utils/jsonUtils';
@@ -10,12 +10,20 @@ import StreamResponseView from './StreamResponseView';
 
 export default function ResponsePanel() {
   const [wordWrap, setWordWrap] = useState(false);
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const responseTab = useStore((s) => s.responseTab);
   const setResponseTab = useStore((s) => s.setResponseTab);
   const tab = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId));
   const response = tab?.response ?? null;
   const loading = tab?.loading ?? false;
   const streamState = tab?.stream ?? null;
+  const requestStartedAtMs = tab?.requestStartedAtMs ?? null;
+
+  useEffect(() => {
+    if (!loading || requestStartedAtMs == null) return;
+    const id = window.setInterval(() => setNowMs(Date.now()), 100);
+    return () => window.clearInterval(id);
+  }, [loading, requestStartedAtMs]);
 
   const handleCopy = useCallback(async () => {
     if (!response) return;
@@ -52,6 +60,10 @@ export default function ResponsePanel() {
     : '';
   const rawHttp = response ? getRawHttpResponse(response) : '';
   const fillBody = response && responseTab !== 'headers';
+  const durationMs =
+    loading && requestStartedAtMs != null
+      ? Math.max(0, nowMs - requestStartedAtMs)
+      : response?.durationMs ?? 0;
 
   return (
     <div className="response-panel">
@@ -66,7 +78,7 @@ export default function ResponsePanel() {
             <>
               <span className={`status-badge ${statusClass}`}>{response.status} {response.statusText}</span>
               <span className="response-time" title={t('response.httpDurationHint')}>
-                {response.durationMs}ms
+                {durationMs}ms
               </span>
               {responseTab === 'body' && jsonValid && (
                 <span className="json-status valid" style={{ fontSize: 11 }}>JSON</span>
