@@ -547,7 +547,52 @@ pub async fn send_stream(
     }
 
     let start = Instant::now();
-    let resp = builder.send().await.map_err(|e| e.to_string())?;
+    let resp = match builder.send().await {
+        Ok(r) => r,
+        Err(e) => {
+            let duration = start.elapsed().as_millis() as u64;
+            let err_text = e.to_string();
+            let headers: HashMap<String, String> = HashMap::new();
+
+            // Emit a meta+done pair so the frontend can stop "loading"
+            // even when we never receive an HTTP response (e.g. ECONNREFUSED).
+            window
+                .emit(
+                    "http-stream-meta",
+                    StreamMeta {
+                        stream_id: stream_id.clone(),
+                        status: 0,
+                        status_text: "Error".to_string(),
+                        headers: headers.clone(),
+                        request_raw: request_raw.clone(),
+                    },
+                )
+                .map_err(|e| e.to_string())?;
+            window
+                .emit(
+                    "http-stream-chunk",
+                    StreamChunk {
+                        stream_id: stream_id.clone(),
+                        chunk: err_text.clone(),
+                    },
+                )
+                .map_err(|e| e.to_string())?;
+
+            let raw = format_raw_http(reqwest::Version::HTTP_11, 0, "Error", &headers, &err_text);
+            window
+                .emit(
+                    "http-stream-done",
+                    StreamDone {
+                        stream_id,
+                        raw,
+                        duration_ms: duration,
+                    },
+                )
+                .map_err(|e| e.to_string())?;
+
+            return Ok(());
+        }
+    };
     let status = resp.status().as_u16();
     let status_text = resp.status().canonical_reason().unwrap_or("").to_string();
     let http_version = resp.version();
