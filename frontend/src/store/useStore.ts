@@ -261,7 +261,8 @@ export const useStore = create<AppState>((set, get) => ({
   }),
 
   openTabFromFolder: (req, name, folderPath, requestNodeId) => set(state => {
-    const editorTab = inferDefaultRequestEditorTab(req);
+    const normalized = normalizeHttpRequest(req);
+    const editorTab = inferDefaultRequestEditorTab(normalized);
     const existing = state.tabs.find(t => t.requestNodeId === requestNodeId);
     if (existing) {
       return {
@@ -275,8 +276,8 @@ export const useStore = create<AppState>((set, get) => ({
                 folderTreePath: folderPath,
                 sourceType: 'folder' as const,
                 requestNodeId,
-                request: cloneHttpRequest(req),
-                savedRequest: cloneHttpRequest(req),
+                request: cloneHttpRequest(normalized),
+                savedRequest: cloneHttpRequest(normalized),
                 unsaved: false,
               }
             : t,
@@ -287,7 +288,7 @@ export const useStore = create<AppState>((set, get) => ({
     const tab: RequestTab = {
       id: nanoid(),
       name,
-      request: cloneHttpRequest(req),
+      request: cloneHttpRequest(normalized),
       response: null,
       loading: false,
       requestStartedAtMs: null,
@@ -296,7 +297,7 @@ export const useStore = create<AppState>((set, get) => ({
       sourceType: 'folder',
       folderTreePath: folderPath,
       unsaved: false,
-      savedRequest: cloneHttpRequest(req),
+      savedRequest: cloneHttpRequest(normalized),
       requestNodeId,
       scriptVars: {},
     };

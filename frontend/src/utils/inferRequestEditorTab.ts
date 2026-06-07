@@ -3,8 +3,8 @@ import { isFormFieldRowEmpty, isKeyValueRowEmpty } from './kvRows';
 
 export type RequestEditorTab = 'params' | 'headers' | 'body' | 'script';
 
-function hasEnabledKv(rows: { key: string; value: string; enabled: boolean }[]): boolean {
-  return rows.some((r) => r.enabled && !isKeyValueRowEmpty(r));
+function hasEnabledKv(rows: { key: string; value: string; enabled: boolean }[] | undefined): boolean {
+  return (rows ?? []).some((r) => r.enabled && !isKeyValueRowEmpty(r));
 }
 
 function hasBodyContent(req: HttpRequest): boolean {
@@ -12,11 +12,11 @@ function hasBodyContent(req: HttpRequest): boolean {
     case 'none':
       return false;
     case 'raw':
-      return req.body.trim().length > 0;
+      return (req.body ?? '').trim().length > 0;
     case 'binary':
       return req.binaryFile != null;
     case 'form-data':
-      return req.formFields.some((f) => f.enabled && !isFormFieldRowEmpty(f));
+      return (req.formFields ?? []).some((f) => f.enabled && !isFormFieldRowEmpty(f));
     case 'x-www-form-urlencoded':
       return hasEnabledKv(req.urlEncodedFields);
     default:

@@ -632,7 +632,7 @@ export const useFolderStore = create<FolderStore>((set, get) => ({
 
   loadRequest: (id) => {
     const { node } = findNode(get().folders, id);
-    if (node && node.type === 'request') return node.request;
+    if (node && node.type === 'request') return normalizeHttpRequest(node.request);
     return null;
   },
 
