@@ -5,7 +5,9 @@ import { EnvVarField } from './EnvVarField';
 import KvTableWrap, { KvTableColGroup } from './KvTableWrap';
 
 export default function ParamsTab() {
-  const { updateParam, removeParam, syncUrlFromParams } = useStore();
+  const updateParam = useStore((s) => s.updateParam);
+  const removeParam = useStore((s) => s.removeParam);
+  const syncUrlFromParams = useStore((s) => s.syncUrlFromParams);
   const params = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.params ?? []);
 
   const handleChange = (index: number, field: 'key' | 'value', val: string) => {

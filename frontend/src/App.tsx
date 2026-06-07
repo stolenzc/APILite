@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { nanoid } from 'nanoid';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import { useShallow } from 'zustand/react/shallow';
 import { useStore } from './store/useStore';
 import { useSettingsStore, initKeyboardShortcuts } from './store/useSettings';
 import { initTextNavigationKeys } from './utils/textNavigationKeys';
@@ -32,7 +33,19 @@ import { focusFolderSearchInput } from './utils/focusFolderSearch';
 import { cloneHttpRequest } from './utils/normalizeRequest';
 
 export default function App() {
-  const { activeTab, setActiveTab, createTab, closeTab, switchToPreviousTab, switchToNextTab, tabs, activeTabId } = useStore();
+  const { activeTab, setActiveTab, createTab, closeTab, switchToPreviousTab, switchToNextTab, tabs, activeTabId } =
+    useStore(
+      useShallow((s) => ({
+        activeTab: s.activeTab,
+        setActiveTab: s.setActiveTab,
+        createTab: s.createTab,
+        closeTab: s.closeTab,
+        switchToPreviousTab: s.switchToPreviousTab,
+        switchToNextTab: s.switchToNextTab,
+        tabs: s.tabs,
+        activeTabId: s.activeTabId,
+      })),
+    );
   const hasRequestTab = useStore(
     (s) => s.activeTabId != null && s.tabs.some((t) => t.id === s.activeTabId),
   );

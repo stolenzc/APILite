@@ -76,15 +76,44 @@ fn entry_timestamp(entry: &Value) -> i64 {
         .unwrap_or(0)
 }
 
-fn load_all_entries(data_dir: &str, max_age_days: u32) -> Result<Vec<Value>, String> {
+fn entry_id(entry: &Value) -> &str {
+    entry
+        .get("id")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+}
+
+fn compare_entries_desc(a: &Value, b: &Value) -> std::cmp::Ordering {
+    entry_timestamp(b)
+        .cmp(&entry_timestamp(a))
+        .then_with(|| entry_id(a).cmp(entry_id(b)))
+}
+
+fn sort_entries_newest_first(entries: &mut [Value]) {
+    entries.sort_by(compare_entries_desc);
+}
+
+fn read_day_entries(path: &std::path::Path) -> Result<Vec<Value>, String> {
+    let raw = fs::read_to_string(path).map_err(|e| e.to_string())?;
+    match serde_json::from_str::<Value>(&raw) {
+        Ok(Value::Array(mut items)) => {
+            sort_entries_newest_first(&mut items);
+            Ok(items)
+        }
+        Ok(_) => Ok(Vec::new()),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+/// Day shards within retention, each sorted newest-first; outer vec is newest day first.
+fn load_day_shards(data_dir: &str, max_age_days: u32) -> Result<Vec<Vec<Value>>, String> {
     let dir = histories_root(data_dir);
     if !dir.exists() {
         return Ok(Vec::new());
     }
     let cutoff = cutoff_date(max_age_days);
-    let mut merged: Vec<Value> = Vec::new();
-
     let mut day_files: Vec<(NaiveDate, std::path::PathBuf)> = Vec::new();
+
     for entry in fs::read_dir(&dir).map_err(|e| e.to_string())? {
         let entry = entry.map_err(|e| e.to_string())?;
         let name = entry.file_name().to_string_lossy().to_string();
@@ -96,25 +125,117 @@ fn load_all_entries(data_dir: &str, max_age_days: u32) -> Result<Vec<Value>, Str
             }
         }
     }
-    day_files.sort_by(|a, b| a.0.cmp(&b.0));
+    day_files.sort_by(|a, b| b.0.cmp(&a.0));
 
+    let mut shards = Vec::with_capacity(day_files.len());
     for (_, path) in day_files {
-        let raw = fs::read_to_string(&path).map_err(|e| e.to_string())?;
-        if let Ok(Value::Array(items)) = serde_json::from_str::<Value>(&raw) {
-            merged.extend(items);
+        let items = read_day_entries(&path)?;
+        if !items.is_empty() {
+            shards.push(items);
         }
     }
+    Ok(shards)
+}
 
-    merged.sort_by(|a, b| {
-        entry_timestamp(b)
-            .cmp(&entry_timestamp(a))
-            .then_with(|| {
-                let id_a = a.get("id").and_then(|v| v.as_str()).unwrap_or("");
-                let id_b = b.get("id").and_then(|v| v.as_str()).unwrap_or("");
-                id_a.cmp(id_b)
-            })
-    });
-    Ok(merged)
+fn total_entry_count(shards: &[Vec<Value>]) -> usize {
+    shards.iter().map(|s| s.len()).sum()
+}
+
+/// K-way merge across day shards (each newest-first) without materializing the full list.
+fn page_from_shards(shards: &[Vec<Value>], offset: usize, limit: usize) -> Vec<Value> {
+    if limit == 0 || shards.is_empty() {
+        return Vec::new();
+    }
+
+    let mut cursors = vec![0usize; shards.len()];
+    let mut skipped = 0usize;
+    let mut page = Vec::with_capacity(limit);
+
+    loop {
+        if page.len() >= limit {
+            break;
+        }
+
+        let mut best_shard: Option<usize> = None;
+        let mut best_ts = i64::MIN;
+        let mut best_id = "";
+
+        for (i, shard) in shards.iter().enumerate() {
+            let idx = cursors[i];
+            if idx >= shard.len() {
+                continue;
+            }
+            let entry = &shard[idx];
+            let ts = entry_timestamp(entry);
+            let id = entry_id(entry);
+            let better = match best_shard {
+                None => true,
+                Some(_) => ts > best_ts || (ts == best_ts && id > best_id),
+            };
+            if better {
+                best_ts = ts;
+                best_id = id;
+                best_shard = Some(i);
+            }
+        }
+
+        let Some(i) = best_shard else {
+            break;
+        };
+
+        let picked = shards[i][cursors[i]].clone();
+        cursors[i] += 1;
+
+        if skipped < offset {
+            skipped += 1;
+            continue;
+        }
+        page.push(picked);
+    }
+
+    page
+}
+
+fn merge_all_entries(shards: &[Vec<Value>]) -> Vec<Value> {
+    let total = total_entry_count(shards);
+    let mut merged = Vec::with_capacity(total);
+    let limit = total;
+    merged.extend(page_from_shards(shards, 0, limit));
+    merged
+}
+
+fn load_all_entries(data_dir: &str, max_age_days: u32) -> Result<Vec<Value>, String> {
+    let shards = load_day_shards(data_dir, max_age_days)?;
+    Ok(merge_all_entries(&shards))
+}
+
+fn group_entries_by_day(entries: &[Value]) -> HashMap<String, Vec<Value>> {
+    let mut by_day: HashMap<String, Vec<Value>> = HashMap::new();
+    for entry in entries {
+        let ts = entry_timestamp(entry);
+        let day = {
+            let dt = chrono::DateTime::from_timestamp_millis(ts)
+                .unwrap_or_else(|| Local::now().into());
+            dt.date_naive().format("%Y-%m-%d").to_string()
+        };
+        by_day.entry(day).or_default().push(entry.clone());
+    }
+    for items in by_day.values_mut() {
+        sort_entries_newest_first(items);
+    }
+    by_day
+}
+
+fn sync_entries(data_dir: &str, entries: &[Value], max_age_days: u32) -> Result<(), String> {
+    fs::create_dir_all(histories_root(data_dir)).map_err(|e| e.to_string())?;
+    let by_day = group_entries_by_day(entries);
+    let keep_days: Vec<String> = by_day.keys().cloned().collect();
+    for (day, items) in &by_day {
+        let data = serde_json::to_string(items).map_err(|e| e.to_string())?;
+        write_day_file(data_dir, day, &data)?;
+    }
+    let keep: HashSet<String> = keep_days.into_iter().collect();
+    prune_stale_files(data_dir, &keep, max_age_days)
 }
 
 /// Load history entries from `histories/YYYY-MM-DD.json` within the retention window.
@@ -133,15 +254,60 @@ pub fn load_page(
     offset: usize,
     limit: usize,
 ) -> Result<HistoryPageResult, String> {
-    let all = load_all_entries(data_dir, max_age_days)?;
-    let total = all.len();
-    let has_more = total > offset + limit;
-    let page: Vec<Value> = all.into_iter().skip(offset).take(limit).collect();
+    let shards = load_day_shards(data_dir, max_age_days)?;
+    let total = total_entry_count(&shards);
+    let has_more = total > offset.saturating_add(limit);
+    let page = page_from_shards(&shards, offset, limit);
     Ok(HistoryPageResult {
         entries: serde_json::to_string(&page).map_err(|e| e.to_string())?,
         has_more,
         total,
     })
+}
+
+/// Prepend one entry to a day shard; run a full prune only when over `max_count`.
+pub fn append_entry(
+    data_dir: &str,
+    day: &str,
+    entry: Value,
+    max_age_days: u32,
+    max_count: usize,
+) -> Result<(), String> {
+    if !is_valid_day_key(day) {
+        return Err(format!("Invalid history day key: {day}"));
+    }
+    fs::create_dir_all(histories_root(data_dir)).map_err(|e| e.to_string())?;
+
+    let path = histories_root(data_dir).join(day_file_name(day));
+    let mut items = if path.exists() {
+        read_day_entries(&path)?
+    } else {
+        Vec::new()
+    };
+
+    let new_id = entry.get("id").and_then(|v| v.as_str());
+    if let Some(id) = new_id {
+        items.retain(|e| e.get("id").and_then(|v| v.as_str()) != Some(id));
+    }
+    items.insert(0, entry);
+    let data = serde_json::to_string(&items).map_err(|e| e.to_string())?;
+    write_day_file(data_dir, day, &data)?;
+
+    let shards = load_day_shards(data_dir, max_age_days)?;
+    let total = total_entry_count(&shards);
+    if total <= max_count {
+        return Ok(());
+    }
+
+    let mut all = merge_all_entries(&shards);
+    let min_ts = Local::now()
+        .timestamp_millis()
+        .saturating_sub(i64::from(max_age_days) * 86_400_000);
+    all.retain(|e| entry_timestamp(e) >= min_ts);
+    if all.len() > max_count {
+        all.truncate(max_count);
+    }
+    sync_entries(data_dir, &all, max_age_days)
 }
 
 /// Write updated day files and remove stale ones.

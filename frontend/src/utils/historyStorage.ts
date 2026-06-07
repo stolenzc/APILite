@@ -201,13 +201,27 @@ export async function saveFullHistory(entries: HistoryEntry[]): Promise<void> {
   savePersistedHistory(entries);
 }
 
-/** Merge a new entry into the full persisted history (does not expand the UI list). */
+/** Merge a new entry into persisted history (does not expand the UI list). */
 export async function persistHistoryAppend(newEntry: HistoryEntry): Promise<void> {
   const retention = getHistoryRetention();
-  const full = await loadFullHistory();
+
+  if (isTauri()) {
+    const dataDir = getDataDir();
+    if (!dataDir) return;
+    await invoke('histories_append', {
+      dataDir,
+      day: dayKeyFromTimestamp(newEntry.timestamp ?? Date.now()),
+      entry: JSON.stringify(newEntry),
+      maxAgeDays: retention.maxAgeDays,
+      maxCount: retention.maxCount,
+    });
+    return;
+  }
+
+  const full = loadFullFromLocalStorageRaw();
   const withoutDup = full.filter((e) => e.id !== newEntry.id);
   const next = pruneHistory([newEntry, ...withoutDup], retention);
-  savePersistedHistory(next);
+  saveToLocalStorage(next);
 }
 
 export function clearPersistedHistory(): void {

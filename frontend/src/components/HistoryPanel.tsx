@@ -14,8 +14,11 @@ const METHOD_COLORS: Record<string, string> = {
 };
 
 export default function HistoryPanel() {
-  const { history, historyHasMore, historyLoadingMore, loadMoreHistory, clearHistory } =
-    useStore();
+  const history = useStore((s) => s.history);
+  const historyHasMore = useStore((s) => s.historyHasMore);
+  const historyLoadingMore = useStore((s) => s.historyLoadingMore);
+  const loadMoreHistory = useStore((s) => s.loadMoreHistory);
+  const clearHistory = useStore((s) => s.clearHistory);
   const { historyCollapsed, setHistoryCollapsed, historyHeight, setHistoryHeight } =
     useSettingsStore();
   const [expandedId, setExpandedId] = useState<string | null>(null);

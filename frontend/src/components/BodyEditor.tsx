@@ -150,13 +150,11 @@ function RawContentEditor({
 
 function FormBody() {
   const formFields = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.formFields ?? []);
-  const {
-    updateFormField,
-    setFormFieldType,
-    setFormFieldFile,
-    clearFormFieldFile,
-    removeFormField,
-  } = useStore();
+  const updateFormField = useStore((s) => s.updateFormField);
+  const setFormFieldType = useStore((s) => s.setFormFieldType);
+  const setFormFieldFile = useStore((s) => s.setFormFieldFile);
+  const clearFormFieldFile = useStore((s) => s.clearFormFieldFile);
+  const removeFormField = useStore((s) => s.removeFormField);
 
   return (
     <BodyFormTable
@@ -175,7 +173,8 @@ function UrlencodedBody() {
   const urlEncodedFields = useStore(
     (s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.urlEncodedFields ?? [],
   );
-  const { updateUrlEncodedField, removeUrlEncodedField } = useStore();
+  const updateUrlEncodedField = useStore((s) => s.updateUrlEncodedField);
+  const removeUrlEncodedField = useStore((s) => s.removeUrlEncodedField);
 
   return (
     <BodyFormTable

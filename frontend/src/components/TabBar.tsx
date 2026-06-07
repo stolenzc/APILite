@@ -1,4 +1,5 @@
 import { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { useStore } from '../store/useStore';
 import { useSettingsStore } from '../store/useSettings';
 import { methodColors } from '../constants';
@@ -34,7 +35,15 @@ function scrollTabIntoView(tabEl: HTMLElement, container: HTMLElement) {
 }
 
 export default function TabBar() {
-  const { tabs, activeTabId, switchTab, closeTab, createTab } = useStore();
+  const { tabs, activeTabId, switchTab, closeTab, createTab } = useStore(
+    useShallow((s) => ({
+      tabs: s.tabs,
+      activeTabId: s.activeTabId,
+      switchTab: s.switchTab,
+      closeTab: s.closeTab,
+      createTab: s.createTab,
+    })),
+  );
   const folderSidebarOpen = useSettingsStore((s) => s.folderSidebarOpen);
   const folderSidebarWidth = useSettingsStore((s) => s.folderSidebarWidth);
   const scrollRef = useRef<HTMLDivElement>(null);

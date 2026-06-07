@@ -136,6 +136,19 @@ fn histories_clear(data_dir: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn histories_append(
+    data_dir: String,
+    day: String,
+    entry: String,
+    max_age_days: u32,
+    max_count: usize,
+) -> Result<(), String> {
+    let value: serde_json::Value =
+        serde_json::from_str(&entry).map_err(|e| format!("Invalid history entry JSON: {e}"))?;
+    histories::append_entry(&data_dir, &day, value, max_age_days, max_count)
+}
+
+#[tauri::command]
 fn get_default_data_dir() -> Result<String, String> {
     storage::default_data_dir()
 }
@@ -287,6 +300,7 @@ fn main() {
             histories_load_page,
             histories_sync,
             histories_clear,
+            histories_append,
             environments_load,
             environments_save,
             load_folders,

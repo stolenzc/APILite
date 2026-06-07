@@ -32,6 +32,30 @@ function canonicalizeBinaryFile(file: BinaryBodyFile | null): BinaryBodyFile | n
   return out;
 }
 
+function scalarFieldsEqual(a: HttpRequest, b: HttpRequest): boolean {
+  return (
+    a.method === b.method &&
+    a.url === b.url &&
+    a.bodyType === b.bodyType &&
+    a.rawContentType === b.rawContentType &&
+    a.body === b.body &&
+    (a.preScriptId ?? null) === (b.preScriptId ?? null)
+  );
+}
+
+function binaryFilesEqual(
+  a: BinaryBodyFile | null,
+  b: BinaryBodyFile | null,
+): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return (
+    a.fileName === b.fileName &&
+    (a.filePath ?? '') === (b.filePath ?? '') &&
+    (a.fileDataBase64 ?? '') === (b.fileDataBase64 ?? '')
+  );
+}
+
 /** Stable JSON for comparing requests (ignores trailing empty KV rows). */
 export function canonicalizeRequest(req: HttpRequest): string {
   return JSON.stringify({
@@ -50,5 +74,8 @@ export function canonicalizeRequest(req: HttpRequest): string {
 }
 
 export function requestsEqual(a: HttpRequest, b: HttpRequest): boolean {
+  if (a === b) return true;
+  if (!scalarFieldsEqual(a, b)) return false;
+  if (!binaryFilesEqual(a.binaryFile, b.binaryFile)) return false;
   return canonicalizeRequest(a) === canonicalizeRequest(b);
 }

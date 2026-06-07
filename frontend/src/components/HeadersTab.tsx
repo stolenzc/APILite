@@ -11,7 +11,8 @@ import { useDropdownAnchorStyle } from '../hooks/useDropdownAnchorStyle';
 import { isImeComposing } from '../utils/keyboard';
 
 export default function HeadersTab() {
-  const { updateHeader, removeHeader } = useStore();
+  const updateHeader = useStore((s) => s.updateHeader);
+  const removeHeader = useStore((s) => s.removeHeader);
   const headers = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.headers ?? []);
   const [activeKeyRow, setActiveKeyRow] = useState<number | null>(null);
   const [activeValueRow, setActiveValueRow] = useState<number | null>(null);

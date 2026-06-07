@@ -16,12 +16,13 @@ import { ensureProtocol } from '../utils/outboundRequest';
 const METHODS: HttpMethod[] = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
 
 export default function UrlBar() {
-  const { setMethod, setUrl, syncParamsFromUrl } = useStore();
+  const setMethod = useStore((s) => s.setMethod);
+  const setUrl = useStore((s) => s.setUrl);
+  const syncParamsFromUrl = useStore((s) => s.syncParamsFromUrl);
   const requestMethod = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.method ?? 'GET');
   const requestUrl = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.request.url ?? '');
-  const tab = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId));
-  const loading = tab?.loading ?? false;
-  const sending = tab?.sending ?? false;
+  const loading = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.loading ?? false);
+  const sending = useStore((s) => s.tabs.find((t) => t.id === s.activeTabId)?.sending ?? false);
 
   useEffect(() => {
     const onFocusUrl = () => focusUrlInput();
