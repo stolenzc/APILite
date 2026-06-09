@@ -987,6 +987,58 @@ body {
   cursor: pointer;
   outline: none;
   flex-shrink: 0;
+  appearance: none;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%23888' d='M1 1l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+}
+
+.request-env-toolbar .request-env-select:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.request-env-dropdown {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  overflow-y: auto;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+}
+
+.request-env-dropdown--float {
+  position: fixed;
+  top: auto;
+  left: auto;
+  right: auto;
+}
+
+.request-env-dropdown-item {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  line-height: 1.2;
+  text-align: left;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.request-env-dropdown-item:hover,
+.request-env-dropdown-item--selected {
+  background: var(--bg-input);
 }
 
 .request-env-toolbar .request-env-select:focus {

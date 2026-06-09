@@ -1,7 +1,7 @@
-/** Focus the request environment <select> in the toolbar. */
+/** Focus the request environment picker in the toolbar. */
 export function focusEnvironmentSelect(): void {
   requestAnimationFrame(() => {
-    const select = document.querySelector<HTMLSelectElement>('.request-env-select');
-    select?.focus();
+    const trigger = document.querySelector<HTMLElement>('.request-env-select');
+    trigger?.focus();
   });
 }
