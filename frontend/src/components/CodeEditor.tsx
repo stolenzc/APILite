@@ -90,7 +90,7 @@ function useCodeEditorSetup(
       codeEditorCmTheme,
       codeEditorCmSelection,
       codeEditorCmHighlight,
-      codeEditorCmLanguage(cmLanguage),
+      ...codeEditorCmLanguage(cmLanguage),
     ];
     if (!readOnly) {
       exts.push(closeBrackets());
