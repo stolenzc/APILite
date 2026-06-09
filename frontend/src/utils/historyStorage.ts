@@ -244,7 +244,23 @@ export async function hydrateHistoryFromDisk(): Promise<HistoryPage | null> {
   const dataDir = getDataDir();
   if (!dataDir) return null;
   try {
-    const page = await loadHistoryPage(0);
+    const retention = getHistoryRetention();
+    const result = await invoke<{
+      entries: string;
+      has_more: boolean;
+      total: number;
+    }>('histories_load_initial', {
+      dataDir,
+      maxAgeDays: retention.maxAgeDays,
+      limit: HISTORY_PAGE_SIZE,
+      smallFileBytes: 64 * 1024,
+    });
+    const entries = parseHistoryJson(result.entries) ?? [];
+    const page = {
+      entries,
+      hasMore: result.has_more,
+      total: result.total,
+    };
     if (page.entries.length === 0 && !page.hasMore) return null;
     return page;
   } catch (err) {

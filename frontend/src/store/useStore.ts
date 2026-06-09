@@ -17,6 +17,7 @@ import { inferRawContentType } from '../utils/curlUtils';
 import { inferDefaultRequestEditorTab } from '../utils/inferRequestEditorTab';
 import { parseParamsFromUrl, urlWithParams } from '../utils/urlQuery';
 import { dispatchFocusUrl } from '../utils/focusUrl';
+import { isTauri } from '../tauri/setupMenu';
 import {
   applyHistoryRetentionToStorage,
   formatHistoryDisplayTime,
@@ -24,6 +25,7 @@ import {
   clearPersistedHistory,
   loadHistoryPage,
   loadInitialHistoryPage,
+  hydrateHistoryFromDisk,
   persistHistoryAppend,
   pruneHistory,
 } from '../utils/historyStorage';
@@ -123,6 +125,7 @@ interface AppState {
 
   // History actions
   addHistory: (entry: Omit<HistoryEntry, 'id' | 'time' | 'timestamp'>) => void;
+  hydrateHistoryOnExpand: () => Promise<void>;
   loadMoreHistory: () => Promise<void>;
   clearHistory: () => void;
   syncHistoryRetention: () => void;
@@ -208,7 +211,9 @@ function applyParsedToRequest(req: HttpRequest, parsed: {
   });
 }
 
-const initialHistoryPage = loadInitialHistoryPage();
+const initialHistoryPage = isTauri()
+  ? { entries: [] as HistoryEntry[], hasMore: false, total: 0 }
+  : loadInitialHistoryPage();
 
 export const useStore = create<AppState>((set, get) => ({
   tabs: [],
@@ -602,6 +607,29 @@ export const useStore = create<AppState>((set, get) => ({
     void persistHistoryAppend(newEntry).catch((err) =>
       console.error('Failed to persist history entry:', err),
     );
+  },
+
+  hydrateHistoryOnExpand: async () => {
+    if (!isTauri()) return;
+    const { history, historyLoadingMore } = get();
+    if (historyLoadingMore) return;
+    if (history.length > 0) return;
+    set({ historyLoadingMore: true });
+    try {
+      const page = await hydrateHistoryFromDisk();
+      if (!page) {
+        set({ history: [], historyHasMore: false, historyLoadingMore: false });
+        return;
+      }
+      set({
+        history: page.entries,
+        historyHasMore: page.hasMore,
+        historyLoadingMore: false,
+      });
+    } catch (err) {
+      console.error('Failed to hydrate history on expand:', err);
+      set({ historyLoadingMore: false });
+    }
   },
 
   loadMoreHistory: async () => {

@@ -2,6 +2,7 @@ import { useRef, useCallback, useState } from 'react';
 import { useStore } from '../store/useStore';
 import { useSettingsStore } from '../store/useSettings';
 import { t } from '../i18n';
+import { isTauri } from '../tauri/setupMenu';
 
 const METHOD_COLORS: Record<string, string> = {
   GET: 'var(--get)',
@@ -19,6 +20,7 @@ export default function HistoryPanel() {
   const historyLoadingMore = useStore((s) => s.historyLoadingMore);
   const loadMoreHistory = useStore((s) => s.loadMoreHistory);
   const clearHistory = useStore((s) => s.clearHistory);
+  const hydrateHistoryOnExpand = useStore((s) => s.hydrateHistoryOnExpand);
   const { historyCollapsed, setHistoryCollapsed, historyHeight, setHistoryHeight } =
     useSettingsStore();
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -69,12 +71,17 @@ export default function HistoryPanel() {
       )}
       <div
         className="history-header"
-        onClick={() => setHistoryCollapsed(!historyCollapsed)}
+        onClick={() => {
+          const nextCollapsed = !historyCollapsed;
+          setHistoryCollapsed(nextCollapsed);
+          if (!nextCollapsed && isTauri()) {
+            void hydrateHistoryOnExpand();
+          }
+        }}
         style={{ cursor: 'pointer' }}
       >
         <span>
-          {historyCollapsed ? '▶' : '▼'} {t('history.label')} ({history.length}
-          {historyHasMore ? '+' : ''})
+          {historyCollapsed ? '▶' : '▼'} {t('history.label')}
         </span>
         {!historyCollapsed && (
           <button

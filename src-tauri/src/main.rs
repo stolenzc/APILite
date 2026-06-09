@@ -121,6 +121,16 @@ fn histories_load_page(
 }
 
 #[tauri::command]
+fn histories_load_initial(
+    data_dir: String,
+    max_age_days: u32,
+    limit: usize,
+    small_file_bytes: u64,
+) -> Result<histories::HistoryPageResult, String> {
+    histories::load_initial(&data_dir, max_age_days, limit, small_file_bytes)
+}
+
+#[tauri::command]
 fn histories_sync(
     data_dir: String,
     updates: HashMap<String, String>,
@@ -298,6 +308,7 @@ fn main() {
             ensure_data_dir,
             histories_load,
             histories_load_page,
+            histories_load_initial,
             histories_sync,
             histories_clear,
             histories_append,

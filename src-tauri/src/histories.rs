@@ -105,6 +105,34 @@ fn read_day_entries(path: &std::path::Path) -> Result<Vec<Value>, String> {
     }
 }
 
+fn newest_day_file_within_retention(
+    data_dir: &str,
+    max_age_days: u32,
+) -> Result<Option<std::path::PathBuf>, String> {
+    let dir = histories_root(data_dir);
+    if !dir.exists() {
+        return Ok(None);
+    }
+    let cutoff = cutoff_date(max_age_days);
+    let mut newest: Option<(NaiveDate, std::path::PathBuf)> = None;
+    for entry in fs::read_dir(&dir).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let name = entry.file_name().to_string_lossy().to_string();
+        let Some(date) = parse_day_from_file_name(&name) else {
+            continue;
+        };
+        if date < cutoff {
+            continue;
+        }
+        match &newest {
+            None => newest = Some((date, entry.path())),
+            Some((d, _)) if date > *d => newest = Some((date, entry.path())),
+            _ => {}
+        }
+    }
+    Ok(newest.map(|(_, p)| p))
+}
+
 /// Day shards within retention, each sorted newest-first; outer vec is newest day first.
 fn load_day_shards(data_dir: &str, max_age_days: u32) -> Result<Vec<Vec<Value>>, String> {
     let dir = histories_root(data_dir);
@@ -260,6 +288,43 @@ pub fn load_page(
     let page = page_from_shards(&shards, offset, limit);
     Ok(HistoryPageResult {
         entries: serde_json::to_string(&page).map_err(|e| e.to_string())?,
+        has_more,
+        total,
+    })
+}
+
+/// Initial load used when the history panel is expanded.
+/// - If the newest day file is small, return all entries from that file.
+/// - If it's large, return only the first `limit` entries (newest-first).
+pub fn load_initial(
+    data_dir: &str,
+    max_age_days: u32,
+    limit: usize,
+    small_file_bytes: u64,
+) -> Result<HistoryPageResult, String> {
+    let newest_path = newest_day_file_within_retention(data_dir, max_age_days)?;
+
+    // Determine whether there is more to load (across all days) cheaply.
+    let shards = load_day_shards(data_dir, max_age_days)?;
+    let total = total_entry_count(&shards);
+
+    let mut entries: Vec<Value> = match newest_path {
+        None => Vec::new(),
+        Some(ref path) => {
+            let size = fs::metadata(path).map(|m| m.len()).unwrap_or(u64::MAX);
+            let mut items = read_day_entries(path)?;
+            if size > small_file_bytes && items.len() > limit {
+                items.truncate(limit);
+            }
+            items
+        }
+    };
+    // Ensure newest-first even if file had weird order.
+    sort_entries_newest_first(&mut entries);
+
+    let has_more = total > entries.len();
+    Ok(HistoryPageResult {
+        entries: serde_json::to_string(&entries).map_err(|e| e.to_string())?,
         has_more,
         total,
     })
