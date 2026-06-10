@@ -582,7 +582,13 @@ export default function FolderSidebar() {
         }
       }
 
-      if (key === 'Enter') {
+      if (
+        key === 'Enter' &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !e.altKey &&
+        !e.shiftKey
+      ) {
         const id = useFolderStore.getState().activeNodeId;
         if (!id) return;
         const node = findNodeById(useFolderStore.getState().folders, id);

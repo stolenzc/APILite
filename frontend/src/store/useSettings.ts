@@ -420,6 +420,7 @@ export function initKeyboardShortcuts(): () => void {
 
     if (matchesShortcutCombo(e, shortcuts.sendRequest)) {
       e.preventDefault();
+      e.stopPropagation();
       const sendBtn = document.querySelector('.btn-send') as HTMLElement | null;
       sendBtn?.click();
       return;
