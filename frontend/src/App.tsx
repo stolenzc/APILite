@@ -29,6 +29,7 @@ import SaveRequestModal from './components/SaveRequestModal';
 import { defaultRequestNameFromUrl } from './utils/requestName';
 import { isTauri, setupTauriMenu } from './tauri/setupMenu';
 import { bootstrapLocalStorage } from './utils/bootstrapStorage';
+import { initSessionPersistence } from './utils/sessionStorage';
 import { focusFolderSearchInput } from './utils/focusFolderSearch';
 import { cloneHttpRequest } from './utils/normalizeRequest';
 
@@ -72,6 +73,11 @@ export default function App() {
       console.error('Failed to bootstrap local storage:', err);
     });
   }, [dataDir]);
+
+  useEffect(() => {
+    const cleanup = initSessionPersistence();
+    return cleanup;
+  }, []);
 
   useEffect(() => {
     const onFocusFolderSearch = () => {

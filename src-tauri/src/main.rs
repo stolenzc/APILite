@@ -11,6 +11,7 @@ mod proxy_config;
 mod script_daemon;
 mod script_runner;
 mod scripts;
+mod session;
 use std::collections::HashMap;
 use tauri::Emitter;
 
@@ -179,6 +180,21 @@ fn environments_save(data_dir: String, data: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn session_load(data_dir: String) -> Result<Option<String>, String> {
+    session::load(&data_dir)
+}
+
+#[tauri::command]
+fn session_save(data_dir: String, data: String) -> Result<(), String> {
+    session::save(&data_dir, &data)
+}
+
+#[tauri::command]
+fn session_clear(data_dir: String) -> Result<(), String> {
+    session::clear(&data_dir)
+}
+
+#[tauri::command]
 fn load_folders(dir: String) -> Result<String, String> {
     folders::load_tree(&dir)
 }
@@ -314,6 +330,9 @@ fn main() {
             histories_append,
             environments_load,
             environments_save,
+            session_load,
+            session_save,
+            session_clear,
             load_folders,
             folders_save,
             folders_create,

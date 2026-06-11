@@ -5,6 +5,7 @@ const FOLDERS_SUBDIR: &str = "folders";
 const HISTORIES_SUBDIR: &str = "histories";
 pub const SCRIPTS_SUBDIR: &str = "scripts";
 const ENVIRONMENTS_FILE: &str = "environments.json";
+const SESSION_FILE: &str = "session.json";
 
 pub fn default_data_dir() -> Result<String, String> {
     let home = dirs_next::home_dir().ok_or_else(|| "Cannot determine home directory".to_string())?;
@@ -17,6 +18,10 @@ pub fn folders_dir(data_dir: &str) -> PathBuf {
 
 pub fn environments_file(data_dir: &str) -> PathBuf {
     Path::new(data_dir).join(ENVIRONMENTS_FILE)
+}
+
+pub fn session_file(data_dir: &str) -> PathBuf {
+    Path::new(data_dir).join(SESSION_FILE)
 }
 
 pub fn histories_dir(data_dir: &str) -> PathBuf {

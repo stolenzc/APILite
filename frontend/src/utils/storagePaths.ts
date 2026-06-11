@@ -6,6 +6,7 @@ export const FOLDERS_SUBDIR = 'folders';
 export const HISTORIES_SUBDIR = 'histories';
 export const SCRIPTS_SUBDIR = 'scripts';
 export const ENVIRONMENTS_FILE = 'environments.json';
+export const SESSION_FILE = 'session.json';
 
 /** Join path segments using the separator style of the base path. */
 export function joinPath(base: string, ...segments: string[]): string {
