@@ -1,10 +1,13 @@
 import * as jsonc from 'jsonc-parser';
+import { interpolateEnvVars } from './envInterpolation';
 
 /** `{{var}}` placeholders — stripped only for JSONC validation, not for send/minify. */
 const ENV_PLACEHOLDER = /\{\{\s*[^}]*?\s*\}\}/g;
 
 export type ParseJsoncOptions = {
-  /** Treat `{{name}}` as empty for validity checks (body editor / linter). */
+  /** Replace `{{name}}` with values before validation (when `ignoreEnvPlaceholders` is true). */
+  envVars?: Record<string, string>;
+  /** Interpolate env vars, then strip any remaining placeholders for validity checks. */
   ignoreEnvPlaceholders?: boolean;
   /** Allow trailing commas like JSONC (default true). */
   allowTrailingComma?: boolean;
@@ -15,7 +18,14 @@ export function stripEnvPlaceholdersForJsonc(input: string): string {
 }
 
 function jsoncTextForParse(input: string, options?: ParseJsoncOptions): string {
-  return options?.ignoreEnvPlaceholders ? stripEnvPlaceholdersForJsonc(input) : input;
+  let text = input;
+  if (options?.ignoreEnvPlaceholders) {
+    if (options.envVars) {
+      text = interpolateEnvVars(text, options.envVars);
+    }
+    text = stripEnvPlaceholdersForJsonc(text);
+  }
+  return text;
 }
 
 export function parseJsonc(
@@ -78,9 +88,12 @@ function stripJsoncComments(input: string): string {
 }
 
 /** Format JSONC while keeping comments at their nearest structural position. */
-export function formatJsonc(input: string): { formatted: string; valid: boolean } {
+export function formatJsonc(
+  input: string,
+  options?: Pick<ParseJsoncOptions, 'envVars'>,
+): { formatted: string; valid: boolean } {
   if (!input.trim()) return { formatted: input, valid: false };
-  const { valid } = parseJsonc(input, { ignoreEnvPlaceholders: true });
+  const { valid } = parseJsonc(input, { ignoreEnvPlaceholders: true, envVars: options?.envVars });
   if (!valid) return { formatted: input, valid: false };
 
   const segments = splitJsoncSegments(input);

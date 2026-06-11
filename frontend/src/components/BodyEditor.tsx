@@ -4,7 +4,8 @@ import { useStore } from '../store/useStore';
 import { matchesShortcutCombo, useSettingsStore } from '../store/useSettings';
 import type { BodyType, RawContentType } from '../types';
 import { t } from '../i18n';
-import { formatJsonc, jsoncToStrictJson, normalizeToJsonText, parseJsonc } from '../utils/jsonUtils';
+import { getMergedInterpolationVars, parseJsoncForValidation } from '../utils/interpolationVars';
+import { formatJsonc, jsoncToStrictJson, normalizeToJsonText } from '../utils/jsonUtils';
 import CodeEditor from './CodeEditor';
 import BodyFormTable from './BodyFormTable';
 import { pickFilePath, readBrowserFileAsBase64 } from '../utils/filePicker';
@@ -196,13 +197,13 @@ export default function BodyEditor() {
 
   const handleFormat = () => {
     if (!body) return;
-    const { formatted, valid } = formatJsonc(body);
+    const { formatted, valid } = formatJsonc(body, { envVars: getMergedInterpolationVars() });
     if (valid) setBody(formatted);
   };
 
   const handleMinify = () => {
     if (!body) return;
-    if (parseJsonc(body, { ignoreEnvPlaceholders: true, allowTrailingComma: false }).valid) {
+    if (parseJsoncForValidation(body, { allowTrailingComma: false }).valid) {
       setBody(jsoncToStrictJson(body));
     }
   };

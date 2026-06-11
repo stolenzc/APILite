@@ -10,9 +10,10 @@ import type { EditorView as EditorViewType } from '@codemirror/view';
 import EnvVarSuggestList from './EnvVarSuggestList';
 import { useEnvVarCodeMirrorSuggest } from '../hooks/useEnvVarCodeMirrorSuggest';
 import { useEnvVarCodeMirrorSuggestStyle } from '../hooks/useEnvVarCodeMirrorSuggestStyle';
+import { useInterpolationVarsSignature } from '../utils/interpolationVars';
 import { codeEditorCmHighlight } from '../utils/codeEditorCm/highlight';
 import { codeEditorCmLanguage } from '../utils/codeEditorCm/language';
-import { jsoncCodeEditorLinter } from '../utils/codeEditorCm/jsoncLint';
+import { createJsoncCodeEditorLinter } from '../utils/codeEditorCm/jsoncLint';
 import { resolveCodeEditorCmLanguage } from '../utils/codeEditorCm/resolveLanguage';
 import { codeEditorCmSelection } from '../utils/codeEditorCm/selection';
 import { codeEditorCmTheme } from '../utils/codeEditorCm/theme';
@@ -79,11 +80,17 @@ function useCodeEditorSetup(
   readOnly: boolean,
   className: string | undefined,
   fill: boolean | undefined,
+  interpolationVarsSig: string,
 ) {
   const cmLanguage = resolveCodeEditorCmLanguage(language, {
     editable: features.editable,
     lintJsonc: features.lintJsonc,
   });
+
+  const jsoncLinter = useMemo(
+    () => (features.lintJsonc ? createJsoncCodeEditorLinter() : null),
+    [features.lintJsonc, interpolationVarsSig],
+  );
 
   const extensions = useMemo(() => {
     const exts: import('@codemirror/state').Extension[] = [
@@ -111,8 +118,8 @@ function useCodeEditorSetup(
     if (features.wordWrap) {
       exts.push(EditorView.lineWrapping);
     }
-    if (features.lintJsonc && !readOnly) {
-      exts.push(jsoncCodeEditorLinter, lintGutter());
+    if (jsoncLinter && !readOnly) {
+      exts.push(jsoncLinter, lintGutter());
     }
     if (features.search && !readOnly) {
       exts.push(
@@ -126,7 +133,7 @@ function useCodeEditorSetup(
     cmLanguage,
     readOnly,
     features.wordWrap,
-    features.lintJsonc,
+    jsoncLinter,
     features.foldGutter,
     features.search,
   ]);
@@ -254,6 +261,7 @@ function CodeEditorWithEnv(props: CodeEditorProps & { features: ResolvedFeatures
   const onChange = onValueChange ?? (() => {});
   const suggest = useEnvVarCodeMirrorSuggest(value, onChange, viewRef);
   const floatStyle = useEnvVarCodeMirrorSuggestStyle(suggest.isOpen, viewRef, suggest.caretIndex);
+  const interpolationVarsSig = useInterpolationVarsSignature();
   const readOnly = !features.editable || onValueChange === undefined;
   const { extensions, rootClass } = useCodeEditorSetup(
     language,
@@ -262,6 +270,7 @@ function CodeEditorWithEnv(props: CodeEditorProps & { features: ResolvedFeatures
     readOnly,
     className,
     fill,
+    interpolationVarsSig,
   );
 
   useEffect(() => {
@@ -338,6 +347,7 @@ export default function CodeEditor({
 
   // Hooks must be called unconditionally (before any early return).
   const viewRef = useRef<EditorViewType | null>(null);
+  const interpolationVarsSig = useInterpolationVarsSignature();
   const readOnly = !features.editable || onValueChange === undefined;
   const { extensions, rootClass } = useCodeEditorSetup(
     language,
@@ -346,6 +356,7 @@ export default function CodeEditor({
     readOnly,
     className,
     fill,
+    interpolationVarsSig,
   );
 
   if (features.envVars) {
