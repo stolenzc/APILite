@@ -75,6 +75,127 @@ function SaveFolderContextMenu({
   );
 }
 
+interface SaveFolderRowProps {
+  folder: TreeFolder;
+  depth: number;
+  expandable: boolean;
+  expanded: boolean;
+  selected: boolean;
+  onToggleExpand: (id: string) => void;
+  onSelectFolder: (id: string) => void;
+  onFolderContextMenu: (folder: TreeFolder, e: React.MouseEvent) => void;
+}
+
+function SaveFolderRow({
+  folder,
+  depth,
+  expandable,
+  expanded,
+  selected,
+  onToggleExpand,
+  onSelectFolder,
+  onFolderContextMenu,
+}: SaveFolderRowProps) {
+  const renameNode = useFolderStore((s) => s.renameNode);
+  const pendingRenameNodeId = useFolderStore((s) => s.pendingRenameNodeId);
+  const consumePendingRename = useFolderStore((s) => s.consumePendingRename);
+  const [renaming, setRenaming] = useState(false);
+  const [editName, setEditName] = useState(folder.name);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setEditName(folder.name);
+  }, [folder.name]);
+
+  useEffect(() => {
+    if (renaming && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [renaming]);
+
+  useEffect(() => {
+    if (pendingRenameNodeId !== folder.id) return;
+    setEditName(folder.name);
+    setRenaming(true);
+    consumePendingRename();
+  }, [pendingRenameNodeId, folder.id, folder.name, consumePendingRename]);
+
+  const confirmRename = useCallback(() => {
+    const next = editName.trim();
+    if (next && !renameNode(folder.id, next)) {
+      setEditName(folder.name);
+    }
+    setRenaming(false);
+  }, [editName, folder.id, folder.name, renameNode]);
+
+  const handleRenameKey = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (isImeComposing(e)) return;
+      if (e.key === 'Enter') confirmRename();
+      if (e.key === 'Escape') {
+        setEditName(folder.name);
+        setRenaming(false);
+      }
+    },
+    [confirmRename, folder.name],
+  );
+
+  return (
+    <div
+      className={`save-request-tree-row-wrap${selected ? ' save-request-tree-row-wrap--selected' : ''}`}
+      style={{ paddingLeft: 8 + depth * 18 }}
+      role="treeitem"
+      aria-expanded={expandable ? expanded : undefined}
+      aria-selected={selected}
+      onContextMenu={(e) => onFolderContextMenu(folder, e)}
+      onDoubleClick={() => {
+        if (expandable) onToggleExpand(folder.id);
+      }}
+    >
+      {expandable ? (
+        <button
+          type="button"
+          className="save-request-tree-expand"
+          aria-label={expanded ? t('saveRequest.collapse') : t('saveRequest.expand')}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleExpand(folder.id);
+          }}
+        >
+          <TreeChevron expanded={expanded} />
+        </button>
+      ) : (
+        <span className="save-request-tree-expand save-request-tree-expand--leaf" aria-hidden />
+      )}
+      {renaming ? (
+        <div className="save-request-tree-row">
+          <span className="save-request-tree-folder" aria-hidden>📁</span>
+          <input
+            ref={inputRef}
+            className="tree-rename-input save-request-tree-name"
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            onBlur={confirmRename}
+            onKeyDown={handleRenameKey}
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+          />
+        </div>
+      ) : (
+        <button
+          type="button"
+          className="save-request-tree-row"
+          onClick={() => onSelectFolder(folder.id)}
+        >
+          <span className="save-request-tree-folder" aria-hidden>📁</span>
+          <span className="save-request-tree-name">{folder.name}</span>
+        </button>
+      )}
+    </div>
+  );
+}
+
 interface FolderTreeProps {
   nodes: TreeNode[];
   depth: number;
@@ -108,42 +229,16 @@ function SaveFolderTree({
 
         return (
           <div key={folder.id} className="save-request-tree-branch" role="none">
-            <div
-              className={`save-request-tree-row-wrap${selected ? ' save-request-tree-row-wrap--selected' : ''}`}
-              style={{ paddingLeft: 8 + depth * 18 }}
-              role="treeitem"
-              aria-expanded={expandable ? expanded : undefined}
-              aria-selected={selected}
-              onContextMenu={(e) => onFolderContextMenu(folder, e)}
-              onDoubleClick={() => {
-                if (expandable) onToggleExpand(folder.id);
-                // else onSave();
-              }}
-            >
-              {expandable ? (
-                <button
-                  type="button"
-                  className="save-request-tree-expand"
-                  aria-label={expanded ? t('saveRequest.collapse') : t('saveRequest.expand')}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onToggleExpand(folder.id);
-                  }}
-                >
-                  <TreeChevron expanded={expanded} />
-                </button>
-              ) : (
-                <span className="save-request-tree-expand save-request-tree-expand--leaf" aria-hidden />
-              )}
-              <button
-                type="button"
-                className="save-request-tree-row"
-                onClick={() => onSelectFolder(folder.id)}
-              >
-                <span className="save-request-tree-folder" aria-hidden>📁</span>
-                <span className="save-request-tree-name">{folder.name}</span>
-              </button>
-            </div>
+            <SaveFolderRow
+              folder={folder}
+              depth={depth}
+              expandable={expandable}
+              expanded={expanded}
+              selected={selected}
+              onToggleExpand={onToggleExpand}
+              onSelectFolder={onSelectFolder}
+              onFolderContextMenu={onFolderContextMenu}
+            />
             {expandable && expanded && (
               <SaveFolderTree
                 nodes={folder.children}
@@ -207,7 +302,7 @@ export default function SaveRequestModal({ onClose, onSave, defaultName }: Props
   }, []);
 
   const handleNewRootFolder = useCallback(() => {
-    const id = addFolder(null, { startRename: false });
+    const id = addFolder(null);
     if (!id) return;
     setSelectedFolderId(id);
     setExpandedIds((prev) => new Set(prev).add(id));
@@ -215,7 +310,7 @@ export default function SaveRequestModal({ onClose, onSave, defaultName }: Props
 
   const handleNewSubfolder = useCallback(() => {
     if (!selectedFolderId) return;
-    const newId = addFolder(selectedFolderId, { startRename: false });
+    const newId = addFolder(selectedFolderId);
     if (!newId) return;
     expandToNode(newId);
     setSelectedFolderId(newId);
